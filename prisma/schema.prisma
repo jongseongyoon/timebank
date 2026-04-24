@@ -1,0 +1,440 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─────────────────────────────────────────
+// 회원 관련
+// ─────────────────────────────────────────
+
+model Member {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 인증
+  email        String?  @unique
+  phone        String   @unique
+  passwordHash String?
+  kakaoId      String?  @unique
+
+  // 기본 정보
+  name      String
+  birthYear Int
+  dong      String
+  address   String?
+
+  // 역할 및 상태
+  memberType   MemberType   @default(INDIVIDUAL)
+  roles        Role[]
+  status       MemberStatus @default(ACTIVE)
+  isVulnerable Boolean      @default(false)
+  isDisabled   Boolean      @default(false)
+
+  // TC 잔액
+  tcBalance      Decimal @default(0) @db.Decimal(10, 2)
+  lifetimeEarned Decimal @default(0) @db.Decimal(10, 2)
+  lifetimeSpent  Decimal @default(0) @db.Decimal(10, 2)
+
+  tcExpiresAt DateTime?
+
+  // 관계
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String?
+
+  providedServices  Transaction[]    @relation("Provider")
+  receivedServices  Transaction[]    @relation("Receiver")
+  coordinatedTxs   Transaction[]    @relation("Coordinator")
+  serviceListings  ServiceListing[]
+  notifications    Notification[]
+  serviceRequests  ServiceRequest[]
+
+  carePackagesAsRecipient    CarePackage[] @relation("CareRecipient")
+  carePackagesAsCoordinator  CarePackage[] @relation("CareCoordinator")
+  careSessionsAsProvider     CareSession[] @relation("CareSessionProvider")
+
+  @@index([dong])
+  @@index([status])
+}
+
+enum MemberType {
+  INDIVIDUAL
+  ORGANIZATION
+  PUBLIC
+}
+
+enum Role {
+  RECEIVER
+  PROVIDER
+  COORDINATOR
+  ADMIN
+}
+
+enum MemberStatus {
+  ACTIVE
+  DORMANT
+  SUSPENDED
+  WITHDRAWN
+}
+
+// ─────────────────────────────────────────
+// 자생단체/기관
+// ─────────────────────────────────────────
+
+model Organization {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  name        String
+  orgType     OrgType
+  dong        String
+  tcBalance   Decimal   @default(0) @db.Decimal(10, 2)
+  tcExpiresAt DateTime?
+
+  members         Member[]
+  transactions    OrgTransaction[]
+  serviceListings ServiceListing[]
+  tcTransactions  Transaction[]
+  carePackages    CarePackage[]    @relation("CarePackageOrg")
+}
+
+enum OrgType {
+  COMMUNITY_COUNCIL
+  WELFARE_COUNCIL
+  SAEMAEUL
+  WOMENS_CLUB
+  RIGHT_LIVING
+  VOLUNTEER_CAMP
+  RED_CROSS
+  SOCIAL_COOP
+  OTHER
+}
+
+// ─────────────────────────────────────────
+// 서비스 목록
+// ─────────────────────────────────────────
+
+model ServiceListing {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  provider   Member? @relation(fields: [providerId], references: [id])
+  providerId String?
+
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String?
+
+  title             String
+  description       String?
+  category          ServiceCategory
+  tcPerHour         Decimal         @db.Decimal(4, 2)
+  availableDong     String[]
+  availableDays     String[]
+  availableTimeFrom String
+  availableTimeTo   String
+
+  isActive     Boolean       @default(true)
+  transactions Transaction[]
+}
+
+enum ServiceCategory {
+  TRANSPORT
+  SHOPPING
+  COMPANION
+  MEAL
+  HOUSEKEEPING
+  MEDICAL_ESCORT
+  EDUCATION
+  DIGITAL_HELP
+  REPAIR
+  CHILDCARE
+  LEGAL_CONSULT
+  HEALTH_CONSULT
+  ADMINISTRATIVE
+  COMMUNITY_EVENT
+  OTHER
+}
+
+// ─────────────────────────────────────────
+// TC 거래 원장
+// ─────────────────────────────────────────
+
+model Transaction {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  txType     TxType
+  provider   Member? @relation("Provider", fields: [providerId], references: [id])
+  providerId String?
+  receiver   Member? @relation("Receiver", fields: [receiverId], references: [id])
+  receiverId String?
+
+  serviceListing   ServiceListing? @relation(fields: [serviceListingId], references: [id])
+  serviceListingId String?
+
+  durationMinutes Int
+  tcAmount        Decimal @db.Decimal(10, 2)
+  baseRate        Decimal @db.Decimal(4, 2)
+  bonusRate       Decimal @default(0) @db.Decimal(4, 2)
+
+  coordinator        Member            @relation("Coordinator", fields: [coordinatorId], references: [id])
+  coordinatorId      String
+  verificationMethod VerificationMethod
+  providerSignature  String?
+  receiverConfirmed  Boolean           @default(false)
+
+  prevTxHash String?
+  txHash     String  @unique
+
+  status      TxStatus @default(PENDING)
+  note        String?
+  completedAt DateTime?
+
+  // 장기저축 표시 (제공자가 미래에 쓸 TC — 만기 면제 대상)
+  isSavings   Boolean  @default(false)
+
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String?
+
+  fundTransaction FundTransaction? @relation(fields: [fundTxId], references: [id])
+  fundTxId        String?
+
+  careSession CareSession?
+
+  @@index([providerId, createdAt])
+  @@index([receiverId, createdAt])
+  @@index([coordinatorId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+enum TxType {
+  PEER_TO_PEER
+  INDIVIDUAL_TO_ORG
+  ORG_TO_INDIVIDUAL
+  PUBLIC_SERVICE
+  PRIVATE_MARKET
+  FREE_ALLOCATION
+  WAGE_SUPPLEMENT
+  COMMUNITY_BONUS
+  EXPIRY_DONATION
+  COMMUNITY_FUND_GIFT
+}
+
+enum TxStatus {
+  PENDING
+  APPROVED
+  CANCELLED
+  DISPUTED
+  RESOLVED
+}
+
+enum VerificationMethod {
+  APP_QR
+  APP_CONFIRM
+  PHONE
+  PAPER
+  COORDINATOR
+}
+
+model OrgTransaction {
+  id           String       @id @default(uuid())
+  createdAt    DateTime     @default(now())
+  organization Organization @relation(fields: [orgId], references: [id])
+  orgId        String
+  txDirection  String
+  tcAmount     Decimal      @db.Decimal(10, 2)
+  description  String
+  relatedTxId  String?
+}
+
+// ─────────────────────────────────────────
+// 지불준비금 기금
+// ─────────────────────────────────────────
+
+model FundTransaction {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  fundTxType      FundTxType
+  tcEquivalent    Decimal    @db.Decimal(10, 2)
+  cashAmount      Decimal    @db.Decimal(12, 2)
+  description     String
+  approvedBy      String[]
+
+  externalVendor  String?
+  externalReceipt String?
+
+  transactions Transaction[]
+}
+
+enum FundTxType {
+  CONTRIBUTION        // 기금 적립 (광주서구청 출연)
+  PRIVATE_PAYMENT     // 민간 결제
+  EMERGENCY_SERVICE   // 긴급 서비스
+  VULNERABLE_ALLOC    // 취약계층 배분
+  EXTERNAL_PURCHASE   // 외부시장 구매 (회원 서비스 불가 시)
+  REFUND
+}
+
+// ─────────────────────────────────────────
+// 돌봄 패키지 (단체→수혜자 TC 배분 + 다수 제공자 이행)
+// ─────────────────────────────────────────
+
+model CarePackage {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  title       String
+  category    ServiceCategory
+  description String?
+
+  // 수혜자
+  recipientId String
+  recipient   Member @relation("CareRecipient", fields: [recipientId], references: [id])
+
+  // 배분 단체 (상무2동 행정복지센터 등)
+  organizationId String?
+  organization   Organization? @relation("CarePackageOrg", fields: [organizationId], references: [id])
+
+  // TC 총량 (단체가 수혜자에게 배분)
+  totalTcAmount  Decimal @db.Decimal(10, 2)  // 예: 90 TC
+  usedTcAmount   Decimal @default(0) @db.Decimal(10, 2)
+
+  // 서비스 일정
+  startDate  DateTime
+  endDate    DateTime
+  dailyHours Decimal  @db.Decimal(4, 2)  // 3.0 시간
+  totalDays  Int                          // 30 일
+
+  status PackageStatus @default(ACTIVE)
+  note   String?
+
+  coordinatorId String
+  coordinator   Member @relation("CareCoordinator", fields: [coordinatorId], references: [id])
+
+  sessions CareSession[]
+
+  @@index([recipientId])
+  @@index([organizationId])
+  @@index([status])
+}
+
+model CareSession {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  packageId String
+  package   CarePackage @relation(fields: [packageId], references: [id])
+
+  // 세션 제공자 (C학생, D학생 등)
+  providerId String
+  provider   Member @relation("CareSessionProvider", fields: [providerId], references: [id])
+
+  scheduledAt     DateTime
+  durationMinutes Int
+  tcAmount        Decimal @db.Decimal(10, 2)
+
+  status      SessionStatus @default(SCHEDULED)
+  completedAt DateTime?
+  note        String?
+
+  // 완료 시 생성된 거래
+  transactionId String?      @unique
+  transaction   Transaction? @relation(fields: [transactionId], references: [id])
+
+  @@index([packageId])
+  @@index([providerId])
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+enum PackageStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  SUSPENDED
+  CANCELLED
+}
+
+enum SessionStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+// ─────────────────────────────────────────
+// 서비스 요청
+// ─────────────────────────────────────────
+
+model ServiceRequest {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  requester   Member @relation(fields: [requesterId], references: [id])
+  requesterId String
+
+  category        ServiceCategory
+  description     String
+  requestedDate   DateTime
+  durationMinutes Int
+  dong            String
+  urgency         Urgency       @default(NORMAL)
+
+  status             RequestStatus @default(OPEN)
+  assignedProviderId String?
+  coordinatorId      String?
+  matchedAt          DateTime?
+  completedTxId      String?
+}
+
+enum Urgency {
+  EMERGENCY
+  URGENT
+  NORMAL
+}
+
+enum RequestStatus {
+  OPEN
+  MATCHED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  ESCALATED
+}
+
+// ─────────────────────────────────────────
+// 알림
+// ─────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  member    Member   @relation(fields: [memberId], references: [id])
+  memberId  String
+  type      String
+  title     String
+  body      String
+  isRead    Boolean  @default(false)
+  link      String?
+}
+
+// ─────────────────────────────────────────
+// 시스템 설정
+// ─────────────────────────────────────────
+
+model SystemConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+  updatedBy String
+}
