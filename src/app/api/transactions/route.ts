@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
   if (data.receiverId) {
     const receiver = await prisma.member.findUnique({ where: { id: data.receiverId } })
     if (!receiver) return NextResponse.json({ error: '수요자 없음' }, { status: 404 })
-    if (receiver.tcBalance.lessThan(spent)) {
+    if (Number(receiver.tcBalance) < Number(spent)) {
       return NextResponse.json({ error: 'TC_INSUFFICIENT' }, { status: 400 })
     }
   }
@@ -89,9 +89,9 @@ export async function POST(req: NextRequest) {
       receiverId: data.receiverId,
       serviceListingId: data.serviceListingId,
       durationMinutes: data.durationMinutes,
-      tcAmount: earned.totalTC,
-      baseRate: earned.rateApplied,
-      bonusRate: earned.bonusTC,
+      tcAmount: Number(earned.totalTC),
+      baseRate: Number(earned.rateApplied),
+      bonusRate: Number(earned.bonusTC),
       coordinatorId: data.coordinatorId,
       verificationMethod: data.verificationMethod as any,
       prevTxHash: lastTx?.txHash ?? null,
