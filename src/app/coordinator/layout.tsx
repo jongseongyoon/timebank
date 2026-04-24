@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { SessionProvider } from 'next-auth/react'
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
