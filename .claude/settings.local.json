@@ -53,7 +53,12 @@
       "Bash(findstr \"name\\\\|version\")",
       "Bash(git init *)",
       "Bash(git branch *)",
-      "Bash(git add *)"
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git config *)",
+      "Bash(git remote *)",
+      "Bash(git push *)",
+      "Bash(git commit *)"
     ]
   }
 }

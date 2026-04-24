@@ -48,7 +48,7 @@ export default function MatchingPage() {
       body: JSON.stringify({ providerId }),
     })
     if (res.ok) {
-      setDoneIds((prev) => new Set([...prev, requestId]))
+      setDoneIds((prev) => new Set(Array.from(prev).concat(requestId)))
       setSelected(null)
     }
     setMatching(null)
