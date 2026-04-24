@@ -43,6 +43,11 @@ model Member {
 
   tcExpiresAt DateTime?
 
+  // QR 코드 및 별점
+  qrCode      String?
+  avgRating   Decimal @default(0) @db.Decimal(3, 2)
+  ratingCount Int     @default(0)
+
   // 관계
   organization   Organization? @relation(fields: [organizationId], references: [id])
   organizationId String?
@@ -192,9 +197,17 @@ model Transaction {
   prevTxHash String?
   txHash     String  @unique
 
-  status      TxStatus @default(PENDING)
+  status      TxStatus  @default(PENDING)
   note        String?
+  startedAt   DateTime?
+  endedAt     DateTime?
   completedAt DateTime?
+
+  // 별점 평가
+  providerRating Int?
+  receiverRating Int?
+  providerReview String?
+  receiverReview String?
 
   // 장기저축 표시 (제공자가 미래에 쓸 TC — 만기 면제 대상)
   isSavings   Boolean  @default(false)
@@ -229,6 +242,7 @@ enum TxType {
 
 enum TxStatus {
   PENDING
+  IN_PROGRESS
   APPROVED
   CANCELLED
   DISPUTED

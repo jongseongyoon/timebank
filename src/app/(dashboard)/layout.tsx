@@ -7,6 +7,7 @@ import { Header } from '@/components/layout/header'
 import { BottomNav } from '@/components/layout/bottom-nav'
 import { SplashScreen } from '@/components/pwa/splash-screen'
 import { InstallBanner } from '@/components/pwa/install-banner'
+import { RatingModal } from '@/components/rating/rating-modal'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const session = await auth()
@@ -25,6 +26,7 @@ export default async function DashboardLayout({ children }: { children: React.Re
       </div>
       <BottomNav />
       <InstallBanner />
+      <RatingModal memberId={session.user.id} />
     </SessionProvider>
   )
 }

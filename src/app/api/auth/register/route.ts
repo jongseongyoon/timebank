@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
 import { registerSchema } from '@/lib/validations/member'
 import { calculateTcExpiry } from '@/lib/tc-calculator'
@@ -29,9 +30,12 @@ export async function POST(req: NextRequest) {
     })
 
     const passwordHash = await bcrypt.hash(password, 12)
+    const id = crypto.randomUUID()
+    const qrCode = `timepay:member:${id}`
 
     const member = await prisma.member.create({
       data: {
+        id,
         phone,
         passwordHash,
         name,
@@ -43,6 +47,7 @@ export async function POST(req: NextRequest) {
         isDisabled,
         roles,
         tcExpiresAt,
+        qrCode,
       },
       select: {
         id: true,

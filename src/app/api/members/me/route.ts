@@ -33,6 +33,9 @@ export async function GET() {
       lifetimeEarned: true,
       lifetimeSpent: true,
       tcExpiresAt: true,
+      qrCode: true,
+      avgRating: true,
+      ratingCount: true,
       createdAt: true,
     },
   })

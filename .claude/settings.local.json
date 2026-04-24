@@ -60,7 +60,8 @@
       "Bash(git push *)",
       "Bash(git commit *)",
       "Bash(git checkout *)",
-      "PowerShell(Stop-Process -Name \"node\" -Force -ErrorAction SilentlyContinue)"
+      "PowerShell(Stop-Process -Name \"node\" -Force -ErrorAction SilentlyContinue)",
+      "Bash(npm install *)"
     ]
   }
 }

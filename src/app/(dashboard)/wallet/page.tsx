@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { formatTC, formatDate, maskName } from '@/lib/utils'
-import { TrendingUp, TrendingDown, Wallet, AlertCircle } from 'lucide-react'
+import { TrendingUp, TrendingDown, Wallet, AlertCircle, QrCode } from 'lucide-react'
+import Link from 'next/link'
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, PieChart, Pie, Cell, Legend,
 } from 'recharts'
@@ -64,7 +65,16 @@ export default function WalletPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">TC 지갑</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">TC 지갑</h1>
+        <Link
+          href="/wallet/qr"
+          className="flex items-center gap-1.5 text-sm bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition-colors"
+        >
+          <QrCode className="h-4 w-4" />
+          내 QR
+        </Link>
+      </div>
 
       {/* 만료 경고 */}
       {daysLeft !== null && daysLeft <= 30 && (
