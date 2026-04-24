@@ -84,7 +84,7 @@ export default function LoginPage() {
               <Coins className="h-8 w-8 text-white" aria-hidden="true" />
             </div>
           </div>
-          <CardTitle className="text-2xl">주민자치 타임뱅크</CardTitle>
+          <CardTitle className="text-2xl">TimePay</CardTitle>
           <CardDescription>전화번호와 비밀번호로 로그인하세요</CardDescription>
         </CardHeader>
         <CardContent>

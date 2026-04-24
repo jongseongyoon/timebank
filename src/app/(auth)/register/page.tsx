@@ -84,7 +84,7 @@ export default function RegisterPage() {
             </div>
           </div>
           <h1 className="text-2xl font-bold">회원가입</h1>
-          <p className="text-sm text-gray-500">타임뱅크에 참여하세요</p>
+          <p className="text-sm text-gray-500">TimePay에 참여하세요</p>
         </div>
 
         {/* 폼 */}

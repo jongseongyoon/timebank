@@ -58,3 +58,29 @@
 .elder-mode { font-size: 20px; }
 .elder-mode .text-sm { font-size: 1rem; }
 .elder-mode .text-base { font-size: 1.25rem; }
+
+/* PWA 안전 영역 (iPhone 홈 인디케이터) */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* 스플래시 애니메이션 */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out forwards;
+}
+
+/* 터치 버튼 최소 크기 보장 */
+@media (max-width: 768px) {
+  button, a[role="button"], [role="button"] {
+    min-height: 44px;
+  }
+}
+
+/* 스크롤바 숨김 (모바일) */
+@media (max-width: 768px) {
+  ::-webkit-scrollbar { display: none; }
+}

@@ -28,7 +28,7 @@ export function Sidebar() {
         <div className="bg-primary rounded-full p-1.5">
           <Coins className="h-5 w-5 text-white" aria-hidden="true" />
         </div>
-        <span className="font-bold text-lg">타임뱅크</span>
+        <span className="font-bold text-lg">TimePay</span>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-1" aria-label="주 메뉴">
