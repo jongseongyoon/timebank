@@ -63,6 +63,10 @@ model Member {
   carePackagesAsCoordinator  CarePackage[] @relation("CareCoordinator")
   careSessionsAsProvider     CareSession[] @relation("CareSessionProvider")
 
+  posts     Post[]
+  comments  Comment[]
+  postLikes PostLike[]
+
   @@index([dong])
   @@index([status])
 }
@@ -440,6 +444,83 @@ model Notification {
   body      String
   isRead    Boolean  @default(false)
   link      String?
+}
+
+// ─────────────────────────────────────────
+// 커뮤니티
+// ─────────────────────────────────────────
+
+model Post {
+  id        String      @id @default(uuid())
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  authorId  String
+  author    Member      @relation(fields: [authorId], references: [id])
+
+  title     String
+  content   String
+  category  PostCategory @default(GENERAL)
+  viewCount Int         @default(0)
+  likeCount Int         @default(0)
+  isPinned  Boolean     @default(false)
+
+  comments  Comment[]
+  likes     PostLike[]
+
+  @@index([category])
+  @@index([createdAt])
+  @@index([isPinned])
+}
+
+enum PostCategory {
+  NOTICE
+  GENERAL
+  REVIEW
+  QUESTION
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  authorId  String
+  author    Member   @relation(fields: [authorId], references: [id])
+
+  content   String
+  likeCount Int      @default(0)
+
+  @@index([postId])
+}
+
+model PostLike {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  memberId  String
+  member    Member   @relation(fields: [memberId], references: [id])
+
+  @@unique([postId, memberId])
+}
+
+// ─────────────────────────────────────────
+// 관리자 감사 로그
+// ─────────────────────────────────────────
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  adminId   String
+  action    String
+  targetId  String?
+  details   String
 }
 
 // ─────────────────────────────────────────

@@ -61,7 +61,10 @@
       "Bash(git commit *)",
       "Bash(git checkout *)",
       "PowerShell(Stop-Process -Name \"node\" -Force -ErrorAction SilentlyContinue)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(mkdir -p \"C:/Users/chan0/timebank/src/app/api/community/posts/[id]/comments\")",
+      "Bash(mkdir -p \"C:/Users/chan0/timebank/src/app/api/community/posts/[id]/like\")",
+      "Bash(mkdir -p \"C:/Users/chan0/timebank/src/app/api/admin/transactions/[id]\")"
     ]
   }
 }

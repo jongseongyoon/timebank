@@ -5,14 +5,18 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Landmark, BarChart3, Settings, Coins, Building2,
+  Gift, FileSpreadsheet, Bell, Trash2,
 } from 'lucide-react'
 
 const navItems = [
   { href: '/admin', label: '대시보드', icon: LayoutDashboard },
   { href: '/admin/tc', label: 'TC 관리', icon: Coins },
+  { href: '/admin/allocate', label: 'TC 배분', icon: Gift },
+  { href: '/admin/bulk-allocate', label: '엑셀 일괄 배분', icon: FileSpreadsheet },
   { href: '/admin/organizations', label: '단체 관리', icon: Building2 },
   { href: '/admin/fund', label: '기금 관리', icon: Landmark },
   { href: '/admin/reports', label: '보고서', icon: BarChart3 },
+  { href: '/admin/notifications', label: '푸시 알림', icon: Bell },
   { href: '/admin/settings', label: '시스템 설정', icon: Settings },
 ]
 
@@ -26,7 +30,7 @@ export function AdminSidebar() {
           <Coins className="h-5 w-5 text-white" aria-hidden="true" />
         </div>
         <div>
-          <span className="font-bold text-lg block leading-tight">타임뱅크</span>
+          <span className="font-bold text-lg block leading-tight">TimePay</span>
           <span className="text-xs text-muted-foreground">관리자</span>
         </div>
       </div>
