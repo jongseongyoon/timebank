@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { CheckCircle, Loader2, Info } from 'lucide-react'
+import { CheckCircle, Loader2, Info, Navigation } from 'lucide-react'
 import { getRateByCategory } from '@/lib/tc-calculator'
 
 const CATEGORIES = [
@@ -45,6 +45,7 @@ export default function ServiceRegisterPage() {
   const [loading, setLoading] = useState(false)
   const [done, setDone] = useState(false)
   const [error, setError] = useState('')
+  const [geoLoading, setGeoLoading] = useState(false)
 
   const [form, setForm] = useState({
     title: '',
@@ -54,6 +55,8 @@ export default function ServiceRegisterPage() {
     availableDays: [] as string[],
     availableTimeFrom: '09:00',
     availableTimeTo: '17:00',
+    latitude: undefined as number | undefined,
+    longitude: undefined as number | undefined,
   })
 
   function toggleDong(d: string) {
@@ -62,6 +65,30 @@ export default function ServiceRegisterPage() {
 
   function toggleDay(d: string) {
     setForm((f) => ({ ...f, availableDays: f.availableDays.includes(d) ? f.availableDays.filter((x) => x !== d) : [...f.availableDays, d] }))
+  }
+
+  function detectLocation() {
+    if (!navigator.geolocation) {
+      setError('이 브라우저에서는 위치 서비스를 지원하지 않습니다.')
+      return
+    }
+    setGeoLoading(true)
+    setError('')
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setForm(f => ({
+          ...f,
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        }))
+        setGeoLoading(false)
+      },
+      () => {
+        setError('위치 감지에 실패했습니다. 브라우저 위치 권한을 확인해 주세요.')
+        setGeoLoading(false)
+      },
+      { timeout: 10000 }
+    )
   }
 
   const tcRate = form.category ? getRateByCategory(form.category as any) : 1.0
@@ -136,6 +163,36 @@ export default function ServiceRegisterPage() {
                 placeholder="제공 가능한 서비스를 구체적으로 설명해 주세요."
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
               />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 위치 등록 (선택) */}
+        <Card>
+          <CardHeader><CardTitle className="text-base">서비스 위치 (선택)</CardTitle></CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              위치를 등록하면 &quot;내 주변 순&quot; 검색 시 더 쉽게 발견됩니다.
+            </p>
+            <div className="flex items-center gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={detectLocation}
+                disabled={geoLoading}
+                className="gap-2"
+              >
+                {geoLoading
+                  ? <Loader2 className="h-4 w-4 animate-spin" />
+                  : <Navigation className="h-4 w-4" />
+                }
+                {form.latitude ? '위치 재감지' : '현재 위치 감지'}
+              </Button>
+              {form.latitude && form.longitude && (
+                <p className="text-xs text-green-700 font-medium">
+                  ✅ 위치 등록됨 ({form.latitude.toFixed(4)}, {form.longitude.toFixed(4)})
+                </p>
+              )}
             </div>
           </CardContent>
         </Card>

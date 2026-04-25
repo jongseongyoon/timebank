@@ -18,6 +18,8 @@ const baseSchema = z.object({
   availableTimeFrom: z.string().regex(/^\d{2}:\d{2}$/),
   availableTimeTo: z.string().regex(/^\d{2}:\d{2}$/),
   organizationId: z.string().optional(), // 단체 서비스 등록 시
+  latitude: z.number().optional(),
+  longitude: z.number().optional(),
 })
 
 export async function GET(req: NextRequest) {
@@ -37,7 +39,7 @@ export async function GET(req: NextRequest) {
       ...(orgOnly ? { organizationId: { not: null } } : {}),
     },
     include: {
-      provider: { select: { id: true, name: true, dong: true } },
+      provider: { select: { id: true, name: true, dong: true, phone: true } },
       organization: { select: { id: true, name: true, orgType: true, dong: true } },
     },
     orderBy: { createdAt: 'desc' },

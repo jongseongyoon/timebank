@@ -66,6 +66,7 @@ model Member {
   posts     Post[]
   comments  Comment[]
   postLikes PostLike[]
+  walkRecords WalkRecord[]
 
   @@index([dong])
   @@index([status])
@@ -147,6 +148,9 @@ model ServiceListing {
   availableDays     String[]
   availableTimeFrom String
   availableTimeTo   String
+
+  latitude  Float?
+  longitude Float?
 
   isActive     Boolean       @default(true)
   transactions Transaction[]
@@ -532,4 +536,24 @@ model SystemConfig {
   value     String
   updatedAt DateTime @updatedAt
   updatedBy String
+}
+
+// ─────────────────────────────────────────
+// 만보기 기록
+// ─────────────────────────────────────────
+
+model WalkRecord {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  memberId  String
+  member    Member   @relation(fields: [memberId], references: [id])
+
+  date      String   // YYYY-MM-DD
+  steps     Int      @default(0)
+  rewarded  Boolean  @default(false)
+  rewardTxId String?
+
+  @@unique([memberId, date])
+  @@index([memberId])
 }

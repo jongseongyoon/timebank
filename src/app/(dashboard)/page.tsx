@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { formatTC, formatDate, maskName } from '@/lib/utils'
 import {
   Wallet, TrendingUp, TrendingDown, ClipboardList, PlusCircle,
-  ArrowRight, CalendarDays, ChevronRight,
+  ArrowRight, CalendarDays, ChevronRight, Footprints,
 } from 'lucide-react'
 
 const SERVICE_LABEL: Record<string, string> = {
@@ -30,7 +30,8 @@ export default async function DashboardPage() {
   const session = await auth()
   const memberId = session!.user.id
 
-  const [member, recentTxs, nearbyListings] = await Promise.all([
+  const today = new Date().toISOString().slice(0, 10)
+  const [member, recentTxs, nearbyListings, walkRecord] = await Promise.all([
     prisma.member.findUnique({
       where: { id: memberId },
       select: { name: true, tcBalance: true, lifetimeEarned: true, lifetimeSpent: true, tcExpiresAt: true, dong: true },
@@ -53,6 +54,9 @@ export default async function DashboardPage() {
         organization: { select: { name: true } },
       },
       orderBy: { createdAt: 'desc' },
+    }),
+    prisma.walkRecord.findUnique({
+      where: { memberId_date: { memberId, date: today } },
     }),
   ])
 
@@ -94,6 +98,37 @@ export default async function DashboardPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* 만보기 카드 */}
+      <Link href="/walk">
+        <Card className="bg-gradient-to-r from-emerald-500 to-green-600 text-white border-0 hover:opacity-95 transition-opacity cursor-pointer">
+          <CardContent className="pt-4 pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Footprints className="h-8 w-8 text-green-100" />
+                <div>
+                  <p className="text-green-100 text-xs">오늘의 만보기</p>
+                  <p className="text-2xl font-bold">
+                    {(walkRecord?.steps ?? 0).toLocaleString()}
+                    <span className="text-sm font-normal text-green-200 ml-1">/ 10,000보</span>
+                  </p>
+                  {walkRecord?.rewarded && (
+                    <p className="text-xs text-green-200 mt-0.5">✅ 0.5 TC 적립 완료</p>
+                  )}
+                </div>
+              </div>
+              <ChevronRight className="h-5 w-5 text-green-200" />
+            </div>
+            {/* 진행바 */}
+            <div className="mt-3 bg-green-400/30 rounded-full h-2">
+              <div
+                className="bg-white rounded-full h-2 transition-all"
+                style={{ width: `${Math.min((walkRecord?.steps ?? 0) / 100, 100)}%` }}
+              />
+            </div>
+          </CardContent>
+        </Card>
+      </Link>
 
       {/* 빠른 실행 */}
       <div className="grid grid-cols-2 gap-3">

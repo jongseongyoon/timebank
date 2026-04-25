@@ -64,7 +64,8 @@
       "Bash(npm install *)",
       "Bash(mkdir -p \"C:/Users/chan0/timebank/src/app/api/community/posts/[id]/comments\")",
       "Bash(mkdir -p \"C:/Users/chan0/timebank/src/app/api/community/posts/[id]/like\")",
-      "Bash(mkdir -p \"C:/Users/chan0/timebank/src/app/api/admin/transactions/[id]\")"
+      "Bash(mkdir -p \"C:/Users/chan0/timebank/src/app/api/admin/transactions/[id]\")",
+      "Bash(npx next *)"
     ]
   }
 }

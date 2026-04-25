@@ -3,13 +3,15 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2, Search, MapPin, Clock, Coins, CalendarDays, User, Building2 } from 'lucide-react'
+import {
+  Loader2, Search, MapPin, Clock, Coins, CalendarDays, User, Building2,
+  Navigation, Phone,
+} from 'lucide-react'
 
 const CATEGORIES = [
   { value: '', label: '전체' },
@@ -48,6 +50,24 @@ const CAT_LABEL: Record<string, string> = {
   ADMINISTRATIVE: '📋 행정보조', COMMUNITY_EVENT: '🎉 공동체행사', OTHER: '✨ 기타',
 }
 
+// Haversine 거리 계산 (km)
+function haversine(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371
+  const dLat = (lat2 - lat1) * (Math.PI / 180)
+  const dLon = (lon2 - lon1) * (Math.PI / 180)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * (Math.PI / 180)) *
+    Math.cos(lat2 * (Math.PI / 180)) *
+    Math.sin(dLon / 2) ** 2
+  return R * 2 * Math.asin(Math.sqrt(a))
+}
+
+function formatDistance(km: number): string {
+  if (km < 1) return `${Math.round(km * 1000)}m`
+  return `${km.toFixed(1)}km`
+}
+
 export default function ServiceBrowsePage() {
   const [listings, setListings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -55,6 +75,11 @@ export default function ServiceBrowsePage() {
   const [dongFilter, setDongFilter] = useState('')
   const [search, setSearch] = useState('')
   const [orgOnly, setOrgOnly] = useState(false)
+
+  // 위치 기반 정렬
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null)
+  const [geoLoading, setGeoLoading] = useState(false)
+  const [geoError, setGeoError] = useState('')
 
   // 신청 모달
   const [selected, setSelected] = useState<any>(null)
@@ -75,10 +100,50 @@ export default function ServiceBrowsePage() {
       .catch(() => setLoading(false))
   }, [catFilter, dongFilter, orgOnly])
 
+  // 위치 감지 및 거리 순 정렬
+  function handleNearbySort() {
+    if (!navigator.geolocation) {
+      setGeoError('이 브라우저에서는 위치 서비스를 지원하지 않습니다.')
+      return
+    }
+    if (userLocation) {
+      // 이미 있으면 해제
+      setUserLocation(null)
+      return
+    }
+    setGeoLoading(true)
+    setGeoError('')
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude })
+        setGeoLoading(false)
+      },
+      () => {
+        setGeoError('위치 권한을 허용해 주세요.')
+        setGeoLoading(false)
+      },
+      { timeout: 10000 }
+    )
+  }
+
   const filtered = listings.filter(l =>
     !search || l.title.includes(search) || l.description?.includes(search) ||
-    l.provider?.name.includes(search) || l.organization?.name.includes(search)
+    l.provider?.name?.includes(search) || l.organization?.name?.includes(search)
   )
+
+  // 위치 기반 정렬
+  const sorted = userLocation
+    ? [...filtered].sort((a, b) => {
+        const hasA = a.latitude != null && a.longitude != null
+        const hasB = b.latitude != null && b.longitude != null
+        if (!hasA && !hasB) return 0
+        if (!hasA) return 1
+        if (!hasB) return -1
+        const da = haversine(userLocation.lat, userLocation.lng, a.latitude, a.longitude)
+        const db = haversine(userLocation.lat, userLocation.lng, b.latitude, b.longitude)
+        return da - db
+      })
+    : filtered
 
   async function handleApply() {
     if (!selected) return
@@ -154,14 +219,33 @@ export default function ServiceBrowsePage() {
           className={`flex items-center gap-1.5 h-10 px-3 rounded-md border text-sm font-medium transition-colors ${orgOnly ? 'bg-primary text-white border-primary' : 'bg-white text-gray-600 border-input hover:border-primary'}`}
         >
           <Building2 className="h-4 w-4" />
-          단체 서비스만
+          단체만
+        </button>
+        {/* 내 주변 순 */}
+        <button
+          type="button"
+          onClick={handleNearbySort}
+          disabled={geoLoading}
+          className={`flex items-center gap-1.5 h-10 px-3 rounded-md border text-sm font-medium transition-colors ${userLocation ? 'bg-green-600 text-white border-green-600' : 'bg-white text-gray-600 border-input hover:border-green-600'}`}
+        >
+          {geoLoading
+            ? <Loader2 className="h-4 w-4 animate-spin" />
+            : <Navigation className="h-4 w-4" />
+          }
+          {userLocation ? '거리순 ON' : '내 주변 순'}
         </button>
       </div>
+
+      {/* 위치 오류 */}
+      {geoError && (
+        <p className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{geoError}</p>
+      )}
 
       {/* 결과 수 */}
       {!loading && (
         <p className="text-sm text-muted-foreground">
-          {filtered.length}개의 서비스
+          {sorted.length}개의 서비스
+          {userLocation && <span className="ml-1 text-green-600 font-medium">· 가까운 순</span>}
         </p>
       )}
 
@@ -171,87 +255,100 @@ export default function ServiceBrowsePage() {
           <Loader2 className="h-5 w-5 animate-spin mr-2" />
           불러오는 중…
         </div>
-      ) : filtered.length === 0 ? (
+      ) : sorted.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground">
           <p>조건에 맞는 서비스가 없습니다.</p>
           <p className="text-xs mt-1">필터를 변경하거나 서비스 등록을 먼저 해보세요.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map(listing => (
-            <Card key={listing.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => openModal(listing)}>
-              <CardContent className="pt-5 pb-4 space-y-3">
-                {/* 카테고리 + TC */}
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex flex-wrap gap-1">
-                    <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
-                      {CAT_LABEL[listing.category] ?? listing.category}
-                    </span>
-                    {listing.organization && (
-                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
-                        🏢 단체
+          {sorted.map(listing => {
+            const dist =
+              userLocation && listing.latitude != null && listing.longitude != null
+                ? haversine(userLocation.lat, userLocation.lng, listing.latitude, listing.longitude)
+                : null
+
+            return (
+              <Card key={listing.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => openModal(listing)}>
+                <CardContent className="pt-5 pb-4 space-y-3">
+                  {/* 카테고리 + TC */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex flex-wrap gap-1">
+                      <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
+                        {CAT_LABEL[listing.category] ?? listing.category}
                       </span>
+                      {listing.organization && (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+                          🏢 단체
+                        </span>
+                      )}
+                      {dist !== null && (
+                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-green-50 text-green-700 flex items-center gap-0.5">
+                          <Navigation className="h-2.5 w-2.5" />
+                          {formatDistance(dist)}
+                        </span>
+                      )}
+                    </div>
+                    <span className="flex items-center gap-1 text-sm font-bold text-amber-600 shrink-0">
+                      <Coins className="h-3.5 w-3.5" />
+                      {Number(listing.tcPerHour).toFixed(1)} TC/h
+                    </span>
+                  </div>
+
+                  {/* 제목 */}
+                  <h3 className="font-semibold text-sm leading-snug line-clamp-2">{listing.title}</h3>
+
+                  {/* 설명 */}
+                  {listing.description && (
+                    <p className="text-xs text-muted-foreground line-clamp-2">{listing.description}</p>
+                  )}
+
+                  {/* 제공자 / 단체 */}
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    {listing.organization ? (
+                      <><Building2 className="h-3.5 w-3.5 text-blue-500" />
+                      <span className="text-blue-600 font-medium">{listing.organization.name} · {listing.organization.dong}</span></>
+                    ) : (
+                      <><User className="h-3.5 w-3.5" />
+                      <span>{listing.provider?.name ?? '알 수 없음'} · {listing.provider?.dong}</span></>
                     )}
                   </div>
-                  <span className="flex items-center gap-1 text-sm font-bold text-amber-600 shrink-0">
-                    <Coins className="h-3.5 w-3.5" />
-                    {Number(listing.tcPerHour).toFixed(1)} TC/h
-                  </span>
-                </div>
 
-                {/* 제목 */}
-                <h3 className="font-semibold text-sm leading-snug line-clamp-2">{listing.title}</h3>
-
-                {/* 설명 */}
-                {listing.description && (
-                  <p className="text-xs text-muted-foreground line-clamp-2">{listing.description}</p>
-                )}
-
-                {/* 제공자 / 단체 */}
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  {listing.organization ? (
-                    <><Building2 className="h-3.5 w-3.5 text-blue-500" />
-                    <span className="text-blue-600 font-medium">{listing.organization.name} · {listing.organization.dong}</span></>
-                  ) : (
-                    <><User className="h-3.5 w-3.5" />
-                    <span>{listing.provider?.name ?? '알 수 없음'} · {listing.provider?.dong}</span></>
-                  )}
-                </div>
-
-                {/* 가능 지역 */}
-                <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                  <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                  <span className="line-clamp-1">{listing.availableDong.join(', ')}</span>
-                </div>
-
-                {/* 가능 시간 */}
-                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <Clock className="h-3.5 w-3.5 shrink-0" />
-                  <span>{listing.availableTimeFrom} ~ {listing.availableTimeTo}</span>
-                </div>
-
-                {/* 가능 요일 */}
-                <div className="flex items-center gap-1.5">
-                  <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <div className="flex gap-1">
-                    {['MON','TUE','WED','THU','FRI','SAT','SUN'].map(d => (
-                      <span key={d} className={`text-xs w-5 h-5 flex items-center justify-center rounded-full font-medium ${
-                        listing.availableDays.includes(d)
-                          ? 'bg-primary text-white'
-                          : 'bg-muted text-muted-foreground'
-                      }`}>
-                        {DAY_LABEL[d]}
-                      </span>
-                    ))}
+                  {/* 가능 지역 */}
+                  <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
+                    <MapPin className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                    <span className="line-clamp-1">{listing.availableDong.join(', ')}</span>
                   </div>
-                </div>
 
-                <Button size="sm" className="w-full mt-1" onClick={e => { e.stopPropagation(); openModal(listing) }}>
-                  신청하기
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+                  {/* 가능 시간 */}
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <Clock className="h-3.5 w-3.5 shrink-0" />
+                    <span>{listing.availableTimeFrom} ~ {listing.availableTimeTo}</span>
+                  </div>
+
+                  {/* 가능 요일 */}
+                  <div className="flex items-center gap-1.5">
+                    <CalendarDays className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <div className="flex gap-1">
+                      {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map(d => (
+                        <span key={d} className={`text-xs w-5 h-5 flex items-center justify-center rounded-full font-medium ${
+                          listing.availableDays.includes(d)
+                            ? 'bg-primary text-white'
+                            : 'bg-muted text-muted-foreground'
+                        }`}>
+                          {DAY_LABEL[d]}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <Button size="sm" className="w-full mt-1" onClick={e => { e.stopPropagation(); openModal(listing) }}>
+                    신청하기
+                  </Button>
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
 
@@ -273,7 +370,7 @@ export default function ServiceBrowsePage() {
             <>
               {/* 서비스 요약 */}
               {selected && (
-                <div className="bg-muted/50 rounded-lg p-3 space-y-1 text-sm">
+                <div className="bg-muted/50 rounded-lg p-3 space-y-1.5 text-sm">
                   <p className="font-semibold">{selected.title}</p>
                   <p className="text-muted-foreground text-xs">
                     {CAT_LABEL[selected.category]} · {Number(selected.tcPerHour).toFixed(1)} TC/h
@@ -283,9 +380,22 @@ export default function ServiceBrowsePage() {
                       🏢 {selected.organization.name} ({selected.organization.dong})
                     </p>
                   ) : (
-                    <p className="text-muted-foreground text-xs">
-                      제공자: {selected.provider?.name} ({selected.provider?.dong})
-                    </p>
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground text-xs">
+                        제공자: {selected.provider?.name} ({selected.provider?.dong})
+                      </p>
+                      {/* 📞 전화 연결 */}
+                      {selected.provider?.phone && (
+                        <a
+                          href={`tel:${selected.provider.phone}`}
+                          onClick={e => e.stopPropagation()}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-1.5 hover:bg-green-100 transition-colors"
+                        >
+                          <Phone className="h-3.5 w-3.5" />
+                          {selected.provider.phone} · 바로 전화하기
+                        </a>
+                      )}
+                    </div>
                   )}
                   <p className="text-muted-foreground text-xs">
                     가능 지역: {selected?.availableDong?.join(', ')}
@@ -325,7 +435,7 @@ export default function ServiceBrowsePage() {
                     />
                     <span className="text-sm font-semibold w-16 text-right">
                       {applyForm.durationMinutes >= 60
-                        ? `${Math.floor(applyForm.durationMinutes/60)}시간${applyForm.durationMinutes%60 ? ` ${applyForm.durationMinutes%60}분` : ''}`
+                        ? `${Math.floor(applyForm.durationMinutes / 60)}시간${applyForm.durationMinutes % 60 ? ` ${applyForm.durationMinutes % 60}분` : ''}`
                         : `${applyForm.durationMinutes}분`}
                     </span>
                   </div>
