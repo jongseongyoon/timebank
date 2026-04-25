@@ -1,52 +1,73 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Download, Share2, Star } from 'lucide-react'
+import { Download, Share2, Star, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default function MyQrPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [member, setMember] = useState<any>(null)
+  const [qrCode, setQrCode] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [generating, setGenerating] = useState(false)
+  const [canShare, setCanShare] = useState(false)
 
   useEffect(() => {
-    fetch('/api/members/me').then(r => r.json()).then(d => {
-      setMember(d.member)
-      setLoading(false)
-    })
+    setCanShare(typeof navigator !== 'undefined' && !!navigator.share)
   }, [])
 
   useEffect(() => {
-    if (!member?.qrCode || !canvasRef.current) return
-    // 동적 import로 qrcode 번들 분리
+    fetch('/api/members/me')
+      .then(r => r.json())
+      .then(d => {
+        setMember(d.member)
+        if (d.member?.qrCode) {
+          setQrCode(d.member.qrCode)
+        }
+        setLoading(false)
+      })
+  }, [])
+
+  // qrCode가 생기면 캔버스에 렌더링
+  useEffect(() => {
+    if (!qrCode || !canvasRef.current) return
     import('qrcode').then(QRCode => {
-      QRCode.toCanvas(canvasRef.current!, member.qrCode, {
+      QRCode.toCanvas(canvasRef.current!, qrCode, {
         width: 240,
         margin: 2,
         color: { dark: '#1e3a8a', light: '#ffffff' },
       })
     })
-  }, [member])
+  }, [qrCode])
+
+  // 기존 회원 QR 자동 생성
+  async function handleGenerate() {
+    setGenerating(true)
+    const res = await fetch('/api/members/me/qr', { method: 'POST' })
+    const d = await res.json()
+    setGenerating(false)
+    if (res.ok) setQrCode(d.qrCode)
+  }
 
   async function handleDownload() {
     const canvas = canvasRef.current
     if (!canvas) return
     const link = document.createElement('a')
-    link.download = `timepay-qr-${member?.name}.png`
+    link.download = `timepay-qr-${member?.name ?? 'qr'}.png`
     link.href = canvas.toDataURL('image/png')
     link.click()
   }
 
   async function handleShare() {
     const canvas = canvasRef.current
-    if (!canvas || !navigator.share) return
+    if (!canvas) return
     canvas.toBlob(async (blob) => {
       if (!blob) return
       const file = new File([blob], 'timepay-qr.png', { type: 'image/png' })
       try {
         await navigator.share({ title: 'TimePay QR 코드', files: [file] })
       } catch {
-        // 공유 취소
+        // 공유 취소 또는 미지원
       }
     })
   }
@@ -72,21 +93,29 @@ export default function MyQrPage() {
           <div className="flex items-center justify-center gap-1 mt-1">
             <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
             <span className="text-sm font-medium">
-              {Number(member?.avgRating).toFixed(1)}
+              {Number(member?.avgRating ?? 0).toFixed(1)}
             </span>
-            <span className="text-xs text-gray-400">({member?.ratingCount}건)</span>
+            <span className="text-xs text-gray-400">({member?.ratingCount ?? 0}건)</span>
           </div>
         </div>
 
-        {/* QR 코드 */}
-        <div className="p-3 bg-white border-2 border-blue-100 rounded-xl">
-          {member?.qrCode ? (
+        {/* QR 코드 영역 */}
+        <div className="p-3 bg-white border-2 border-blue-100 rounded-xl min-h-[248px] flex items-center justify-center">
+          {qrCode ? (
             <canvas ref={canvasRef} />
           ) : (
-            <div className="w-[240px] h-[240px] flex items-center justify-center bg-gray-50 rounded-lg">
-              <p className="text-sm text-gray-400 text-center px-4">
-                QR 코드가 없습니다.<br />로그아웃 후 재가입 필요
+            <div className="w-[240px] flex flex-col items-center gap-4 py-8">
+              <p className="text-sm text-gray-400 text-center">
+                QR 코드가 아직 없습니다.<br />아래 버튼을 눌러 생성하세요.
               </p>
+              <Button
+                onClick={handleGenerate}
+                disabled={generating}
+                className="gap-2"
+              >
+                <RefreshCw className={`h-4 w-4 ${generating ? 'animate-spin' : ''}`} />
+                {generating ? '생성 중...' : 'QR 코드 생성하기'}
+              </Button>
             </div>
           )}
         </div>
@@ -95,21 +124,41 @@ export default function MyQrPage() {
         <div className="bg-blue-50 rounded-xl px-6 py-3 w-full text-center">
           <p className="text-xs text-blue-500 font-medium">현재 TC 잔액</p>
           <p className="text-2xl font-bold text-blue-700">
-            {Number(member?.tcBalance).toFixed(2)} TC
+            {Number(member?.tcBalance ?? 0).toFixed(2)} TC
           </p>
         </div>
       </div>
 
-      {/* 버튼 */}
+      {/* 버튼 — QR 있을 때만 활성화 */}
       <div className="grid grid-cols-2 gap-3">
-        <Button variant="outline" onClick={handleDownload} className="h-12 gap-2">
+        <Button
+          variant="outline"
+          onClick={handleDownload}
+          disabled={!qrCode}
+          className="h-12 gap-2"
+        >
           <Download className="h-4 w-4" />
           QR 저장하기
         </Button>
-        <Button onClick={handleShare} className="h-12 gap-2" disabled={!navigator?.share}>
-          <Share2 className="h-4 w-4" />
-          QR 공유하기
-        </Button>
+        {canShare ? (
+          <Button
+            onClick={handleShare}
+            disabled={!qrCode}
+            className="h-12 gap-2"
+          >
+            <Share2 className="h-4 w-4" />
+            QR 공유하기
+          </Button>
+        ) : (
+          <Button
+            onClick={handleDownload}
+            disabled={!qrCode}
+            className="h-12 gap-2"
+          >
+            <Download className="h-4 w-4" />
+            이미지 저장
+          </Button>
+        )}
       </div>
 
       <p className="text-xs text-center text-gray-400">
