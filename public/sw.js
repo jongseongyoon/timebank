@@ -1,4 +1,4 @@
-const CACHE_NAME = 'timepay-v1'
+const CACHE_NAME = 'timepay-v3'
 const STATIC_ASSETS = [
   '/',
   '/login',

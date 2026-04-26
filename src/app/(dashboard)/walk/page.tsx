@@ -6,10 +6,28 @@ import { Button } from '@/components/ui/button'
 
 const GOAL = 10000
 const REWARD_TP = 0.5
-const COOLDOWN_MS = 280   // 최소 걸음 간격 ms
-const STEP_DELTA_PURE = 1.2    // 순수 가속도 피크 임계값
-const STEP_DELTA_GRAVITY = 2.0 // 중력 포함 가속도 피크 임계값
+const COOLDOWN_MS = 280
+const STEP_DELTA_PURE = 1.2
+const STEP_DELTA_GRAVITY = 2.0
 const EMA_ALPHA = 0.005
+
+// Capacitor 네이티브 StepCounter 플러그인 타입
+declare global {
+  interface Window {
+    Capacitor?: {
+      isNativePlatform: () => boolean
+      Plugins: { StepCounter?: any }
+    }
+  }
+}
+
+function isCapacitorNative(): boolean {
+  return typeof window !== 'undefined' && !!window.Capacitor?.isNativePlatform?.()
+}
+
+function getStepPlugin(): any | null {
+  return window.Capacitor?.Plugins?.StepCounter ?? null
+}
 
 export default function WalkPage() {
   const [loading, setLoading] = useState(true)
@@ -22,24 +40,23 @@ export default function WalkPage() {
   const [justRewarded, setJustRewarded] = useState(false)
 
   // 센서 디버그
-  const [sensorMode, setSensorMode] = useState<'none' | 'generic' | 'devicemotion'>('none')
+  const [sensorMode, setSensorMode] = useState<'none' | 'native' | 'generic' | 'devicemotion'>('none')
   const [sensorActive, setSensorActive] = useState(false)
   const [debugMag, setDebugMag] = useState(0)
   const [eventCount, setEventCount] = useState(0)
 
-  // Refs — stale closure 방지
   const lastMagRef = useRef(0)
   const risingRef = useRef(false)
   const lastStepTimeRef = useRef(0)
   const sessionStepsRef = useRef(0)
   const todayStepsRef = useRef(0)
   const motionHandlerRef = useRef<((e: DeviceMotionEvent) => void) | null>(null)
-  const sensorRef = useRef<any>(null)      // Accelerometer 인스턴스
+  const sensorRef = useRef<any>(null)
+  const nativeListenerRef = useRef<any>(null)
   const eventCountRef = useRef(0)
   const baselineRef = useRef(9.81)
   const baselineInitRef = useRef(false)
 
-  // ── 오늘 기록 로드
   useEffect(() => {
     fetch('/api/walk/today')
       .then(r => r.json())
@@ -53,26 +70,19 @@ export default function WalkPage() {
       .catch(() => setLoading(false))
   }, [])
 
-  // ── 걸음 감지 핵심 (magnitude 값 받아서 피크 탐지)
+  // ── 걸음 감지 (웹 센서용)
   function processMag(mag: number, stepDelta: number) {
-    // 디버그 업데이트 (10회마다)
     eventCountRef.current += 1
     if (eventCountRef.current % 10 === 0) {
       setSensorActive(true)
       setDebugMag(Math.round(mag * 10) / 10)
       setEventCount(eventCountRef.current)
     }
-
-    // 기준선 초기화
     if (!baselineInitRef.current) {
       baselineRef.current = mag
       baselineInitRef.current = true
     }
-
-    // EMA 기준선 업데이트
     baselineRef.current = EMA_ALPHA * mag + (1 - EMA_ALPHA) * baselineRef.current
-
-    // 피크 감지 (상승→하강 전환)
     if (mag > lastMagRef.current) {
       risingRef.current = true
     } else if (risingRef.current) {
@@ -89,35 +99,59 @@ export default function WalkPage() {
     lastMagRef.current = mag
   }
 
-  // ── [방식 1] Generic Sensor API (Accelerometer 클래스)
-  //    Android Chrome 67+, 더 정확하고 안정적
-  async function tryGenericSensor(): Promise<boolean> {
-    if (typeof window === 'undefined') return false
-    if (!('Accelerometer' in window)) return false
-
+  // ── [방식 1] Capacitor 네이티브 만보기 (APK 전용, 가장 정확)
+  async function tryNativeStepCounter(): Promise<boolean> {
+    if (!isCapacitorNative()) return false
+    const plugin = getStepPlugin()
+    if (!plugin) return false
     try {
-      // 권한 확인
+      const { available } = await plugin.isAvailable()
+      if (!available) return false
+
+      // Android 10+ 권한 요청
+      if (typeof plugin.requestPermission === 'function') {
+        const { granted } = await plugin.requestPermission()
+        if (!granted) return false
+      }
+
+      await plugin.start()
+
+      // 실시간 걸음 이벤트 수신
+      nativeListenerRef.current = await plugin.addListener('stepUpdate', (data: { steps: number }) => {
+        const steps = data.steps
+        sessionStepsRef.current = steps
+        setSessionSteps(steps)
+        setSensorActive(true)
+        eventCountRef.current += 1
+        setEventCount(eventCountRef.current)
+      })
+
+      setSensorMode('native')
+      setSensorActive(false) // 첫 걸음 전까지 대기
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  // ── [방식 2] Generic Sensor API
+  async function tryGenericSensor(): Promise<boolean> {
+    if (typeof window === 'undefined' || !('Accelerometer' in window)) return false
+    try {
       const perm = await navigator.permissions.query({ name: 'accelerometer' as PermissionName })
       if (perm.state === 'denied') return false
-
       const sensor = new (window as any).Accelerometer({ frequency: 60 })
-
-      sensor.addEventListener('error', (e: any) => {
-        console.warn('[Accelerometer] error:', e.error)
-        // Generic Sensor 실패 → devicemotion 으로 자동 전환
+      sensor.addEventListener('error', () => {
         sensor.stop()
         sensorRef.current = null
         tryDeviceMotion()
       })
-
       sensor.addEventListener('reading', () => {
         const x: number = sensor.x ?? 0
         const y: number = sensor.y ?? 0
         const z: number = sensor.z ?? 0
-        const mag = Math.sqrt(x * x + y * y + z * z)
-        processMag(mag, STEP_DELTA_PURE)
+        processMag(Math.sqrt(x * x + y * y + z * z), STEP_DELTA_PURE)
       })
-
       sensor.start()
       sensorRef.current = sensor
       setSensorMode('generic')
@@ -127,24 +161,15 @@ export default function WalkPage() {
     }
   }
 
-  // ── [방식 2] DeviceMotionEvent (레거시, iOS 포함 폭넓은 지원)
+  // ── [방식 3] DeviceMotionEvent (iOS + 구형 Android)
   function tryDeviceMotion() {
     function handler(e: DeviceMotionEvent) {
       const purAcc = e.acceleration
-      const purValid =
-        purAcc !== null && purAcc !== undefined &&
-        purAcc.x !== null && purAcc.y !== null && purAcc.z !== null
-
+      const purValid = purAcc !== null && purAcc !== undefined && purAcc.x !== null && purAcc.y !== null && purAcc.z !== null
       const gravAcc = e.accelerationIncludingGravity
-      const gravValid =
-        gravAcc !== null && gravAcc !== undefined &&
-        gravAcc.x !== null && gravAcc.y !== null && gravAcc.z !== null
-
+      const gravValid = gravAcc !== null && gravAcc !== undefined && gravAcc.x !== null && gravAcc.y !== null && gravAcc.z !== null
       if (!purValid && !gravValid) return
-
-      let mag: number
-      let stepDelta: number
-
+      let mag: number, stepDelta: number
       if (purValid) {
         const ax = purAcc!.x!, ay = purAcc!.y!, az = purAcc!.z ?? 0
         mag = Math.sqrt(ax * ax + ay * ay + az * az)
@@ -154,22 +179,16 @@ export default function WalkPage() {
         mag = Math.sqrt(ax * ax + ay * ay + az * az)
         stepDelta = STEP_DELTA_GRAVITY
       }
-
       processMag(mag, stepDelta)
     }
-
     motionHandlerRef.current = handler
     window.addEventListener('devicemotion', handler)
     setSensorMode('devicemotion')
   }
 
-  // ── 측정 시작
   async function startTracking() {
-    // iOS 13+ 권한 요청
-    if (
-      typeof DeviceMotionEvent !== 'undefined' &&
-      typeof (DeviceMotionEvent as any).requestPermission === 'function'
-    ) {
+    // iOS 권한
+    if (typeof DeviceMotionEvent !== 'undefined' && typeof (DeviceMotionEvent as any).requestPermission === 'function') {
       try {
         const result = await (DeviceMotionEvent as any).requestPermission()
         if (result !== 'granted') {
@@ -182,7 +201,6 @@ export default function WalkPage() {
       }
     }
 
-    // 초기화
     setPermError('')
     setSensorActive(false)
     setSensorMode('none')
@@ -192,18 +210,26 @@ export default function WalkPage() {
     baselineRef.current = 9.81
     lastMagRef.current = 0
     risingRef.current = false
-
     setTracking(true)
 
-    // Generic Sensor 시도 → 실패 시 DeviceMotion 사용
-    const genericOk = await tryGenericSensor()
-    if (!genericOk) {
-      tryDeviceMotion()
+    // 우선순위: 네이티브(APK) → Generic Sensor → DeviceMotion
+    const nativeOk = await tryNativeStepCounter()
+    if (!nativeOk) {
+      const genericOk = await tryGenericSensor()
+      if (!genericOk) tryDeviceMotion()
     }
   }
 
-  // ── 측정 중지
   async function stopTracking() {
+    // 네이티브 플러그인 정리
+    if (nativeListenerRef.current) {
+      try { await nativeListenerRef.current.remove() } catch {}
+      nativeListenerRef.current = null
+    }
+    const plugin = getStepPlugin()
+    if (plugin && isCapacitorNative()) {
+      try { await plugin.stop() } catch {}
+    }
     // Generic Sensor 정리
     if (sensorRef.current) {
       try { sensorRef.current.stop() } catch {}
@@ -214,18 +240,15 @@ export default function WalkPage() {
       window.removeEventListener('devicemotion', motionHandlerRef.current)
       motionHandlerRef.current = null
     }
-
     setTracking(false)
     setSensorMode('none')
     setSensorActive(false)
     await saveCurrentSteps()
   }
 
-  // ── 걸음 수 저장
   async function saveCurrentSteps() {
     const total = todayStepsRef.current + sessionStepsRef.current
     if (total <= todayStepsRef.current) return
-
     setSaving(true)
     try {
       const res = await fetch('/api/walk/steps', {
@@ -247,24 +270,25 @@ export default function WalkPage() {
     }
   }
 
-  // ── 언마운트 정리
   useEffect(() => {
     return () => {
-      if (sensorRef.current) {
-        try { sensorRef.current.stop() } catch {}
-        sensorRef.current = null
-      }
-      if (motionHandlerRef.current) {
-        window.removeEventListener('devicemotion', motionHandlerRef.current)
-      }
+      if (nativeListenerRef.current) { try { nativeListenerRef.current.remove() } catch {} }
+      if (sensorRef.current) { try { sensorRef.current.stop() } catch {} }
+      if (motionHandlerRef.current) window.removeEventListener('devicemotion', motionHandlerRef.current)
     }
   }, [])
 
-  // ── UI
   const totalSteps = todaySteps + sessionSteps
   const progress = Math.min(totalSteps / GOAL, 1)
   const circumference = 2 * Math.PI * 90
   const pct = Math.round(progress * 100)
+
+  const SENSOR_LABEL: Record<string, string> = {
+    native: '📱 네이티브 센서 (APK)',
+    generic: '🔬 Generic Sensor',
+    devicemotion: '📡 DeviceMotion',
+    none: '',
+  }
 
   if (loading) {
     return (
@@ -276,7 +300,6 @@ export default function WalkPage() {
 
   return (
     <div className="max-w-sm mx-auto space-y-6 pb-8">
-      {/* 헤더 */}
       <div className="text-center">
         <h1 className="text-2xl font-bold">오늘의 만보기</h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -284,31 +307,25 @@ export default function WalkPage() {
         </p>
       </div>
 
-      {/* 원형 진행 게이지 */}
+      {/* 원형 게이지 */}
       <div className="flex justify-center">
         <div className="relative w-56 h-56">
           <svg className="w-full h-full -rotate-90" viewBox="0 0 200 200">
-            <circle cx="100" cy="100" r="90"
-              fill="none" stroke="#e5e7eb" strokeWidth="14" />
-            <circle cx="100" cy="100" r="90"
-              fill="none"
+            <circle cx="100" cy="100" r="90" fill="none" stroke="#e5e7eb" strokeWidth="14" />
+            <circle cx="100" cy="100" r="90" fill="none"
               stroke={rewarded ? '#16a34a' : tracking ? '#f59e0b' : '#3b5bdb'}
-              strokeWidth="14"
-              strokeLinecap="round"
+              strokeWidth="14" strokeLinecap="round"
               strokeDasharray={circumference}
               strokeDashoffset={circumference * (1 - progress)}
               style={{ transition: 'stroke-dashoffset 0.3s ease' }}
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            {rewarded
-              ? <Trophy className="h-8 w-8 text-yellow-500 mb-1" />
+            {rewarded ? <Trophy className="h-8 w-8 text-yellow-500 mb-1" />
               : <Footprints className={`h-8 w-8 mb-1 ${tracking ? 'text-amber-500 animate-pulse' : 'text-blue-600'}`} />
             }
             <p className="text-4xl font-bold tabular-nums">{totalSteps.toLocaleString()}</p>
-            <p className="text-sm font-medium" style={{ color: rewarded ? '#16a34a' : tracking ? '#f59e0b' : '#3b5bdb' }}>
-              {pct}%
-            </p>
+            <p className="text-sm font-medium" style={{ color: rewarded ? '#16a34a' : tracking ? '#f59e0b' : '#3b5bdb' }}>{pct}%</p>
             <p className="text-xs text-muted-foreground">/ {GOAL.toLocaleString()}보</p>
           </div>
         </div>
@@ -324,11 +341,7 @@ export default function WalkPage() {
           </div>
 
           {/* 센서 상태 패널 */}
-          <div className={`rounded-xl px-4 py-3 border text-xs ${
-            sensorActive
-              ? 'bg-green-50 border-green-200 text-green-800'
-              : 'bg-gray-50 border-gray-200 text-gray-500'
-          }`}>
+          <div className={`rounded-xl px-4 py-3 border text-xs ${sensorActive ? 'bg-green-50 border-green-200 text-green-800' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
             <div className="flex items-center gap-2 mb-1">
               {sensorActive
                 ? <Activity className="h-4 w-4 text-green-600 shrink-0" />
@@ -337,23 +350,24 @@ export default function WalkPage() {
               {sensorActive ? (
                 <span className="font-semibold">
                   ✅ 센서 작동 중
-                  <span className="ml-1 font-normal text-green-600">
-                    ({sensorMode === 'generic' ? 'Generic Sensor' : 'DeviceMotion'})
-                  </span>
+                  {sensorMode !== 'none' && (
+                    <span className="ml-1 font-normal text-green-600">({SENSOR_LABEL[sensorMode]})</span>
+                  )}
                 </span>
               ) : (
                 <span>
                   {sensorMode === 'none'
                     ? '⏳ 센서 초기화 중…'
-                    : `⏳ 신호 대기 중 (${sensorMode === 'generic' ? 'Generic Sensor' : 'DeviceMotion'})… 폰을 흔들어 보세요`
+                    : `⏳ 신호 대기 중 (${SENSOR_LABEL[sensorMode]})… 걸어보세요`
                   }
                 </span>
               )}
             </div>
-            {sensorActive && (
-              <p className="pl-6 text-green-700">
-                가속도: <strong>{debugMag} m/s²</strong> · 수신: {eventCount}회
-              </p>
+            {sensorActive && sensorMode !== 'native' && (
+              <p className="pl-6 text-green-700">가속도: <strong>{debugMag} m/s²</strong> · 수신: {eventCount}회</p>
+            )}
+            {sensorActive && sensorMode === 'native' && (
+              <p className="pl-6 text-green-700">세션 걸음: <strong>{sessionSteps}보</strong> · 이벤트: {eventCount}회</p>
             )}
           </div>
         </div>
@@ -375,7 +389,6 @@ export default function WalkPage() {
         </div>
       )}
 
-      {/* 센서 오류 */}
       {permError && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex gap-2 text-sm text-red-700">
           <CircleOff className="h-4 w-4 shrink-0 mt-0.5" />
@@ -385,21 +398,12 @@ export default function WalkPage() {
 
       {/* 제어 버튼 */}
       {tracking ? (
-        <Button
-          onClick={stopTracking}
-          variant="outline"
-          className="w-full h-14 text-base gap-2 border-red-300 text-red-600 hover:bg-red-50"
-          disabled={saving}
-        >
+        <Button onClick={stopTracking} variant="outline" className="w-full h-14 text-base gap-2 border-red-300 text-red-600 hover:bg-red-50" disabled={saving}>
           <Square className="h-5 w-5" />
           {saving ? '저장 중...' : '측정 중지 및 저장'}
         </Button>
       ) : (
-        <Button
-          onClick={startTracking}
-          className="w-full h-14 text-base gap-2"
-          disabled={rewarded}
-        >
+        <Button onClick={startTracking} className="w-full h-14 text-base gap-2" disabled={rewarded}>
           <Play className="h-5 w-5" />
           {rewarded ? '오늘 목표 달성 완료!' : '걷기 측정 시작'}
         </Button>
@@ -409,9 +413,9 @@ export default function WalkPage() {
       <div className="bg-blue-50 rounded-xl p-4 space-y-2">
         <p className="text-sm font-semibold text-blue-800">📱 이용 안내</p>
         <ul className="space-y-1 text-xs text-blue-700 list-disc list-inside">
+          <li><strong>APK 설치 시</strong>: 기기 내장 만보기 센서로 정확하게 측정</li>
+          <li><strong>웹 브라우저</strong>: 가속도 센서로 측정 (정확도 낮을 수 있음)</li>
           <li>측정 시작 후 스마트폰을 손에 들거나 주머니에 넣고 걸으세요</li>
-          <li>센서 패널에 <strong>✅ 초록불 + 가속도 수치</strong>가 보이면 정상입니다</li>
-          <li>신호 대기 중이면 폰을 살짝 흔들어 주세요 (센서 활성화)</li>
           <li>매일 자정에 걸음 수가 초기화됩니다</li>
           <li>10,000보 달성 시 하루 1회 <strong>{REWARD_TP} TP</strong> 자동 적립</li>
           <li>중지 버튼을 눌러야 걸음 수가 저장됩니다</li>
