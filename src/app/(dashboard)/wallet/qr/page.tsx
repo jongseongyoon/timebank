@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Download, Share2, Star, RefreshCw } from 'lucide-react'
+import { Download, Share2, Star, RefreshCw, QrCode } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export default function MyQrPage() {
@@ -21,9 +21,7 @@ export default function MyQrPage() {
       .then(r => r.json())
       .then(d => {
         setMember(d.member)
-        if (d.member?.qrCode) {
-          setQrCode(d.member.qrCode)
-        }
+        if (d.member?.qrCode) setQrCode(d.member.qrCode)
         setLoading(false)
       })
   }, [])
@@ -40,7 +38,7 @@ export default function MyQrPage() {
     })
   }, [qrCode])
 
-  // 기존 회원 QR 자동 생성
+  // QR 생성
   async function handleGenerate() {
     setGenerating(true)
     const res = await fetch('/api/members/me/qr', { method: 'POST' })
@@ -66,9 +64,7 @@ export default function MyQrPage() {
       const file = new File([blob], 'timepay-qr.png', { type: 'image/png' })
       try {
         await navigator.share({ title: 'TimePay QR 코드', files: [file] })
-      } catch {
-        // 공유 취소 또는 미지원
-      }
+      } catch { /* 취소 또는 미지원 */ }
     })
   }
 
@@ -82,6 +78,15 @@ export default function MyQrPage() {
 
   return (
     <div className="max-w-sm mx-auto space-y-6">
+      {/* 안내 배너 */}
+      <div className="bg-blue-50 border border-blue-200 rounded-2xl px-4 py-3 text-sm text-blue-800">
+        <p className="font-semibold mb-0.5">📱 내 QR 코드 = 나를 증명하는 수단</p>
+        <p className="text-xs text-blue-600 leading-relaxed">
+          서비스를 <strong>받을 때</strong> 이 화면을 상대방에게 보여주세요.<br />
+          상대방이 QR을 스캔하여 거래를 시작합니다.
+        </p>
+      </div>
+
       <h1 className="text-2xl font-bold text-center">내 QR 코드</h1>
 
       {/* QR 카드 */}
@@ -100,21 +105,30 @@ export default function MyQrPage() {
         </div>
 
         {/* QR 코드 영역 */}
-        <div className="p-3 bg-white border-2 border-blue-100 rounded-xl min-h-[248px] flex items-center justify-center">
+        <div className="p-3 bg-white border-2 border-blue-100 rounded-xl min-h-[248px] flex items-center justify-center w-full">
           {qrCode ? (
-            <canvas ref={canvasRef} />
+            <canvas ref={canvasRef} className="mx-auto" />
           ) : (
-            <div className="w-[240px] flex flex-col items-center gap-4 py-8">
-              <p className="text-sm text-gray-400 text-center">
-                QR 코드가 아직 없습니다.<br />아래 버튼을 눌러 생성하세요.
-              </p>
+            <div className="w-full flex flex-col items-center gap-5 py-6 px-4">
+              {/* 크고 명확한 QR 없음 안내 */}
+              <div className="w-20 h-20 bg-gray-100 rounded-2xl flex items-center justify-center">
+                <QrCode className="h-10 w-10 text-gray-400" />
+              </div>
+              <div className="text-center space-y-1">
+                <p className="font-semibold text-gray-700">아직 QR 코드가 없습니다</p>
+                <p className="text-xs text-gray-400 leading-relaxed">
+                  아래 버튼을 눌러 나만의 QR 코드를<br />지금 바로 발급받으세요
+                </p>
+              </div>
+              {/* 생성 버튼 — 크게, 눈에 띄게 */}
               <Button
                 onClick={handleGenerate}
                 disabled={generating}
-                className="gap-2"
+                size="lg"
+                className="w-full h-14 text-base gap-2"
               >
-                <RefreshCw className={`h-4 w-4 ${generating ? 'animate-spin' : ''}`} />
-                {generating ? '생성 중...' : 'QR 코드 생성하기'}
+                <RefreshCw className={`h-5 w-5 ${generating ? 'animate-spin' : ''}`} />
+                {generating ? 'QR 코드 생성 중...' : '✨ QR 코드 발급받기'}
               </Button>
             </div>
           )}
@@ -129,37 +143,30 @@ export default function MyQrPage() {
         </div>
       </div>
 
-      {/* 버튼 — QR 있을 때만 활성화 */}
-      <div className="grid grid-cols-2 gap-3">
-        <Button
-          variant="outline"
-          onClick={handleDownload}
-          disabled={!qrCode}
-          className="h-12 gap-2"
-        >
-          <Download className="h-4 w-4" />
-          QR 저장하기
-        </Button>
-        {canShare ? (
+      {/* 저장·공유 버튼 — QR 있을 때만 */}
+      {qrCode && (
+        <div className="grid grid-cols-2 gap-3">
           <Button
-            onClick={handleShare}
-            disabled={!qrCode}
-            className="h-12 gap-2"
-          >
-            <Share2 className="h-4 w-4" />
-            QR 공유하기
-          </Button>
-        ) : (
-          <Button
+            variant="outline"
             onClick={handleDownload}
-            disabled={!qrCode}
             className="h-12 gap-2"
           >
             <Download className="h-4 w-4" />
-            이미지 저장
+            QR 저장하기
           </Button>
-        )}
-      </div>
+          {canShare ? (
+            <Button onClick={handleShare} className="h-12 gap-2">
+              <Share2 className="h-4 w-4" />
+              QR 공유하기
+            </Button>
+          ) : (
+            <Button onClick={handleDownload} className="h-12 gap-2">
+              <Download className="h-4 w-4" />
+              이미지 저장
+            </Button>
+          )}
+        </div>
+      )}
 
       <p className="text-xs text-center text-gray-400">
         이 QR을 상대방에게 보여주면 거래를 시작할 수 있습니다
