@@ -11,6 +11,8 @@ const loginSchema = z.object({
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET,
+  // Vercel 등 프록시/CDN 환경에서 X-Forwarded-Host 검증 통과
+  trustHost: true,
   providers: [
     Credentials({
       credentials: {
