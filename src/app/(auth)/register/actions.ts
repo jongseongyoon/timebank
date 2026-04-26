@@ -24,11 +24,18 @@ export async function registerAction(
     return { error: '참여 유형을 하나 이상 선택하세요.' }
   }
 
+  // 전화번호: 숫자만 입력된 경우 자동으로 하이픈 추가
+  let phone = formData.get('phone') as string
+  const digits = phone.replace(/\D/g, '')
+  if (digits.length === 11 && digits.startsWith('010')) {
+    phone = `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7)}`
+  }
+
   const raw = {
     name: formData.get('name') as string,
-    phone: formData.get('phone') as string,
+    phone,
     password,
-    birthYear: Number(formData.get('birthYear')),
+    birthDate: formData.get('birthDate') as string,
     dong: formData.get('dong') as string,
     email: (formData.get('email') as string) || undefined,
     roles,
@@ -47,7 +54,12 @@ export async function registerAction(
     return { error: '이미 등록된 전화번호입니다.' }
   }
 
-  const isSenior = new Date().getFullYear() - parsed.data.birthYear >= 65
+  // 생년월일로 나이 계산 (65세 이상 어르신 혜택)
+  const birthYear = parsed.data.birthDate
+    ? parseInt(parsed.data.birthDate.slice(0, 4), 10)
+    : 1970
+  const isSenior = new Date().getFullYear() - birthYear >= 65
+
   const tcExpiresAt = calculateTcExpiry({
     registrationDate: new Date(),
     isSenior,
@@ -62,7 +74,7 @@ export async function registerAction(
       phone: parsed.data.phone,
       passwordHash,
       name: parsed.data.name,
-      birthYear: parsed.data.birthYear,
+      birthDate: parsed.data.birthDate ?? undefined,
       dong: parsed.data.dong,
       email: parsed.data.email,
       isVulnerable: parsed.data.isVulnerable,

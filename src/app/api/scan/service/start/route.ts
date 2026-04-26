@@ -11,6 +11,8 @@ const schema = z.object({
   note: z.string().max(200).optional(),
 })
 
+const MIN_BALANCE = -3.0  // 수혜자 최저 잔액 한도
+
 // QR로 서비스 시작 → IN_PROGRESS 거래 생성
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -24,6 +26,25 @@ export async function POST(req: NextRequest) {
   const providerId = session.user.id
 
   if (providerId === receiverId) return NextResponse.json({ error: '자기 자신과 거래 불가' }, { status: 400 })
+
+  // 수혜자 잔액 확인
+  const receiver = await prisma.member.findUnique({
+    where: { id: receiverId },
+    select: { id: true, tcBalance: true, name: true },
+  })
+  if (!receiver) return NextResponse.json({ error: '수혜자 없음' }, { status: 404 })
+
+  const receiverBalance = Number(receiver.tcBalance)
+  const maxPayable = receiverBalance - MIN_BALANCE  // 수혜자가 지불 가능한 최대 TP
+
+  // 이미 한도 도달 시 거래 시작 불가
+  if (maxPayable <= 0) {
+    return NextResponse.json({
+      error: `${receiver.name}님의 TP 잔액이 한도(-3.0 TP)에 도달하여 거래를 시작할 수 없습니다.`,
+      receiverBalance,
+      maxPayable: 0,
+    }, { status: 400 })
+  }
 
   const txHash = crypto.createHash('sha256')
     .update(`qr-service-start-${providerId}-${receiverId}-${Date.now()}`)
@@ -47,5 +68,11 @@ export async function POST(req: NextRequest) {
     },
   })
 
-  return NextResponse.json({ transaction: tx }, { status: 201 })
+  // 최대 획득 가능 TP 정보 포함하여 반환 (프론트엔드 auto-stop 용도)
+  return NextResponse.json({
+    transaction: tx,
+    receiverBalance,
+    maxPayable: Math.round(maxPayable * 100) / 100,
+    maxMinutes: Math.round(maxPayable * 60),  // 최대 서비스 가능 분
+  }, { status: 201 })
 }

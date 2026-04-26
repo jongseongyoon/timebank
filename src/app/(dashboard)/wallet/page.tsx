@@ -66,7 +66,7 @@ export default function WalletPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">TC 지갑</h1>
+        <h1 className="text-2xl font-bold">TP 지갑</h1>
         <Link
           href="/wallet/qr"
           className="flex items-center gap-1.5 text-sm bg-blue-600 text-white px-4 py-2 rounded-xl hover:bg-blue-700 transition-colors"
@@ -80,7 +80,7 @@ export default function WalletPage() {
       {daysLeft !== null && daysLeft <= 30 && (
         <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-md px-4 py-3 text-sm">
           <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
-          TC 만료까지 <strong>{daysLeft}일</strong> 남았습니다. ({formatDate(member.tcExpiresAt)})
+          TP 만료까지 <strong>{daysLeft}일</strong> 남았습니다. ({formatDate(member.tcExpiresAt)})
         </div>
       )}
 
@@ -102,7 +102,7 @@ export default function WalletPage() {
                   <div>
                     <p className="text-xs text-muted-foreground">현재 잔액</p>
                     <p className="text-3xl font-bold text-blue-600">{balance.toFixed(2)}</p>
-                    <p className="text-xs text-muted-foreground">TC</p>
+                    <p className="text-xs text-muted-foreground">TP</p>
                   </div>
                 </div>
               </CardContent>
@@ -116,7 +116,7 @@ export default function WalletPage() {
                   <div>
                     <p className="text-xs text-muted-foreground">누적 적립</p>
                     <p className="text-3xl font-bold text-green-600">{earned.toFixed(2)}</p>
-                    <p className="text-xs text-muted-foreground">TC</p>
+                    <p className="text-xs text-muted-foreground">TP</p>
                   </div>
                 </div>
               </CardContent>
@@ -130,7 +130,7 @@ export default function WalletPage() {
                   <div>
                     <p className="text-xs text-muted-foreground">누적 소진</p>
                     <p className="text-3xl font-bold text-red-500">{spent.toFixed(2)}</p>
-                    <p className="text-xs text-muted-foreground">TC</p>
+                    <p className="text-xs text-muted-foreground">TP</p>
                   </div>
                 </div>
               </CardContent>
@@ -147,20 +147,20 @@ export default function WalletPage() {
                       {pieData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i]} />)}
                     </Pie>
                     <Legend />
-                    <Tooltip formatter={(v: number) => `${v.toFixed(2)} TC`} />
+                    <Tooltip formatter={(v: number) => `${v.toFixed(2)} TP`} />
                   </PieChart>
                 </ResponsiveContainer>
               </CardContent>
             </Card>
 
             <Card>
-              <CardHeader><CardTitle className="text-sm">월별 TC 흐름</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="text-sm">월별 TP 흐름</CardTitle></CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={200}>
                   <BarChart data={barData}>
                     <XAxis dataKey="month" tick={{ fontSize: 11 }} />
                     <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip formatter={(v: number) => `${v.toFixed(2)} TC`} />
+                    <Tooltip formatter={(v: number) => `${v.toFixed(2)} TP`} />
                     <Bar dataKey="earned" name="적립" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                     <Bar dataKey="spent" name="소진" fill="#ef4444" radius={[4, 4, 0, 0]} />
                     <Legend />
@@ -201,7 +201,7 @@ export default function WalletPage() {
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <span className={`text-sm font-bold ${isProvider ? 'text-green-600' : 'text-red-600'}`}>
-                        {tcChange} TC
+                        {tcChange} TP
                       </span>
                       <Badge variant={TX_STATUS_VARIANT[tx.status]}>
                         {TX_STATUS_LABEL[tx.status]}

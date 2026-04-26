@@ -69,31 +69,35 @@ export default async function DashboardPage() {
         <p className="text-muted-foreground text-sm mt-1">{member.dong} 타임뱅크</p>
       </div>
 
-      {/* TC 지갑 카드 */}
+      {/* TP 지갑 카드 */}
       <Card className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-0">
-        <CardContent className="pt-6">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-blue-100 text-sm">현재 TC 잔액</p>
-              <p className="text-5xl font-bold mt-1">{Number(member.tcBalance).toFixed(2)}</p>
-              <p className="text-blue-200 text-sm mt-1">TC</p>
+        <CardContent className="pt-5 pb-5">
+          <div className="flex items-center justify-between gap-4">
+            {/* 왼쪽: 잔액 */}
+            <div className="flex items-center gap-3">
+              <Wallet className="h-8 w-8 text-blue-200 opacity-70 shrink-0" aria-hidden="true" />
+              <div>
+                <p className="text-blue-100 text-xs">현재 TP 잔액</p>
+                <p className="text-4xl font-bold leading-tight">{Number(member.tcBalance).toFixed(2)}</p>
+                <p className="text-blue-200 text-xs">TP (타임페이)</p>
+              </div>
             </div>
-            <Wallet className="h-10 w-10 text-blue-200 opacity-80" aria-hidden="true" />
-          </div>
-          <div className="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-blue-400/40">
-            <div>
-              <p className="text-blue-200 text-xs">총 적립</p>
-              <p className="text-white font-semibold">{formatTC(member.lifetimeEarned.toString())}</p>
-            </div>
-            <div>
-              <p className="text-blue-200 text-xs">총 소진</p>
-              <p className="text-white font-semibold">{formatTC(member.lifetimeSpent.toString())}</p>
-            </div>
-            <div>
-              <p className="text-blue-200 text-xs">만료일</p>
-              <p className="text-white font-semibold text-xs">
-                {member.tcExpiresAt ? formatDate(member.tcExpiresAt) : '무기한'}
-              </p>
+            {/* 오른쪽: 통계 */}
+            <div className="flex flex-col gap-1.5 text-right shrink-0">
+              <div>
+                <p className="text-blue-200 text-[10px]">총 적립</p>
+                <p className="text-white font-semibold text-sm">{formatTC(member.lifetimeEarned.toString())}</p>
+              </div>
+              <div>
+                <p className="text-blue-200 text-[10px]">총 소진</p>
+                <p className="text-white font-semibold text-sm">{formatTC(member.lifetimeSpent.toString())}</p>
+              </div>
+              <div>
+                <p className="text-blue-200 text-[10px]">만료일</p>
+                <p className="text-white font-semibold text-xs">
+                  {member.tcExpiresAt ? formatDate(member.tcExpiresAt) : '무기한'}
+                </p>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -113,7 +117,7 @@ export default async function DashboardPage() {
                     <span className="text-sm font-normal text-green-200 ml-1">/ 10,000보</span>
                   </p>
                   {walkRecord?.rewarded && (
-                    <p className="text-xs text-green-200 mt-0.5">✅ 0.5 TC 적립 완료</p>
+                    <p className="text-xs text-green-200 mt-0.5">✅ 0.5 TP 적립 완료</p>
                   )}
                 </div>
               </div>
@@ -184,7 +188,7 @@ export default async function DashboardPage() {
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <span className={`text-sm font-bold ${isPositive ? 'text-green-600' : 'text-red-600'}`}>
-                    {tcChange} TC
+                    {tcChange} TP
                   </span>
                   <Badge variant={TX_STATUS_VARIANT[tx.status]} className="text-xs">
                     {TX_STATUS_LABEL[tx.status]}
@@ -216,7 +220,7 @@ export default async function DashboardPage() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold text-primary">
-                  {Number(listing.tcPerHour).toFixed(1)} TC/h
+                  {Number(listing.tcPerHour).toFixed(1)} TP/h
                 </span>
                 <Button asChild size="sm" variant="outline">
                   <Link href="/services/request" aria-label={`${listing.title} 요청하기`}>

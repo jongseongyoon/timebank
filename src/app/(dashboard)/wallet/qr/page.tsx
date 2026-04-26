@@ -11,6 +11,7 @@ export default function MyQrPage() {
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [canShare, setCanShare] = useState(false)
+  const [bonusAwarded, setBonusAwarded] = useState(false)
 
   useEffect(() => {
     setCanShare(typeof navigator !== 'undefined' && !!navigator.share)
@@ -44,7 +45,10 @@ export default function MyQrPage() {
     const res = await fetch('/api/members/me/qr', { method: 'POST' })
     const d = await res.json()
     setGenerating(false)
-    if (res.ok) setQrCode(d.qrCode)
+    if (res.ok) {
+      setQrCode(d.qrCode)
+      if (d.bonusAwarded) setBonusAwarded(true)
+    }
   }
 
   async function handleDownload() {
@@ -88,6 +92,14 @@ export default function MyQrPage() {
       </div>
 
       <h1 className="text-2xl font-bold text-center">내 QR 코드</h1>
+
+      {/* 첫 발급 보너스 배너 */}
+      {bonusAwarded && (
+        <div className="bg-yellow-50 border border-yellow-300 rounded-2xl px-4 py-3 text-center">
+          <p className="text-lg font-bold text-yellow-800">🎉 첫 발급 기념!</p>
+          <p className="text-sm text-yellow-700 mt-0.5">1 TP가 지갑에 무상으로 적립되었습니다</p>
+        </div>
+      )}
 
       {/* QR 카드 */}
       <div className="bg-white rounded-2xl shadow-lg p-6 flex flex-col items-center gap-4 border">
@@ -134,11 +146,11 @@ export default function MyQrPage() {
           )}
         </div>
 
-        {/* TC 잔액 */}
+        {/* TP 잔액 */}
         <div className="bg-blue-50 rounded-xl px-6 py-3 w-full text-center">
-          <p className="text-xs text-blue-500 font-medium">현재 TC 잔액</p>
+          <p className="text-xs text-blue-500 font-medium">현재 TP 잔액</p>
           <p className="text-2xl font-bold text-blue-700">
-            {Number(member?.tcBalance ?? 0).toFixed(2)} TC
+            {Number(member?.tcBalance ?? 0).toFixed(2)} TP
           </p>
         </div>
       </div>

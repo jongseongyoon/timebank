@@ -22,6 +22,13 @@ function RegisteredBanner() {
   )
 }
 
+function formatPhone(value: string): string {
+  const digits = value.replace(/\D/g, '')
+  if (digits.length <= 3) return digits
+  if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7, 11)}`
+}
+
 function LoginForm() {
   const router = useRouter()
   const [phone, setPhone] = useState('')
@@ -49,9 +56,13 @@ function LoginForm() {
         <Label htmlFor="phone">전화번호</Label>
         <Input
           id="phone" type="tel" placeholder="010-0000-0000"
-          value={phone} onChange={(e) => setPhone(e.target.value)}
+          value={phone}
+          onChange={(e) => setPhone(formatPhone(e.target.value))}
+          maxLength={13}
+          inputMode="numeric"
           required autoComplete="tel"
         />
+        <p className="text-xs text-gray-400">숫자만 입력해도 자동으로 - 가 추가됩니다</p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="password">비밀번호</Label>

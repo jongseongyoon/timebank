@@ -5,9 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { User, Phone, Mail, MapPin, Coins, Calendar, Shield, Pencil, Check, X, Loader2 } from 'lucide-react'
-import { formatDate, formatTC } from '@/lib/utils'
+import { formatDate } from '@/lib/utils'
 
 const DONGS = [
   '양동', '양3동', '농성1동', '농성2동', '광천동', '유덕동',
@@ -37,24 +36,52 @@ const STATUS_LABEL: Record<string, string> = {
   WITHDRAWN: '탈퇴',
 }
 
+// 생년월일 표시용 포맷 (YYYYMMDD → YYYY. MM. DD.)
+function formatBirthDate(birthDate: string | null | undefined): string {
+  if (!birthDate || birthDate.length < 4) return '미등록'
+  if (birthDate.length === 8) {
+    return `${birthDate.slice(0, 4)}. ${birthDate.slice(4, 6)}. ${birthDate.slice(6, 8)}.`
+  }
+  return birthDate
+}
+
+// 생년월일로 나이 계산
+function calcAge(birthDate: string | null | undefined): number | null {
+  if (!birthDate || birthDate.length < 4) return null
+  const year = parseInt(birthDate.slice(0, 4), 10)
+  if (isNaN(year)) return null
+  return new Date().getFullYear() - year
+}
+
 export default function ProfilePage() {
   const [member, setMember] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
-  const [form, setForm] = useState({ email: '', dong: '', address: '' })
+  const [form, setForm] = useState({ email: '', dong: '', address: '', birthDate: '' })
 
   useEffect(() => {
     fetch('/api/members/me')
       .then((r) => r.json())
       .then(({ member }) => {
+        if (!member) {
+          setLoadError('회원 정보를 불러올 수 없습니다.')
+          setLoading(false)
+          return
+        }
         setMember(member)
         setForm({
           email: member?.email ?? '',
           dong: member?.dong ?? '',
           address: member?.address ?? '',
+          birthDate: member?.birthDate ?? '',
         })
+        setLoading(false)
+      })
+      .catch(() => {
+        setLoadError('네트워크 오류가 발생했습니다. 새로고침 후 다시 시도해주세요.')
         setLoading(false)
       })
   }, [])
@@ -62,6 +89,13 @@ export default function ProfilePage() {
   async function handleSave() {
     setSaving(true)
     setSaveError('')
+    // 생년월일 8자리 유효성 검사
+    if (form.birthDate && !/^\d{8}$/.test(form.birthDate)) {
+      setSaveError('생년월일은 8자리 숫자로 입력해주세요 (예: 19690301)')
+      setSaving(false)
+      return
+    }
+
     const res = await fetch('/api/members/me', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
@@ -69,6 +103,7 @@ export default function ProfilePage() {
         email: form.email || undefined,
         dong: form.dong || undefined,
         address: form.address || undefined,
+        birthDate: form.birthDate || undefined,
       }),
     })
     const data = await res.json()
@@ -86,6 +121,7 @@ export default function ProfilePage() {
       email: member?.email ?? '',
       dong: member?.dong ?? '',
       address: member?.address ?? '',
+      birthDate: member?.birthDate ?? '',
     })
     setSaveError('')
     setEditing(false)
@@ -100,13 +136,23 @@ export default function ProfilePage() {
     )
   }
 
+  if (loadError) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4 text-center">
+        <p className="text-red-500 text-sm">{loadError}</p>
+        <Button variant="outline" onClick={() => { setLoadError(''); setLoading(true); location.reload() }}>
+          새로고침
+        </Button>
+      </div>
+    )
+  }
+
   if (!member) return null
 
+  const age = calcAge(member.birthDate)
   const daysLeft = member.tcExpiresAt
     ? Math.ceil((new Date(member.tcExpiresAt).getTime() - Date.now()) / 86400000)
     : null
-
-  const age = new Date().getFullYear() - member.birthYear
 
   return (
     <div className="space-y-6 max-w-2xl">
@@ -133,7 +179,9 @@ export default function ProfilePage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-2xl font-bold">{member.name}</p>
-              <p className="text-sm text-muted-foreground">{age}세 · 가입일 {formatDate(member.createdAt)}</p>
+              <p className="text-sm text-muted-foreground">
+                {age !== null ? `${age}세 · ` : ''}가입일 {formatDate(member.createdAt)}
+              </p>
             </div>
             <Badge className={member.status === 'ACTIVE' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}>
               {STATUS_LABEL[member.status] ?? member.status}
@@ -156,6 +204,31 @@ export default function ProfilePage() {
           <div className="flex items-center gap-3 text-sm">
             <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
             <span>{member.phone}</span>
+          </div>
+
+          {/* 생년월일 */}
+          <div className="flex items-center gap-3 text-sm">
+            <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+            {editing ? (
+              <div className="flex-1">
+                <Input
+                  value={form.birthDate}
+                  onChange={(e) => setForm((f) => ({ ...f, birthDate: e.target.value.replace(/\D/g, '').slice(0, 8) }))}
+                  placeholder="19690301 (년월일 8자리)"
+                  inputMode="numeric"
+                  maxLength={8}
+                  className="h-8 text-sm"
+                />
+                <p className="text-xs text-gray-400 mt-0.5">예: 1969년 3월 1일 → 19690301</p>
+              </div>
+            ) : (
+              <span className={member.birthDate ? '' : 'text-muted-foreground'}>
+                {formatBirthDate(member.birthDate)}
+                {!member.birthDate && (
+                  <span className="ml-1 text-xs text-blue-500">(수정 버튼으로 입력 가능)</span>
+                )}
+              </span>
+            )}
           </div>
 
           {/* 이메일 */}
@@ -204,7 +277,7 @@ export default function ProfilePage() {
                 className="h-8 text-sm"
               />
             ) : (
-              <span className={member.address ? 'text-muted-foreground text-xs' : 'text-muted-foreground text-xs'}>
+              <span className="text-muted-foreground text-xs">
                 {member.address ?? '상세 주소 미등록'}
               </span>
             )}
@@ -229,12 +302,12 @@ export default function ProfilePage() {
         </CardContent>
       </Card>
 
-      {/* TC 현황 */}
+      {/* TP 현황 */}
       <Card>
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Coins className="h-4 w-4" />
-            TC 현황
+            TP 현황
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -242,21 +315,21 @@ export default function ProfilePage() {
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">현재 잔액</p>
               <p className="text-2xl font-bold text-blue-600">{Number(member.tcBalance).toFixed(2)}</p>
-              <p className="text-xs text-muted-foreground">TC</p>
+              <p className="text-xs text-muted-foreground">TP</p>
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">누적 적립</p>
               <p className="text-2xl font-bold text-green-600">{Number(member.lifetimeEarned).toFixed(2)}</p>
-              <p className="text-xs text-muted-foreground">TC</p>
+              <p className="text-xs text-muted-foreground">TP</p>
             </div>
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">누적 소진</p>
               <p className="text-2xl font-bold text-red-500">{Number(member.lifetimeSpent).toFixed(2)}</p>
-              <p className="text-xs text-muted-foreground">TC</p>
+              <p className="text-xs text-muted-foreground">TP</p>
             </div>
           </div>
 
-          {/* TC 만료일 */}
+          {/* TP 만료일 */}
           {member.tcExpiresAt && (
             <div className={`mt-4 flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
               daysLeft !== null && daysLeft <= 30
@@ -265,7 +338,7 @@ export default function ProfilePage() {
             }`}>
               <Calendar className="h-4 w-4 shrink-0" />
               <span>
-                TC 만료일: <strong>{formatDate(member.tcExpiresAt)}</strong>
+                TP 만료일: <strong>{formatDate(member.tcExpiresAt)}</strong>
                 {daysLeft !== null && <span className="ml-2">({daysLeft > 0 ? `${daysLeft}일 남음` : '만료됨'})</span>}
               </span>
             </div>
@@ -273,7 +346,7 @@ export default function ProfilePage() {
           {!member.tcExpiresAt && (
             <div className="mt-4 flex items-center gap-2 rounded-md px-3 py-2 text-sm bg-green-50 border border-green-200 text-green-700">
               <Calendar className="h-4 w-4 shrink-0" />
-              <span>TC 만료 없음 (취약계층/장애인 혜택 적용)</span>
+              <span>TP 만료 없음 (취약계층/장애인 혜택 적용)</span>
             </div>
           )}
         </CardContent>

@@ -27,7 +27,7 @@ function SubmitButton() {
   )
 }
 
-/* ── 선택 토글 칩 (useState + inline style로 Tailwind JIT 문제 회피) ── */
+/* ── 선택 토글 칩 ── */
 function ToggleChip({
   name,
   value,
@@ -67,10 +67,31 @@ function ToggleChip({
   )
 }
 
+/* ── 전화번호 자동 하이픈 ── */
+function formatPhone(value: string): string {
+  const digits = value.replace(/\D/g, '')
+  if (digits.length <= 3) return digits
+  if (digits.length <= 7) return `${digits.slice(0, 3)}-${digits.slice(3)}`
+  return `${digits.slice(0, 3)}-${digits.slice(3, 7)}-${digits.slice(7, 11)}`
+}
+
 /* ── 메인 페이지 ── */
 export default function RegisterPage() {
   const initial: RegisterState = { error: '' }
   const [state, action] = useFormState(registerAction, initial)
+  const [phone, setPhone] = useState('')
+  const [birthDate, setBirthDate] = useState('')
+
+  function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const formatted = formatPhone(e.target.value)
+    setPhone(formatted)
+  }
+
+  function handleBirthDateChange(e: React.ChangeEvent<HTMLInputElement>) {
+    // 숫자만 추출, 최대 8자리
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 8)
+    setBirthDate(digits)
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
@@ -90,7 +111,7 @@ export default function RegisterPage() {
         {/* 폼 */}
         <form action={action} className="space-y-5">
 
-          {/* 이름 / 출생연도 */}
+          {/* 이름 / 생년월일 */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label htmlFor="name" className="text-sm font-medium">이름 *</label>
@@ -100,12 +121,21 @@ export default function RegisterPage() {
               />
             </div>
             <div className="space-y-1.5">
-              <label htmlFor="birthYear" className="text-sm font-medium">출생연도 *</label>
+              <label htmlFor="birthDate" className="text-sm font-medium">
+                생년월일 * <span className="text-gray-400 font-normal">(8자리)</span>
+              </label>
               <input
-                id="birthYear" name="birthYear" type="number" required
-                min={1920} max={2010} placeholder="1970"
+                id="birthDate"
+                name="birthDate"
+                required
+                inputMode="numeric"
+                placeholder="19690301"
+                value={birthDate}
+                onChange={handleBirthDateChange}
+                maxLength={8}
                 className="w-full h-10 px-3 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
+              <p className="text-xs text-gray-400">예: 19690301 (년월일)</p>
             </div>
           </div>
 
@@ -113,9 +143,18 @@ export default function RegisterPage() {
           <div className="space-y-1.5">
             <label htmlFor="phone" className="text-sm font-medium">전화번호 * (로그인 ID)</label>
             <input
-              id="phone" name="phone" type="tel" required placeholder="010-0000-0000"
+              id="phone"
+              name="phone"
+              type="tel"
+              required
+              placeholder="010-0000-0000"
+              value={phone}
+              onChange={handlePhoneChange}
+              maxLength={13}
+              inputMode="numeric"
               className="w-full h-10 px-3 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
+            <p className="text-xs text-gray-400">숫자만 입력해도 자동으로 - 가 추가됩니다</p>
           </div>
 
           {/* 이메일 */}

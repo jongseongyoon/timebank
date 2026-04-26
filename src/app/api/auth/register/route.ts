@@ -14,13 +14,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
     }
 
-    const { phone, password, name, birthYear, dong, address, email, isVulnerable, isDisabled, roles } = parsed.data
+    const { phone, password, name, birthDate, dong, address, email, isVulnerable, isDisabled, roles } = parsed.data
 
     const existing = await prisma.member.findUnique({ where: { phone } })
     if (existing) {
       return NextResponse.json({ error: '이미 등록된 전화번호입니다.' }, { status: 409 })
     }
 
+    const birthYear = birthDate ? parseInt(birthDate.slice(0, 4), 10) : 1970
     const isSenior = new Date().getFullYear() - birthYear >= 65
     const tcExpiresAt = calculateTcExpiry({
       registrationDate: new Date(),
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
         phone,
         passwordHash,
         name,
-        birthYear,
+        birthDate,
         dong,
         address,
         email,

@@ -8,6 +8,7 @@ const updateSchema = z.object({
   address: z.string().optional(),
   email: z.string().email().optional(),
   dong: z.string().optional(),
+  birthDate: z.string().regex(/^\d{8}$/).optional(),
 })
 
 export async function GET() {
@@ -23,7 +24,7 @@ export async function GET() {
       email: true,
       dong: true,
       address: true,
-      birthYear: true,
+      birthDate: true,
       memberType: true,
       roles: true,
       status: true,
@@ -55,7 +56,7 @@ export async function PATCH(req: NextRequest) {
   const member = await prisma.member.update({
     where: { id: session.user.id },
     data: parsed.data,
-    select: { id: true, name: true, dong: true, address: true, email: true },
+    select: { id: true, name: true, dong: true, address: true, email: true, birthDate: true },
   })
 
   return NextResponse.json({ member })

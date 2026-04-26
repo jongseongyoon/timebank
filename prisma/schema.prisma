@@ -25,7 +25,7 @@ model Member {
 
   // 기본 정보
   name      String
-  birthYear Int
+  birthDate String?  // YYYYMMDD 8자리 (신규 회원부터)
   dong      String
   address   String?
 
@@ -216,6 +216,11 @@ model Transaction {
   receiverRating Int?
   providerReview String?
   receiverReview String?
+
+  // 건강 위기 별점 (서비스 제공자가 수혜자 건강 상태 기록)
+  healthRating    Int?    // 1-5 (3점 이상이면 상황+대책 필수)
+  healthSituation String? // 현재 상황 기록
+  healthAction    String? // 필요 대책 기록
 
   // 장기저축 표시 (제공자가 미래에 쓸 TC — 만기 면제 대상)
   isSavings   Boolean  @default(false)

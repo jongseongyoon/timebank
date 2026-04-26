@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Star, Send, Play, ArrowLeft, Camera } from 'lucide-react'
+import { Star, Send, Play, ArrowLeft, Camera, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 type ScannedMember = {
@@ -21,6 +21,8 @@ const CATEGORIES = [
   '의료동행', '교육', '디지털지원', '수리', '아이돌봄', '기타',
 ]
 
+const MIN_BALANCE = -3.0
+
 export default function ScanPage() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -39,6 +41,12 @@ export default function ScanPage() {
   const [elapsedSec, setElapsedSec] = useState(0)
   const [loading, setLoading] = useState(false)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // 최대 획득 가능 TP (수혜자 잔액 기반)
+  const [maxPayable, setMaxPayable] = useState<number>(0)
+  const [maxMinutes, setMaxMinutes] = useState<number>(0)
+  const maxPayableRef = useRef<number>(0)
+  const elapsedSecRef = useRef<number>(0)
 
   // 스트림 정리
   const stopStream = useCallback(() => {
@@ -174,12 +182,49 @@ export default function ScanPage() {
     if (!res.ok) { setError(data.error); return }
     setActiveTransaction(data.transaction)
     setElapsedSec(0)
+    elapsedSecRef.current = 0
+
+    // 최대 획득 가능 TP 저장
+    const mp = data.maxPayable ?? 0
+    const mm = data.maxMinutes ?? 0
+    setMaxPayable(mp)
+    setMaxMinutes(mm)
+    maxPayableRef.current = mp
+
     setStep('service_running')
-    timerRef.current = setInterval(() => setElapsedSec(s => s + 1), 1000)
+
+    timerRef.current = setInterval(() => {
+      setElapsedSec(s => {
+        const next = s + 1
+        elapsedSecRef.current = next
+
+        // 최대 시간 도달 시 자동 종료
+        const maxSec = maxPayableRef.current * 3600
+        if (maxSec > 0 && next >= maxSec) {
+          clearInterval(timerRef.current!)
+          timerRef.current = null
+          // 자동 종료 실행
+          autoServiceEnd()
+        }
+        return next
+      })
+    }, 1000)
+  }
+
+  async function autoServiceEnd() {
+    setError('최대 획득 TP에 도달하여 자동 종료됩니다...')
+    await doServiceEnd()
   }
 
   async function handleServiceEnd() {
-    if (timerRef.current) clearInterval(timerRef.current)
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+    await doServiceEnd()
+  }
+
+  async function doServiceEnd() {
     setLoading(true)
     const res = await fetch('/api/scan/service/end', {
       method: 'POST',
@@ -188,7 +233,7 @@ export default function ScanPage() {
     })
     const data = await res.json()
     setLoading(false)
-    if (!res.ok) { setError(data.error); return }
+    if (!res.ok) { setError(data.error || '서비스 종료 실패'); return }
     setActiveTransaction(data)
     setStep('done')
   }
@@ -206,6 +251,8 @@ export default function ScanPage() {
     setScannedMember(null)
     setError('')
     setActiveTransaction(null)
+    setMaxPayable(0)
+    setMaxMinutes(0)
   }
 
   function fmtTime(sec: number) {
@@ -213,6 +260,16 @@ export default function ScanPage() {
     const s = (sec % 60).toString().padStart(2, '0')
     return `${m}:${s}`
   }
+
+  // 현재까지 예상 TP
+  const estimatedTP = Math.min(elapsedSec / 3600, maxPayable > 0 ? maxPayable : Infinity)
+  // 남은 시간 (자동종료까지)
+  const remainingSec = maxMinutes * 60 - elapsedSec
+  const isNearLimit = maxMinutes > 0 && remainingSec <= 300 && remainingSec > 0  // 5분 이하
+
+  // 수혜자 잔액이 한도 가까이인지 확인
+  const receiverBalance = scannedMember ? Number(scannedMember.tcBalance) : 0
+  const isBalanceLow = receiverBalance <= MIN_BALANCE + 0.5
 
   return (
     <div className="max-w-sm mx-auto space-y-4">
@@ -292,37 +349,61 @@ export default function ScanPage() {
                 </div>
               </div>
             </div>
-            <div className="bg-gray-50 rounded-xl px-4 py-2 text-sm text-center">
-              TC 잔액: <span className="font-bold text-blue-700">{Number(scannedMember.tcBalance).toFixed(2)} TC</span>
+
+            {/* TP 잔액 표시 — 한도 경고 포함 */}
+            <div className={`rounded-xl px-4 py-3 text-center ${
+              isBalanceLow ? 'bg-red-50 border border-red-200' : 'bg-gray-50'
+            }`}>
+              <p className="text-xs text-gray-500 font-medium mb-0.5">상대방 TP 잔액</p>
+              <p className={`text-xl font-bold ${isBalanceLow ? 'text-red-600' : 'text-blue-700'}`}>
+                {Number(scannedMember.tcBalance).toFixed(2)} TP
+              </p>
+              <p className="text-xs text-gray-400 mt-0.5">
+                최대 {Math.max(0, receiverBalance - MIN_BALANCE).toFixed(2)} TP 거래 가능
+              </p>
+              {isBalanceLow && (
+                <div className="flex items-center justify-center gap-1 mt-1 text-xs text-red-600">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                  <span>잔액이 부족합니다 (한도: -3.0 TP)</span>
+                </div>
+              )}
             </div>
           </div>
           {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg py-2 px-3">{error}</p>}
           <div className="grid grid-cols-2 gap-3">
-            <Button variant="outline" onClick={() => setStep('service_start')} className="h-16 flex-col gap-1">
+            <Button
+              variant="outline"
+              onClick={() => setStep('service_start')}
+              disabled={receiverBalance - MIN_BALANCE <= 0}
+              className="h-16 flex-col gap-1"
+            >
               <Play className="h-5 w-5" />
               <span className="text-xs">서비스 시작</span>
             </Button>
-            <Button onClick={() => setStep('transfer')} className="h-16 flex-col gap-1">
+            <Button
+              onClick={() => setStep('transfer')}
+              className="h-16 flex-col gap-1"
+            >
               <Send className="h-5 w-5" />
-              <span className="text-xs">TC 직접 송금</span>
+              <span className="text-xs">TP 직접 송금</span>
             </Button>
           </div>
         </>
       )}
 
-      {/* ── TC 송금 ── */}
+      {/* ── TP 송금 ── */}
       {step === 'transfer' && scannedMember && (
         <>
           <button onClick={() => setStep('confirm')} className="flex items-center gap-1 text-sm text-gray-500">
             <ArrowLeft className="h-4 w-4" /> 뒤로
           </button>
-          <h2 className="text-xl font-bold">TC 송금</h2>
+          <h2 className="text-xl font-bold">TP 송금</h2>
           <div className="bg-white border rounded-2xl p-5 space-y-4">
             <p className="text-center text-gray-600">
               <span className="font-bold text-blue-700">{scannedMember.name}</span>님께 송금
             </p>
             <div className="space-y-2">
-              <label className="text-sm font-medium">TC 수량</label>
+              <label className="text-sm font-medium">TP 수량</label>
               <input
                 type="number"
                 min={0.5} max={100} step={0.5}
@@ -334,7 +415,7 @@ export default function ScanPage() {
           </div>
           {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg py-2 px-3">{error}</p>}
           <Button onClick={handleTransfer} disabled={loading} className="w-full h-12">
-            {loading ? '처리 중...' : `${transferAmount} TC 송금하기`}
+            {loading ? '처리 중...' : `${transferAmount} TP 송금하기`}
           </Button>
         </>
       )}
@@ -350,6 +431,16 @@ export default function ScanPage() {
             <p className="text-center text-gray-600">
               <span className="font-bold">{scannedMember.name}</span>님을 위한 서비스
             </p>
+            {/* 최대 획득 가능 TP 안내 */}
+            <div className="bg-blue-50 rounded-xl px-4 py-3 text-center">
+              <p className="text-xs text-blue-600 font-medium">최대 획득 가능 TP</p>
+              <p className="text-2xl font-bold text-blue-700">
+                {Math.max(0, receiverBalance - MIN_BALANCE).toFixed(2)} TP
+              </p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                약 {Math.round(Math.max(0, receiverBalance - MIN_BALANCE) * 60)}분 서비스 가능
+              </p>
+            </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">서비스 종류</label>
               <div className="flex flex-wrap gap-2">
@@ -381,11 +472,43 @@ export default function ScanPage() {
       {step === 'service_running' && (
         <>
           <h2 className="text-xl font-bold text-center">서비스 진행 중</h2>
+
+          {/* 자동종료 임박 경고 */}
+          {isNearLimit && (
+            <div className="bg-orange-50 border border-orange-300 rounded-xl px-4 py-3 flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-orange-800">곧 자동 종료됩니다</p>
+                <p className="text-xs text-orange-600">
+                  {Math.floor(remainingSec / 60)}분 {remainingSec % 60}초 후 최대 TP 도달로 자동 종료
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="bg-blue-600 rounded-2xl p-8 flex flex-col items-center gap-3 text-white">
             <p className="text-sm opacity-80">{selectedCategory}</p>
             <p className="text-6xl font-bold font-mono tracking-wider">{fmtTime(elapsedSec)}</p>
-            <p className="text-sm opacity-80">예상 TC: {(elapsedSec / 3600).toFixed(2)} TC</p>
+            <p className="text-base font-semibold">
+              예상 TP: {estimatedTP.toFixed(2)} TP
+            </p>
+            {maxPayable > 0 && (
+              <p className="text-xs opacity-70">
+                최대 {maxPayable.toFixed(2)} TP ({maxMinutes}분) / 잔여 {Math.max(0, maxMinutes * 60 - elapsedSec) > 0 ? fmtTime(Math.max(0, maxMinutes * 60 - elapsedSec)) : '자동종료'}
+              </p>
+            )}
           </div>
+
+          {/* 진행률 바 */}
+          {maxMinutes > 0 && (
+            <div className="bg-gray-100 rounded-full h-3 overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${isNearLimit ? 'bg-orange-500' : 'bg-blue-500'}`}
+                style={{ width: `${Math.min(100, (elapsedSec / (maxMinutes * 60)) * 100)}%` }}
+              />
+            </div>
+          )}
+
           {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg py-2 px-3">{error}</p>}
           <Button
             onClick={handleServiceEnd}
@@ -393,7 +516,7 @@ export default function ScanPage() {
             variant="destructive"
             className="w-full h-14 text-lg"
           >
-            {loading ? '처리 중...' : '서비스 종료 및 TC 정산'}
+            {loading ? '처리 중...' : '서비스 종료 및 TP 정산'}
           </Button>
         </>
       )}
@@ -408,7 +531,7 @@ export default function ScanPage() {
             <h2 className="text-2xl font-bold">완료!</h2>
             {activeTransaction?.tcAmount !== undefined && (
               <p className="text-gray-500 mt-2">
-                {activeTransaction.durationMinutes}분 · {Number(activeTransaction.tcAmount).toFixed(2)} TC 정산
+                {activeTransaction.durationMinutes}분 · {Number(activeTransaction.tcAmount).toFixed(2)} TP 정산
               </p>
             )}
           </div>

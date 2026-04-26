@@ -6,7 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function formatTC(amount: number | string): string {
-  return `${Number(amount).toFixed(2)} TC`
+  return `${Number(amount).toFixed(2)} TP`
 }
 
 export function formatDate(date: Date | string): string {
