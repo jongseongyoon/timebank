@@ -1,11 +1,15 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { Footprints, Trophy, CircleOff, Play, Square, Activity } from 'lucide-react'
+import { Footprints, Trophy, CircleOff, Play, Square, Activity, Cpu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 const GOAL = 10000
 const REWARD_TP = 0.5
+const COOLDOWN_MS = 280   // 최소 걸음 간격 ms
+const STEP_DELTA_PURE = 1.2    // 순수 가속도 피크 임계값
+const STEP_DELTA_GRAVITY = 2.0 // 중력 포함 가속도 피크 임계값
+const EMA_ALPHA = 0.005
 
 export default function WalkPage() {
   const [loading, setLoading] = useState(true)
@@ -17,25 +21,25 @@ export default function WalkPage() {
   const [saving, setSaving] = useState(false)
   const [justRewarded, setJustRewarded] = useState(false)
 
-  // 디버그: 센서 작동 여부 확인
+  // 센서 디버그
+  const [sensorMode, setSensorMode] = useState<'none' | 'generic' | 'devicemotion'>('none')
   const [sensorActive, setSensorActive] = useState(false)
   const [debugMag, setDebugMag] = useState(0)
   const [eventCount, setEventCount] = useState(0)
 
-  // Refs — 이벤트 핸들러에서 stale closure 방지
+  // Refs — stale closure 방지
   const lastMagRef = useRef(0)
   const risingRef = useRef(false)
   const lastStepTimeRef = useRef(0)
   const sessionStepsRef = useRef(0)
   const todayStepsRef = useRef(0)
-  const handlerRef = useRef<((e: DeviceMotionEvent) => void) | null>(null)
+  const motionHandlerRef = useRef<((e: DeviceMotionEvent) => void) | null>(null)
+  const sensorRef = useRef<any>(null)      // Accelerometer 인스턴스
   const eventCountRef = useRef(0)
-
-  // 적응형 기준선: 중력 방향에 무관하게 걸음 감지
-  const baselineRef = useRef(9.81)   // 초기값 = 중력 크기
+  const baselineRef = useRef(9.81)
   const baselineInitRef = useRef(false)
 
-  // 오늘 기록 로드
+  // ── 오늘 기록 로드
   useEffect(() => {
     fetch('/api/walk/today')
       .then(r => r.json())
@@ -49,52 +53,9 @@ export default function WalkPage() {
       .catch(() => setLoading(false))
   }, [])
 
-  // ──────────────────────────────────────────────────────────────
-  // 걸음 감지 핵심 로직
-  //
-  // ✅ Android S23 Ultra 호환 포인트:
-  //  1) e.acceleration.x === null 인 경우가 많음 → accelerationIncludingGravity 사용
-  //  2) 적응형 기준선(EMA)으로 폰 방향/중력 방향 무관하게 피크 감지
-  //  3) 상승→하강 전환 시 기준선보다 충분히 높은 피크면 걸음 카운트
-  // ──────────────────────────────────────────────────────────────
-  function motionHandler(e: DeviceMotionEvent) {
-    // 1. 순수 가속도(중력 제거) 사용 가능 여부 확인 — null 값 체크 필수
-    const purAcc = e.acceleration
-    const purValid =
-      purAcc !== null &&
-      purAcc !== undefined &&
-      purAcc.x !== null &&
-      purAcc.y !== null &&
-      purAcc.z !== null
-
-    // 2. 중력 포함 가속도 — Android에서 항상 제공
-    const gravAcc = e.accelerationIncludingGravity
-    const gravValid =
-      gravAcc !== null &&
-      gravAcc !== undefined &&
-      gravAcc.x !== null &&
-      gravAcc.y !== null &&
-      gravAcc.z !== null
-
-    if (!purValid && !gravValid) return
-
-    // 3. 벡터 크기(magnitude) 계산
-    let mag: number
-    if (purValid) {
-      // 순수 가속도 사용 (iOS 등)
-      const ax = purAcc!.x!
-      const ay = purAcc!.y!
-      const az = purAcc!.z ?? 0
-      mag = Math.sqrt(ax * ax + ay * ay + az * az)
-    } else {
-      // 중력 포함 가속도 사용 (Android 대부분)
-      const ax = gravAcc!.x!
-      const ay = gravAcc!.y!
-      const az = gravAcc!.z!
-      mag = Math.sqrt(ax * ax + ay * ay + az * az)
-    }
-
-    // 4. 디버그 업데이트 (10회마다 리렌더 방지)
+  // ── 걸음 감지 핵심 (magnitude 값 받아서 피크 탐지)
+  function processMag(mag: number, stepDelta: number) {
+    // 디버그 업데이트 (10회마다)
     eventCountRef.current += 1
     if (eventCountRef.current % 10 === 0) {
       setSensorActive(true)
@@ -102,28 +63,20 @@ export default function WalkPage() {
       setEventCount(eventCountRef.current)
     }
 
-    // 5. 적응형 기준선 초기화 (첫 50회 데이터로 기준 설정)
+    // 기준선 초기화
     if (!baselineInitRef.current) {
       baselineRef.current = mag
       baselineInitRef.current = true
     }
 
-    // 6. 지수 이동 평균(EMA)으로 기준선 업데이트
-    //    alpha=0.005: 느리게 추적 → 걷는 중 기준선이 올라가지 않음
-    const alpha = 0.005
-    baselineRef.current = alpha * mag + (1 - alpha) * baselineRef.current
+    // EMA 기준선 업데이트
+    baselineRef.current = EMA_ALPHA * mag + (1 - EMA_ALPHA) * baselineRef.current
 
-    // 7. 피크 감지: 상승 → 하강 전환 시 걸음 1회
-    //    순수 가속도: 피크 > baseline + 1.2 m/s²
-    //    중력 포함:  피크 > baseline + 1.5 m/s²  (중력 진동 필터링)
-    const STEP_DELTA = purValid ? 1.2 : 1.5
-    const COOLDOWN_MS = 280   // 최소 걸음 간격 (분당 최대 214보)
-
+    // 피크 감지 (상승→하강 전환)
     if (mag > lastMagRef.current) {
       risingRef.current = true
     } else if (risingRef.current) {
-      // 하강 시작 — 직전 피크가 기준선보다 충분히 높았는지 확인
-      if (lastMagRef.current > baselineRef.current + STEP_DELTA) {
+      if (lastMagRef.current > baselineRef.current + stepDelta) {
         const now = Date.now()
         if (now - lastStepTimeRef.current > COOLDOWN_MS) {
           sessionStepsRef.current += 1
@@ -133,12 +86,142 @@ export default function WalkPage() {
       }
       risingRef.current = false
     }
-
     lastMagRef.current = mag
   }
 
-  // ──────────────────────────────────────────────────────────────
+  // ── [방식 1] Generic Sensor API (Accelerometer 클래스)
+  //    Android Chrome 67+, 더 정확하고 안정적
+  async function tryGenericSensor(): Promise<boolean> {
+    if (typeof window === 'undefined') return false
+    if (!('Accelerometer' in window)) return false
 
+    try {
+      // 권한 확인
+      const perm = await navigator.permissions.query({ name: 'accelerometer' as PermissionName })
+      if (perm.state === 'denied') return false
+
+      const sensor = new (window as any).Accelerometer({ frequency: 60 })
+
+      sensor.addEventListener('error', (e: any) => {
+        console.warn('[Accelerometer] error:', e.error)
+        // Generic Sensor 실패 → devicemotion 으로 자동 전환
+        sensor.stop()
+        sensorRef.current = null
+        tryDeviceMotion()
+      })
+
+      sensor.addEventListener('reading', () => {
+        const x: number = sensor.x ?? 0
+        const y: number = sensor.y ?? 0
+        const z: number = sensor.z ?? 0
+        const mag = Math.sqrt(x * x + y * y + z * z)
+        processMag(mag, STEP_DELTA_PURE)
+      })
+
+      sensor.start()
+      sensorRef.current = sensor
+      setSensorMode('generic')
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  // ── [방식 2] DeviceMotionEvent (레거시, iOS 포함 폭넓은 지원)
+  function tryDeviceMotion() {
+    function handler(e: DeviceMotionEvent) {
+      const purAcc = e.acceleration
+      const purValid =
+        purAcc !== null && purAcc !== undefined &&
+        purAcc.x !== null && purAcc.y !== null && purAcc.z !== null
+
+      const gravAcc = e.accelerationIncludingGravity
+      const gravValid =
+        gravAcc !== null && gravAcc !== undefined &&
+        gravAcc.x !== null && gravAcc.y !== null && gravAcc.z !== null
+
+      if (!purValid && !gravValid) return
+
+      let mag: number
+      let stepDelta: number
+
+      if (purValid) {
+        const ax = purAcc!.x!, ay = purAcc!.y!, az = purAcc!.z ?? 0
+        mag = Math.sqrt(ax * ax + ay * ay + az * az)
+        stepDelta = STEP_DELTA_PURE
+      } else {
+        const ax = gravAcc!.x!, ay = gravAcc!.y!, az = gravAcc!.z!
+        mag = Math.sqrt(ax * ax + ay * ay + az * az)
+        stepDelta = STEP_DELTA_GRAVITY
+      }
+
+      processMag(mag, stepDelta)
+    }
+
+    motionHandlerRef.current = handler
+    window.addEventListener('devicemotion', handler)
+    setSensorMode('devicemotion')
+  }
+
+  // ── 측정 시작
+  async function startTracking() {
+    // iOS 13+ 권한 요청
+    if (
+      typeof DeviceMotionEvent !== 'undefined' &&
+      typeof (DeviceMotionEvent as any).requestPermission === 'function'
+    ) {
+      try {
+        const result = await (DeviceMotionEvent as any).requestPermission()
+        if (result !== 'granted') {
+          setPermError('동작 센서 권한이 필요합니다. iOS 설정 > Safari > 모션 및 방향을 허용해 주세요.')
+          return
+        }
+      } catch {
+        setPermError('센서 권한 요청에 실패했습니다.')
+        return
+      }
+    }
+
+    // 초기화
+    setPermError('')
+    setSensorActive(false)
+    setSensorMode('none')
+    setEventCount(0)
+    eventCountRef.current = 0
+    baselineInitRef.current = false
+    baselineRef.current = 9.81
+    lastMagRef.current = 0
+    risingRef.current = false
+
+    setTracking(true)
+
+    // Generic Sensor 시도 → 실패 시 DeviceMotion 사용
+    const genericOk = await tryGenericSensor()
+    if (!genericOk) {
+      tryDeviceMotion()
+    }
+  }
+
+  // ── 측정 중지
+  async function stopTracking() {
+    // Generic Sensor 정리
+    if (sensorRef.current) {
+      try { sensorRef.current.stop() } catch {}
+      sensorRef.current = null
+    }
+    // DeviceMotion 정리
+    if (motionHandlerRef.current) {
+      window.removeEventListener('devicemotion', motionHandlerRef.current)
+      motionHandlerRef.current = null
+    }
+
+    setTracking(false)
+    setSensorMode('none')
+    setSensorActive(false)
+    await saveCurrentSteps()
+  }
+
+  // ── 걸음 수 저장
   async function saveCurrentSteps() {
     const total = todayStepsRef.current + sessionStepsRef.current
     if (total <= todayStepsRef.current) return
@@ -164,56 +247,20 @@ export default function WalkPage() {
     }
   }
 
-  async function startTracking() {
-    // iOS 13+ 센서 권한 요청 (Android는 권한 불필요)
-    if (
-      typeof DeviceMotionEvent !== 'undefined' &&
-      typeof (DeviceMotionEvent as any).requestPermission === 'function'
-    ) {
-      try {
-        const result = await (DeviceMotionEvent as any).requestPermission()
-        if (result !== 'granted') {
-          setPermError('동작 센서 권한이 필요합니다. iOS 설정 > Safari > 모션 및 방향을 허용해 주세요.')
-          return
-        }
-      } catch {
-        setPermError('센서 권한 요청에 실패했습니다.')
-        return
-      }
-    }
-
-    // 디버그 초기화
-    setSensorActive(false)
-    setEventCount(0)
-    eventCountRef.current = 0
-    baselineInitRef.current = false
-    baselineRef.current = 9.81
-    lastMagRef.current = 0
-    risingRef.current = false
-
-    setPermError('')
-    handlerRef.current = motionHandler
-    window.addEventListener('devicemotion', motionHandler)
-    setTracking(true)
-  }
-
-  async function stopTracking() {
-    if (handlerRef.current) {
-      window.removeEventListener('devicemotion', handlerRef.current)
-      handlerRef.current = null
-    }
-    setTracking(false)
-    await saveCurrentSteps()
-  }
-
+  // ── 언마운트 정리
   useEffect(() => {
     return () => {
-      if (handlerRef.current) {
-        window.removeEventListener('devicemotion', handlerRef.current)
+      if (sensorRef.current) {
+        try { sensorRef.current.stop() } catch {}
+        sensorRef.current = null
+      }
+      if (motionHandlerRef.current) {
+        window.removeEventListener('devicemotion', motionHandlerRef.current)
       }
     }
   }, [])
 
+  // ── UI
   const totalSteps = todaySteps + sessionSteps
   const progress = Math.min(totalSteps / GOAL, 1)
   const circumference = 2 * Math.PI * 90
@@ -276,23 +323,38 @@ export default function WalkPage() {
             </p>
           </div>
 
-          {/* 센서 상태 디버그 패널 */}
-          <div className={`rounded-xl px-4 py-3 border text-xs flex items-center gap-3 ${
+          {/* 센서 상태 패널 */}
+          <div className={`rounded-xl px-4 py-3 border text-xs ${
             sensorActive
               ? 'bg-green-50 border-green-200 text-green-800'
               : 'bg-gray-50 border-gray-200 text-gray-500'
           }`}>
-            <Activity className={`h-4 w-4 shrink-0 ${sensorActive ? 'text-green-600' : 'text-gray-400'}`} />
-            <div>
+            <div className="flex items-center gap-2 mb-1">
+              {sensorActive
+                ? <Activity className="h-4 w-4 text-green-600 shrink-0" />
+                : <Cpu className="h-4 w-4 text-gray-400 shrink-0 animate-pulse" />
+              }
               {sensorActive ? (
-                <>
-                  <p className="font-semibold">✅ 센서 정상 작동 중</p>
-                  <p>가속도: <strong>{debugMag} m/s²</strong> · 수신 이벤트: {eventCount}회</p>
-                </>
+                <span className="font-semibold">
+                  ✅ 센서 작동 중
+                  <span className="ml-1 font-normal text-green-600">
+                    ({sensorMode === 'generic' ? 'Generic Sensor' : 'DeviceMotion'})
+                  </span>
+                </span>
               ) : (
-                <p>⏳ 센서 신호 대기 중… 폰을 흔들어 보세요</p>
+                <span>
+                  {sensorMode === 'none'
+                    ? '⏳ 센서 초기화 중…'
+                    : `⏳ 신호 대기 중 (${sensorMode === 'generic' ? 'Generic Sensor' : 'DeviceMotion'})… 폰을 흔들어 보세요`
+                  }
+                </span>
               )}
             </div>
+            {sensorActive && (
+              <p className="pl-6 text-green-700">
+                가속도: <strong>{debugMag} m/s²</strong> · 수신: {eventCount}회
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -348,7 +410,8 @@ export default function WalkPage() {
         <p className="text-sm font-semibold text-blue-800">📱 이용 안내</p>
         <ul className="space-y-1 text-xs text-blue-700 list-disc list-inside">
           <li>측정 시작 후 스마트폰을 손에 들거나 주머니에 넣고 걸으세요</li>
-          <li>센서 작동 패널에 <strong>초록불 + 가속도 수치</strong>가 보이면 정상입니다</li>
+          <li>센서 패널에 <strong>✅ 초록불 + 가속도 수치</strong>가 보이면 정상입니다</li>
+          <li>신호 대기 중이면 폰을 살짝 흔들어 주세요 (센서 활성화)</li>
           <li>매일 자정에 걸음 수가 초기화됩니다</li>
           <li>10,000보 달성 시 하루 1회 <strong>{REWARD_TP} TP</strong> 자동 적립</li>
           <li>중지 버튼을 눌러야 걸음 수가 저장됩니다</li>
