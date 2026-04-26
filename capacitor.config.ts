@@ -7,9 +7,9 @@ const config: CapacitorConfig = {
   // 웹 서버가 Vercel에 배포된 경우 아래 server.url 사용
   // 로컬 개발 시에는 주석 처리 후 정적 빌드(out/) 사용
   server: {
-    // url: 'https://your-app.vercel.app',  // ← 실제 Vercel 배포 URL로 변경
+    url: 'https://timebank-mocha.vercel.app',
     cleartext: false,
-    allowNavigation: ['*.vercel.app'],
+    allowNavigation: ['timebank-mocha.vercel.app'],
   },
   android: {
     allowMixedContent: false,
