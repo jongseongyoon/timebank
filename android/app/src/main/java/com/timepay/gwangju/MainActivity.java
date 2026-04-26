@@ -2,7 +2,9 @@ package com.timepay.gwangju;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.webkit.GeolocationPermissions;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
@@ -31,6 +33,7 @@ import java.util.List;
 public class MainActivity extends BridgeActivity {
 
     private static final int REQ_PERMISSIONS = 200;
+    private static final String TAG = "MainActivity";
 
     // WebView 카메라 권한 콜백 (onPermissionRequest에서 보관)
     private PermissionRequest pendingWebPermission;
@@ -51,6 +54,39 @@ public class MainActivity extends BridgeActivity {
 
         // ③ 앱 시작 시 필수 권한 일괄 요청 (한 번만 물어봄)
         requestEssentialPermissions();
+
+        // ④ 매일 00:01 / 23:59 알람 등록 (이미 등록돼 있으면 덮어씀)
+        AlarmReceiver.scheduleStart(this);
+        AlarmReceiver.scheduleStop(this);
+        Log.d(TAG, "Daily alarms scheduled");
+
+        // ⑤ 현재 시각이 00:01~23:58이면 만보기 서비스 즉시 시작
+        startStepServiceIfNeeded();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // 앱이 포그라운드로 돌아올 때 pending_save 확인 → JS로 처리 위임
+        // JS에서 Capacitor.Plugins.StepCounter.getPendingSave() 호출 후 서버 전송
+    }
+
+    private void startStepServiceIfNeeded() {
+        java.util.Calendar now = java.util.Calendar.getInstance();
+        int h = now.get(java.util.Calendar.HOUR_OF_DAY);
+        int m = now.get(java.util.Calendar.MINUTE);
+        boolean inWindow = (h > 0) || (h == 0 && m >= 1);
+        boolean beforeStop = h < 23 || (h == 23 && m < 59);
+        if (inWindow && beforeStop) {
+            android.content.Intent svc = new android.content.Intent(this, StepTrackingService.class);
+            svc.setAction(StepTrackingService.ACTION_START);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(svc);
+            } else {
+                startService(svc);
+            }
+            Log.d(TAG, "StepTrackingService started on app open");
+        }
     }
 
     // ─────────────────────────────────────────────────────────────

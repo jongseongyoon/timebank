@@ -25,6 +25,32 @@
 
         </activity>
 
+        <!-- ── 만보기 포그라운드 서비스 ── -->
+        <service
+            android:name=".StepTrackingService"
+            android:foregroundServiceType="health"
+            android:exported="false" />
+
+        <!-- ── 일일 알람 수신기 (00:01 시작 / 23:59 중지) ── -->
+        <receiver
+            android:name=".AlarmReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.timepay.gwangju.DAILY_START" />
+                <action android:name="com.timepay.gwangju.DAILY_STOP" />
+            </intent-filter>
+        </receiver>
+
+        <!-- ── 부팅 완료 수신기 ── -->
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.QUICKBOOT_POWERON" />
+            </intent-filter>
+        </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -52,5 +78,19 @@
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION" />
     <uses-feature android:name="android.hardware.sensor.stepcounter" android:required="false" />
     <uses-feature android:name="android.hardware.sensor.stepdetector" android:required="false" />
+
+    <!-- ── 포그라운드 서비스 (백그라운드 만보기) ── -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_HEALTH" />
+
+    <!-- ── 부팅 후 알람 재등록 ── -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- ── 정확한 알람 (Android 12+) ── -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+
+    <!-- ── 앱 미사용 시 Wake (Doze 모드 대응) ── -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
 
 </manifest>
