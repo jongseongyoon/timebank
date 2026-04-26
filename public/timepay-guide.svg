@@ -1,0 +1,249 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="1380" viewBox="0 0 800 1380">
+  <defs>
+    <style>
+      text { font-family: 'Apple SD Gothic Neo','Noto Sans KR','Malgun Gothic','맑은 고딕',Arial,sans-serif; }
+    </style>
+    <linearGradient id="blueGrad" x1="0" y1="0" x2="1" y2="1" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#3b5bdb"/>
+      <stop offset="100%" stop-color="#1864ab"/>
+    </linearGradient>
+    <linearGradient id="blueGrad2" x1="0" y1="0" x2="1" y2="0" gradientUnits="objectBoundingBox">
+      <stop offset="0%" stop-color="#228be6"/>
+      <stop offset="100%" stop-color="#1c7ed6"/>
+    </linearGradient>
+    <filter id="s1"><feDropShadow dx="0" dy="2" stdDeviation="5" flood-color="rgba(0,0,0,0.09)"/></filter>
+    <filter id="s2"><feDropShadow dx="0" dy="4" stdDeviation="10" flood-color="rgba(59,91,219,0.18)"/></filter>
+  </defs>
+
+  <!-- ░░ BACKGROUND ░░ -->
+  <rect width="800" height="1380" fill="#eef2ff"/>
+
+  <!-- ████████████████████████████████████ -->
+  <!--         HEADER  (0 – 215)           -->
+  <!-- ████████████████████████████████████ -->
+  <rect x="0" y="0" width="800" height="215" fill="url(#blueGrad)"/>
+  <!-- deco circles -->
+  <circle cx="70"  cy="30"  r="90"  fill="rgba(255,255,255,0.06)"/>
+  <circle cx="730" cy="200" r="110" fill="rgba(255,255,255,0.05)"/>
+  <circle cx="660" cy="-10" r="65"  fill="rgba(255,255,255,0.07)"/>
+
+  <!-- clock icon -->
+  <circle cx="400" cy="66" r="32" fill="rgba(255,255,255,0.18)"/>
+  <circle cx="400" cy="66" r="21" fill="none" stroke="white" stroke-width="2.8"/>
+  <line x1="400" y1="66" x2="400" y2="51" stroke="white" stroke-width="2.8" stroke-linecap="round"/>
+  <line x1="400" y1="66" x2="412" y2="73" stroke="white" stroke-width="2.8" stroke-linecap="round"/>
+  <circle cx="400" cy="66" r="2.5" fill="white"/>
+
+  <text x="400" y="128" text-anchor="middle" fill="white" font-size="50" font-weight="bold" letter-spacing="-1">TimePay</text>
+  <text x="400" y="155" text-anchor="middle" fill="rgba(255,255,255,0.88)" font-size="15">광주서구 주민자치 타임뱅크</text>
+  <!-- URL pill -->
+  <rect x="228" y="168" width="344" height="32" rx="16" fill="rgba(255,255,255,0.20)"/>
+  <text x="400" y="189" text-anchor="middle" fill="white" font-size="13.5" font-weight="700">🌐  timebank-mocha.vercel.app</text>
+
+  <!-- ████████████████████████████████████ -->
+  <!--       TC 개념  (225 – 415)           -->
+  <!-- ████████████████████████████████████ -->
+  <rect x="24" y="225" width="752" height="185" rx="22" fill="white" filter="url(#s1)"/>
+
+  <text x="400" y="263" text-anchor="middle" fill="#1c7ed6" font-size="18" font-weight="bold">TC (타임크레딧) 란?</text>
+  <text x="400" y="284" text-anchor="middle" fill="#868e96" font-size="12.5">시간을 화폐처럼 주고받는 지역 나눔 시스템</text>
+
+  <!-- item 1 -->
+  <circle cx="152" cy="348" r="32" fill="#dbe4ff"/>
+  <circle cx="152" cy="348" r="18" fill="none" stroke="#3b5bdb" stroke-width="2.5"/>
+  <line x1="152" y1="348" x2="152" y2="334" stroke="#3b5bdb" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="152" y1="348" x2="162" y2="355" stroke="#3b5bdb" stroke-width="2.5" stroke-linecap="round"/>
+  <circle cx="152" cy="348" r="2" fill="#3b5bdb"/>
+  <text x="152" y="393" text-anchor="middle" fill="#495057" font-size="13" font-weight="bold">1시간 봉사</text>
+  <text x="152" y="409" text-anchor="middle" fill="#3b5bdb" font-size="13" font-weight="bold">= 1 TC 적립</text>
+
+  <!-- arrow -->
+  <text x="295" y="356" text-anchor="middle" fill="#ced4da" font-size="30" font-weight="300">›</text>
+  <text x="310" y="356" text-anchor="middle" fill="#ced4da" font-size="30" font-weight="300">›</text>
+
+  <!-- item 2 -->
+  <circle cx="400" cy="348" r="32" fill="#d3f9d8"/>
+  <circle cx="400" cy="348" r="18" fill="none" stroke="#20c997" stroke-width="2.5"/>
+  <text x="400" y="354" text-anchor="middle" fill="#20c997" font-size="12" font-weight="bold">TC</text>
+  <text x="400" y="393" text-anchor="middle" fill="#495057" font-size="13" font-weight="bold">TC로 서비스</text>
+  <text x="400" y="409" text-anchor="middle" fill="#20c997" font-size="13" font-weight="bold">이용 가능</text>
+
+  <!-- arrow -->
+  <text x="540" y="356" text-anchor="middle" fill="#ced4da" font-size="30" font-weight="300">›</text>
+  <text x="555" y="356" text-anchor="middle" fill="#ced4da" font-size="30" font-weight="300">›</text>
+
+  <!-- item 3 -->
+  <circle cx="648" cy="348" r="32" fill="#fff3bf"/>
+  <!-- balance scale simple -->
+  <line x1="648" y1="333" x2="648" y2="355" stroke="#f59f00" stroke-width="2.5"/>
+  <line x1="634" y1="338" x2="662" y2="338" stroke="#f59f00" stroke-width="2.5"/>
+  <circle cx="634" cy="347" r="6" fill="none" stroke="#f59f00" stroke-width="2"/>
+  <circle cx="662" cy="347" r="6" fill="none" stroke="#f59f00" stroke-width="2"/>
+  <text x="648" y="393" text-anchor="middle" fill="#495057" font-size="13" font-weight="bold">모두의 시간</text>
+  <text x="648" y="409" text-anchor="middle" fill="#f59f00" font-size="13" font-weight="bold">동등한 가치</text>
+
+  <!-- ████████████████████████████████████ -->
+  <!--       시작 3단계  (430 – 605)         -->
+  <!-- ████████████████████████████████████ -->
+  <text x="400" y="455" text-anchor="middle" fill="#212529" font-size="20" font-weight="bold">🚀  이렇게 시작하세요</text>
+
+  <!-- connector line -->
+  <line x1="120" y1="520" x2="680" y2="520" stroke="#dee2e6" stroke-width="1.5" stroke-dasharray="6,4"/>
+
+  <!-- Step 1 -->
+  <rect x="28" y="466" width="220" height="130" rx="18" fill="white" filter="url(#s1)"/>
+  <circle cx="138" cy="466" r="18" fill="#3b5bdb" filter="url(#s1)"/>
+  <text x="138" y="472" text-anchor="middle" fill="white" font-size="16" font-weight="bold">1</text>
+  <text x="138" y="510" text-anchor="middle" fill="#212529" font-size="15" font-weight="bold">회원가입</text>
+  <text x="138" y="530" text-anchor="middle" fill="#868e96" font-size="11.5">사이트 접속</text>
+  <text x="138" y="547" text-anchor="middle" fill="#868e96" font-size="11.5">이름·전화번호·동 입력</text>
+  <rect x="68" y="567" width="140" height="20" rx="10" fill="#dbe4ff"/>
+  <text x="138" y="581" text-anchor="middle" fill="#3b5bdb" font-size="11" font-weight="700">/register 접속</text>
+
+  <!-- Step 2 -->
+  <rect x="290" y="466" width="220" height="130" rx="18" fill="white" filter="url(#s1)"/>
+  <circle cx="400" cy="466" r="18" fill="#20c997" filter="url(#s1)"/>
+  <text x="400" y="472" text-anchor="middle" fill="white" font-size="16" font-weight="bold">2</text>
+  <text x="400" y="510" text-anchor="middle" fill="#212529" font-size="15" font-weight="bold">내 QR 발급</text>
+  <text x="400" y="530" text-anchor="middle" fill="#868e96" font-size="11.5">하단 QR 버튼 탭</text>
+  <text x="400" y="547" text-anchor="middle" fill="#868e96" font-size="11.5">→ 내 QR 보기 → 발급</text>
+  <rect x="330" y="567" width="140" height="20" rx="10" fill="#d3f9d8"/>
+  <text x="400" y="581" text-anchor="middle" fill="#20c997" font-size="11" font-weight="700">최초 1회만 필요</text>
+
+  <!-- Step 3 -->
+  <rect x="552" y="466" width="220" height="130" rx="18" fill="white" filter="url(#s1)"/>
+  <circle cx="662" cy="466" r="18" fill="#f59f00" filter="url(#s1)"/>
+  <text x="662" y="472" text-anchor="middle" fill="white" font-size="16" font-weight="bold">3</text>
+  <text x="662" y="510" text-anchor="middle" fill="#212529" font-size="15" font-weight="bold">거래 시작!</text>
+  <text x="662" y="530" text-anchor="middle" fill="#868e96" font-size="11.5">QR 보여주거나 스캔</text>
+  <text x="662" y="547" text-anchor="middle" fill="#868e96" font-size="11.5">서비스 · TC 교환</text>
+  <rect x="592" y="567" width="140" height="20" rx="10" fill="#fff3bf"/>
+  <text x="662" y="581" text-anchor="middle" fill="#f59f00" font-size="11" font-weight="700">TC 자동 정산!</text>
+
+  <!-- ████████████████████████████████████ -->
+  <!--      QR 거래 흐름  (618 – 820)        -->
+  <!-- ████████████████████████████████████ -->
+  <rect x="0" y="618" width="800" height="202" fill="url(#blueGrad2)"/>
+  <circle cx="740" cy="628" r="90" fill="rgba(255,255,255,0.05)"/>
+  <circle cx="60"  cy="800" r="70" fill="rgba(255,255,255,0.05)"/>
+
+  <text x="400" y="650" text-anchor="middle" fill="white" font-size="19" font-weight="bold">📱  QR 거래 방법</text>
+
+  <!-- left panel -->
+  <rect x="28" y="660" width="320" height="140" rx="16" fill="rgba(255,255,255,0.14)"/>
+  <text x="188" y="690" text-anchor="middle" fill="white"  font-size="15" font-weight="bold">서비스 받는 사람</text>
+  <text x="188" y="710" text-anchor="middle" fill="rgba(255,255,255,0.75)" font-size="11.5">내 QR 코드를 보여주세요</text>
+  <!-- qr mini icon -->
+  <rect x="55"  y="722" width="38" height="38" rx="5" fill="rgba(255,255,255,0.92)"/>
+  <rect x="59"  y="726" width="12" height="12" rx="1" fill="#1c7ed6"/>
+  <rect x="75"  y="726" width="12" height="12" rx="1" fill="#1c7ed6"/>
+  <rect x="59"  y="742" width="12" height="12" rx="1" fill="#1c7ed6"/>
+  <rect x="75"  y="742" width="5"  height="5"  rx="0.5" fill="#1c7ed6"/>
+  <rect x="82"  y="742" width="5"  height="5"  rx="0.5" fill="#1c7ed6"/>
+  <rect x="75"  y="749" width="5"  height="5"  rx="0.5" fill="#1c7ed6"/>
+  <rect x="82"  y="749" width="5"  height="5"  rx="0.5" fill="#1c7ed6"/>
+  <text x="205" y="735" fill="rgba(255,255,255,0.9)"  font-size="11.5">하단 QR 버튼 탭</text>
+  <text x="205" y="752" fill="rgba(255,255,255,0.75)" font-size="11">→ 내 QR 코드 보기 선택</text>
+  <text x="188" y="782" text-anchor="middle" fill="white" font-size="12" font-weight="bold">📺 화면을 상대방에게 보여주세요</text>
+
+  <!-- center -->
+  <text x="400" y="745" text-anchor="middle" fill="white" font-size="36">⇄</text>
+  <rect x="356" y="758" width="88" height="26" rx="13" fill="rgba(255,255,255,0.22)"/>
+  <text x="400" y="775" text-anchor="middle" fill="white" font-size="11" font-weight="bold">TC 자동 정산</text>
+
+  <!-- right panel -->
+  <rect x="452" y="660" width="320" height="140" rx="16" fill="rgba(255,255,255,0.14)"/>
+  <text x="612" y="690" text-anchor="middle" fill="white"  font-size="15" font-weight="bold">서비스 주는 사람</text>
+  <text x="612" y="710" text-anchor="middle" fill="rgba(255,255,255,0.75)" font-size="11.5">상대방 QR을 스캔하세요</text>
+  <!-- camera mini icon -->
+  <rect x="469" y="720" width="44" height="36" rx="7" fill="rgba(255,255,255,0.92)"/>
+  <circle cx="491" cy="738" r="10" fill="none" stroke="#1c7ed6" stroke-width="2.5"/>
+  <circle cx="491" cy="738" r="4.5" fill="#1c7ed6"/>
+  <rect x="480" y="721" width="10" height="6" rx="2" fill="#1c7ed6"/>
+  <text x="612" y="735" fill="rgba(255,255,255,0.9)"  font-size="11.5">하단 QR 버튼 탭</text>
+  <text x="612" y="752" fill="rgba(255,255,255,0.75)" font-size="11">→ 상대방 QR 스캔 선택</text>
+  <text x="612" y="782" text-anchor="middle" fill="white" font-size="12" font-weight="bold">📷 카메라로 QR 스캔</text>
+
+  <!-- ████████████████████████████████████ -->
+  <!--       주요 기능 4개  (835 – 1085)     -->
+  <!-- ████████████████████████████████████ -->
+  <text x="400" y="858" text-anchor="middle" fill="#212529" font-size="20" font-weight="bold">✨  주요 기능</text>
+
+  <!-- Card 1: 서비스 찾기 -->
+  <rect x="28"  y="870" width="362" height="108" rx="18" fill="white" filter="url(#s1)"/>
+  <circle cx="92" cy="924" r="30" fill="#dbe4ff"/>
+  <!-- search -->
+  <circle cx="90" cy="922" r="13" fill="none" stroke="#3b5bdb" stroke-width="2.8"/>
+  <line x1="100" y1="932" x2="108" y2="940" stroke="#3b5bdb" stroke-width="2.8" stroke-linecap="round"/>
+  <text x="185" y="905" fill="#212529" font-size="14.5" font-weight="bold">서비스 찾기 · 신청</text>
+  <text x="185" y="923" fill="#868e96" font-size="11.5">이웃 서비스 검색 및 신청</text>
+  <text x="185" y="940" fill="#868e96" font-size="11.5">위치 기반 가까운 순 정렬</text>
+  <text x="185" y="960" fill="#3b5bdb" font-size="11" font-weight="700">📞 제공자에게 바로 전화 연결</text>
+
+  <!-- Card 2: 만보기 -->
+  <rect x="410" y="870" width="362" height="108" rx="18" fill="white" filter="url(#s1)"/>
+  <circle cx="474" cy="924" r="30" fill="#d3f9d8"/>
+  <!-- footprint simple -->
+  <ellipse cx="469" cy="916" rx="7" ry="11" fill="#20c997" transform="rotate(-18 469 916)"/>
+  <ellipse cx="483" cy="921" rx="7" ry="11" fill="#20c997" transform="rotate(12 483 921)"/>
+  <text x="567" y="905" fill="#212529" font-size="14.5" font-weight="bold">만보기 TC 적립</text>
+  <text x="567" y="923" fill="#868e96" font-size="11.5">매일 10,000보 달성 시</text>
+  <text x="567" y="942" fill="#20c997" font-size="14" font-weight="bold">0.5 TC 자동 지급!</text>
+  <text x="567" y="960" fill="#868e96" font-size="11">스마트폰 센서 자동 측정</text>
+
+  <!-- Card 3: 커뮤니티 -->
+  <rect x="28"  y="990" width="362" height="100" rx="18" fill="white" filter="url(#s1)"/>
+  <circle cx="92" cy="1040" r="30" fill="#fff3bf"/>
+  <!-- chat bubble -->
+  <rect x="76" y="1026" width="32" height="22" rx="6" fill="#f59f00"/>
+  <polygon points="78,1044 70,1052 86,1044" fill="#f59f00"/>
+  <line x1="82" y1="1033" x2="102" y2="1033" stroke="white" stroke-width="1.8"/>
+  <line x1="82" y1="1040" x2="97"  y2="1040" stroke="white" stroke-width="1.8"/>
+  <text x="185" y="1023" fill="#212529" font-size="14.5" font-weight="bold">커뮤니티 게시판</text>
+  <text x="185" y="1041" fill="#868e96" font-size="11.5">공지·자유·후기·질문 게시판</text>
+  <text x="185" y="1075" fill="#f59f00" font-size="12" font-weight="bold">좋아요 · 댓글 · 알림 기능</text>
+
+  <!-- Card 4: 관리 -->
+  <rect x="410" y="990" width="362" height="100" rx="18" fill="white" filter="url(#s1)"/>
+  <circle cx="474" cy="1040" r="30" fill="#ffe3e3"/>
+  <!-- shield -->
+  <path d="M474 1023 L488 1029 L488 1041 Q488 1052 474 1057 Q460 1052 460 1041 L460 1029 Z" fill="#fa5252"/>
+  <text x="474" y="1044" text-anchor="middle" fill="white" font-size="10" font-weight="bold">ADMIN</text>
+  <text x="567" y="1023" fill="#212529" font-size="14.5" font-weight="bold">코디 · 관리자</text>
+  <text x="567" y="1041" fill="#868e96" font-size="11.5">거래 기록·승인·TC 배분</text>
+  <text x="567" y="1075" fill="#fa5252" font-size="12" font-weight="700">돌봄 패키지 · 통계 보고서</text>
+
+  <!-- ████████████████████████████████████ -->
+  <!--       앱 설치  (1108 – 1265)          -->
+  <!-- ████████████████████████████████████ -->
+  <rect x="24" y="1108" width="752" height="162" rx="22" fill="#212529" filter="url(#s1)"/>
+
+  <text x="400" y="1144" text-anchor="middle" fill="white" font-size="19" font-weight="bold">📲  앱처럼 설치하기 (무료 · 앱스토어 불필요)</text>
+  <text x="400" y="1164" text-anchor="middle" fill="#868e96" font-size="12">브라우저에서 바로 설치 — 홈 화면에 아이콘 추가</text>
+
+  <!-- Android -->
+  <rect x="52"  y="1175" width="316" height="80" rx="14" fill="rgba(255,255,255,0.08)"/>
+  <text x="72" y="1200" fill="#69db7c" font-size="13.5" font-weight="bold">🤖  Android (갤럭시 등)</text>
+  <text x="72" y="1219" fill="#ced4da" font-size="11.5">크롬으로 사이트 접속</text>
+  <text x="72" y="1236" fill="#ced4da" font-size="11.5">→ 메뉴 (⋮) → 홈 화면에 추가</text>
+  <text x="72" y="1250" fill="#868e96" font-size="10.5">또는 하단 '설치' 배너 탭</text>
+
+  <!-- iPhone -->
+  <rect x="432" y="1175" width="316" height="80" rx="14" fill="rgba(255,255,255,0.08)"/>
+  <text x="452" y="1200" fill="#74c0fc" font-size="13.5" font-weight="bold">🍎  iPhone (사파리 필수)</text>
+  <text x="452" y="1219" fill="#ced4da" font-size="11.5">사파리로 사이트 접속</text>
+  <text x="452" y="1236" fill="#ced4da" font-size="11.5">→ 공유 버튼 (□↑) 탭</text>
+  <text x="452" y="1250" fill="#ced4da" font-size="11.5">→ 홈 화면에 추가 → 추가</text>
+
+  <!-- ████████████████████████████████████ -->
+  <!--           FOOTER  (1285 – 1380)      -->
+  <!-- ████████████████████████████████████ -->
+  <rect x="0" y="1285" width="800" height="95" fill="url(#blueGrad)"/>
+  <circle cx="720" cy="1295" r="90" fill="rgba(255,255,255,0.05)"/>
+  <circle cx="80"  cy="1370" r="65" fill="rgba(255,255,255,0.05)"/>
+
+  <text x="400" y="1325" text-anchor="middle" fill="white" font-size="26" font-weight="bold" letter-spacing="0.5">timebank-mocha.vercel.app</text>
+  <text x="400" y="1352" text-anchor="middle" fill="rgba(255,255,255,0.75)" font-size="12.5">광주광역시 서구 주민자치 타임뱅크  ·  이웃과 시간을 나눠요</text>
+  <text x="400" y="1373" text-anchor="middle" fill="rgba(255,255,255,0.45)" font-size="10">TimePay v2.0  ·  누구나 나눌 무엇이 있습니다</text>
+</svg>
