@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { formatTC, formatDate, maskName } from '@/lib/utils'
 import {
   Wallet, TrendingUp, TrendingDown, ClipboardList, PlusCircle,
-  ArrowRight, CalendarDays, ChevronRight, Footprints,
+  ArrowRight, CalendarDays, ChevronRight, Footprints, Download,
 } from 'lucide-react'
 
 const SERVICE_LABEL: Record<string, string> = {
@@ -68,6 +68,22 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-bold">안녕하세요, {member.name}님 👋</h1>
         <p className="text-muted-foreground text-sm mt-1">{member.dong} 타임뱅크</p>
       </div>
+
+      {/* 안드로이드 앱 다운로드 배너 */}
+      <a
+        href="/timepay.apk"
+        download="TimePay.apk"
+        className="flex items-center gap-4 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 px-5 py-4 text-white shadow-md hover:opacity-95 active:opacity-90 transition-opacity"
+      >
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20">
+          <Download className="h-6 w-6 text-white" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-base font-bold leading-tight">안드로이드용 만보기 앱 다운로드</p>
+          <p className="text-xs text-green-100 mt-0.5">TimePay APK · 백그라운드 자동 만보기 지원</p>
+        </div>
+        <Download className="h-5 w-5 text-green-200 shrink-0" />
+      </a>
 
       {/* TP 지갑 카드 */}
       <Card className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-0">
