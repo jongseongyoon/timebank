@@ -8,7 +8,7 @@ import {
   Bell, LogOut, User, Menu, X, Coins,
   LayoutDashboard, Wallet, ArrowLeftRight, ClipboardList,
   PlusCircle, ListChecks, Search, Footprints, MessageSquare,
-  QrCode, ScanLine,
+  QrCode, ScanLine, Download,
 } from 'lucide-react'
 
 const navItems = [
@@ -61,6 +61,18 @@ export function Header() {
           >
             <Bell className="h-5 w-5" />
           </Link>
+
+          {/* APK 다운로드 버튼 */}
+          <a
+            href="/timepay.apk"
+            download="TimePay.apk"
+            className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-green-500 hover:bg-green-600 active:bg-green-700 transition-colors text-white text-[11px] font-semibold"
+            aria-label="안드로이드 앱 다운로드"
+            title="안드로이드용 만보기 앱 다운로드"
+          >
+            <Download className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">APK</span>
+          </a>
 
           {/* 구분선 */}
           <div className="w-px h-6 bg-gray-200 mx-1" />

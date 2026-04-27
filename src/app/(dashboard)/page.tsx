@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button'
 import { formatTC, formatDate, maskName } from '@/lib/utils'
 import {
   Wallet, TrendingUp, TrendingDown, ClipboardList, PlusCircle,
-  ArrowRight, CalendarDays, ChevronRight, Footprints, Download,
+  ArrowRight, ChevronRight,
 } from 'lucide-react'
+import { WalkCard } from '@/components/layout/walk-card'
 
 const SERVICE_LABEL: Record<string, string> = {
   TRANSPORT: '이동지원', SHOPPING: '장보기', COMPANION: '말벗',
@@ -69,22 +70,6 @@ export default async function DashboardPage() {
         <p className="text-muted-foreground text-sm mt-1">{member.dong} 타임뱅크</p>
       </div>
 
-      {/* 안드로이드 앱 다운로드 배너 */}
-      <a
-        href="/timepay.apk"
-        download="TimePay.apk"
-        className="flex items-center gap-4 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-600 px-5 py-4 text-white shadow-md hover:opacity-95 active:opacity-90 transition-opacity"
-      >
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white/20">
-          <Download className="h-6 w-6 text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-base font-bold leading-tight">안드로이드용 만보기 앱 다운로드</p>
-          <p className="text-xs text-green-100 mt-0.5">TimePay APK · 백그라운드 자동 만보기 지원</p>
-        </div>
-        <Download className="h-5 w-5 text-green-200 shrink-0" />
-      </a>
-
       {/* TP 지갑 카드 */}
       <Card className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-0">
         <CardContent className="pt-5 pb-5">
@@ -119,36 +104,11 @@ export default async function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* 만보기 카드 */}
-      <Link href="/walk">
-        <Card className="bg-gradient-to-r from-emerald-500 to-green-600 text-white border-0 hover:opacity-95 transition-opacity cursor-pointer">
-          <CardContent className="pt-4 pb-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <Footprints className="h-8 w-8 text-green-100" />
-                <div>
-                  <p className="text-green-100 text-xs">오늘의 만보기</p>
-                  <p className="text-2xl font-bold">
-                    {(walkRecord?.steps ?? 0).toLocaleString()}
-                    <span className="text-sm font-normal text-green-200 ml-1">/ 10,000보</span>
-                  </p>
-                  {walkRecord?.rewarded && (
-                    <p className="text-xs text-green-200 mt-0.5">✅ 0.5 TP 적립 완료</p>
-                  )}
-                </div>
-              </div>
-              <ChevronRight className="h-5 w-5 text-green-200" />
-            </div>
-            {/* 진행바 */}
-            <div className="mt-3 bg-green-400/30 rounded-full h-2">
-              <div
-                className="bg-white rounded-full h-2 transition-all"
-                style={{ width: `${Math.min((walkRecord?.steps ?? 0) / 100, 100)}%` }}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      </Link>
+      {/* 만보기 카드 — APK일 때 네이티브에서 실시간 읽기 */}
+      <WalkCard
+        serverSteps={walkRecord?.steps ?? 0}
+        rewarded={walkRecord?.rewarded ?? false}
+      />
 
       {/* 빠른 실행 */}
       <div className="grid grid-cols-2 gap-3">
