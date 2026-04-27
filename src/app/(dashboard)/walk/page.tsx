@@ -36,53 +36,22 @@ function isTrackingHour(): boolean {
   return afterStart && beforeStop
 }
 
-export default function WalkPage() {
-  const [loading, setLoading] = useState(true)
-  const [todaySteps, setTodaySteps] = useState(0)
-  const [rewarded, setRewarded] = useState(false)
-  const [justRewarded, setJustRewarded] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [permError, setPermError] = useState('')
+// ═══════════════════════════════════════════════════════
+// APK 전용: 네이티브 서비스 걸음 수 폴링 + 서버 동기화
+// ═══════════════════════════════════════════════════════
+function useNativeStepSync(serverSteps: number, onSynced: (steps: number, rewarded: boolean, rewardedNow: boolean) => void) {
+  const [nativeSteps, setNativeSteps] = useState(serverSteps)
+  const [inWindow, setInWindow] = useState(isTrackingHour())
+  const serverStepsRef = useRef(serverSteps)
 
-  const [sensorMode, setSensorMode] = useState<'none' | 'native' | 'generic' | 'devicemotion'>('none')
-  const [sensorActive, setSensorActive] = useState(false)
-  const [debugMag, setDebugMag] = useState(0)
-  const [eventCount, setEventCount] = useState(0)
-  const [autoStatus, setAutoStatus] = useState<'waiting' | 'active' | 'stopped'>('waiting')
+  useEffect(() => { serverStepsRef.current = serverSteps }, [serverSteps])
 
-  const lastMagRef = useRef(0)
-  const risingRef = useRef(false)
-  const lastStepTimeRef = useRef(0)
-  const sessionStepsRef = useRef(0)
-  const todayStepsRef = useRef(0)
-  const motionHandlerRef = useRef<((e: DeviceMotionEvent) => void) | null>(null)
-  const sensorRef = useRef<any>(null)
-  const nativeListenerRef = useRef<any>(null)
-  const eventCountRef = useRef(0)
-  const baselineRef = useRef(9.81)
-  const baselineInitRef = useRef(false)
-  const trackingRef = useRef(false)
-
-  // ── 서버에서 오늘 걸음 수 로드
-  useEffect(() => {
-    fetch('/api/walk/today')
-      .then(r => r.json())
-      .then(d => {
-        const s = d.steps ?? 0
-        setTodaySteps(s)
-        todayStepsRef.current = s
-        setRewarded(d.rewarded ?? false)
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
-  }, [])
-
-  // ── 네이티브 APK: pending_save 확인 후 서버 동기화
   useEffect(() => {
     if (!isCapacitorNative()) return
     const plugin = getStepPlugin()
     if (!plugin) return
 
+    // pending_save 서버 동기화 (앱 열릴 때 1회)
     async function syncPending() {
       try {
         const { pending, steps, date } = await plugin.getPendingSave()
@@ -96,19 +65,52 @@ export default function WalkPage() {
         })
         if (res.ok) {
           const d = await res.json()
-          setTodaySteps(d.steps)
-          todayStepsRef.current = d.steps
-          setRewarded(d.rewarded)
-          if (d.rewardedNow) setJustRewarded(true)
+          onSynced(d.steps, d.rewarded, !!d.rewardedNow)
           await plugin.markSaved()
         }
       } catch {}
     }
-
     syncPending()
-  }, [loading])
 
-  // ── 걸음 감지 (웹 센서용)
+    // SharedPreferences에서 걸음 수 폴링 (5초마다)
+    async function poll() {
+      try {
+        const { steps } = await plugin.getTodaySteps()
+        setNativeSteps(steps ?? 0)
+      } catch {}
+      setInWindow(isTrackingHour())
+    }
+    poll()
+    const timer = setInterval(poll, 5000)
+    return () => clearInterval(timer)
+  }, [])
+
+  // 최댓값: 서버 저장 값 vs 네이티브 실시간 값
+  const displaySteps = Math.max(serverSteps, nativeSteps)
+  return { displaySteps, inWindow }
+}
+
+// ═══════════════════════════════════════════════════════
+// 웹 전용: Generic Sensor → DeviceMotion 자동 측정
+// ═══════════════════════════════════════════════════════
+function useWebSensorTracking(enabled: boolean, onStep: () => void) {
+  const [sensorMode, setSensorMode] = useState<'none' | 'generic' | 'devicemotion'>('none')
+  const [sensorActive, setSensorActive] = useState(false)
+  const [debugMag, setDebugMag] = useState(0)
+  const [eventCount, setEventCount] = useState(0)
+  const [tracking, setTracking] = useState(false)
+  const [permError, setPermError] = useState('')
+
+  const lastMagRef = useRef(0)
+  const risingRef = useRef(false)
+  const lastStepTimeRef = useRef(0)
+  const motionHandlerRef = useRef<((e: DeviceMotionEvent) => void) | null>(null)
+  const sensorRef = useRef<any>(null)
+  const eventCountRef = useRef(0)
+  const baselineRef = useRef(9.81)
+  const baselineInitRef = useRef(false)
+  const trackingRef = useRef(false)
+
   function processMag(mag: number, stepDelta: number) {
     eventCountRef.current += 1
     if (eventCountRef.current % 10 === 0) {
@@ -127,8 +129,7 @@ export default function WalkPage() {
       if (lastMagRef.current > baselineRef.current + stepDelta) {
         const now = Date.now()
         if (now - lastStepTimeRef.current > COOLDOWN_MS) {
-          sessionStepsRef.current += 1
-          setTodaySteps(todayStepsRef.current + sessionStepsRef.current)
+          onStep()
           lastStepTimeRef.current = now
         }
       }
@@ -137,7 +138,6 @@ export default function WalkPage() {
     lastMagRef.current = mag
   }
 
-  // ── [방식 1] Generic Sensor API (우선 시도)
   async function tryGenericSensor(): Promise<boolean> {
     if (typeof window === 'undefined' || !('Accelerometer' in window)) return false
     try {
@@ -164,7 +164,6 @@ export default function WalkPage() {
     }
   }
 
-  // ── [방식 2] DeviceMotionEvent
   function tryDeviceMotion() {
     function handler(e: DeviceMotionEvent) {
       const purAcc = e.acceleration
@@ -189,52 +188,23 @@ export default function WalkPage() {
     setSensorMode('devicemotion')
   }
 
-  // ── [방식 3] Capacitor 네이티브 (폴백)
-  async function tryNativeStepCounter(): Promise<boolean> {
-    if (!isCapacitorNative()) return false
-    const plugin = getStepPlugin()
-    if (!plugin) return false
-    try {
-      const { available } = await plugin.isAvailable()
-      if (!available) return false
-      if (typeof plugin.requestPermission === 'function') {
-        const { granted } = await plugin.requestPermission()
-        if (!granted) return false
-      }
-      await plugin.start()
-      nativeListenerRef.current = await plugin.addListener('stepUpdate', (data: { steps: number }) => {
-        sessionStepsRef.current = data.steps
-        setTodaySteps(todayStepsRef.current + data.steps)
-        setSensorActive(true)
-        eventCountRef.current += 1
-        setEventCount(eventCountRef.current)
-      })
-      setSensorMode('native')
-      setSensorActive(false)
-      return true
-    } catch {
-      return false
-    }
+  function stopSensors() {
+    if (sensorRef.current) { try { sensorRef.current.stop() } catch {} sensorRef.current = null }
+    if (motionHandlerRef.current) { window.removeEventListener('devicemotion', motionHandlerRef.current); motionHandlerRef.current = null }
+    setSensorMode('none')
+    setSensorActive(false)
+    trackingRef.current = false
+    setTracking(false)
   }
 
-  // ── 자동 측정 시작
-  const startTracking = useCallback(async () => {
+  const startSensors = useCallback(async () => {
     if (trackingRef.current) return
-
-    // iOS DeviceMotion 권한 요청
     if (typeof DeviceMotionEvent !== 'undefined' && typeof (DeviceMotionEvent as any).requestPermission === 'function') {
       try {
         const result = await (DeviceMotionEvent as any).requestPermission()
-        if (result !== 'granted') {
-          setPermError('동작 센서 권한이 필요합니다. iOS 설정 > Safari > 모션 및 방향을 허용해 주세요.')
-          return
-        }
-      } catch {
-        setPermError('센서 권한 요청에 실패했습니다.')
-        return
-      }
+        if (result !== 'granted') { setPermError('동작 센서 권한이 필요합니다. iOS 설정 > Safari > 모션 및 방향을 허용해 주세요.'); return }
+      } catch { setPermError('센서 권한 요청에 실패했습니다.'); return }
     }
-
     setPermError('')
     setSensorActive(false)
     setSensorMode('none')
@@ -244,122 +214,139 @@ export default function WalkPage() {
     baselineRef.current = 9.81
     lastMagRef.current = 0
     risingRef.current = false
-    sessionStepsRef.current = 0
     trackingRef.current = true
-    setAutoStatus('active')
+    setTracking(true)
 
-    // 우선순위: Generic Sensor → DeviceMotion → 네이티브(APK)
+    // 우선순위: Generic Sensor → DeviceMotion
     const genericOk = await tryGenericSensor()
-    if (!genericOk) {
-      const nativeOk = await tryNativeStepCounter()
-      if (!nativeOk) tryDeviceMotion()
-    }
+    if (!genericOk) tryDeviceMotion()
   }, [])
 
-  // ── 자동 측정 중지 + 저장
-  const stopTracking = useCallback(async () => {
-    if (!trackingRef.current) return
-    trackingRef.current = false
-    setAutoStatus('stopped')
+  // 시각 기반 자동 시작/중지
+  useEffect(() => {
+    if (!enabled) return
+    function checkTime() {
+      if (isTrackingHour()) {
+        if (!trackingRef.current) startSensors()
+      } else {
+        if (trackingRef.current) stopSensors()
+      }
+    }
+    checkTime()
+    const timer = setInterval(checkTime, 30_000)
+    return () => {
+      clearInterval(timer)
+      stopSensors()
+    }
+  }, [enabled, startSensors])
 
-    if (nativeListenerRef.current) {
-      try { await nativeListenerRef.current.remove() } catch {}
-      nativeListenerRef.current = null
-    }
-    const plugin = getStepPlugin()
-    if (plugin && isCapacitorNative()) {
-      try { await plugin.stop() } catch {}
-    }
-    if (sensorRef.current) {
-      try { sensorRef.current.stop() } catch {}
-      sensorRef.current = null
-    }
-    if (motionHandlerRef.current) {
-      window.removeEventListener('devicemotion', motionHandlerRef.current)
-      motionHandlerRef.current = null
-    }
-    setSensorMode('none')
-    setSensorActive(false)
+  return { tracking, sensorMode, sensorActive, debugMag, eventCount, permError }
+}
 
-    // 걸음 수 저장
-    const total = todayStepsRef.current + sessionStepsRef.current
-    if (total > todayStepsRef.current) {
-      setSaving(true)
-      try {
-        const res = await fetch('/api/walk/steps', {
+// ═══════════════════════════════════════════════════════
+// 메인 페이지
+// ═══════════════════════════════════════════════════════
+export default function WalkPage() {
+  const [loading, setLoading] = useState(true)
+  const [serverSteps, setServerSteps] = useState(0)
+  const [rewarded, setRewarded] = useState(false)
+  const [justRewarded, setJustRewarded] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [webSessionSteps, setWebSessionSteps] = useState(0)
+  const webSessionRef = useRef(0)
+  const serverStepsRef = useRef(0)
+
+  const isNative = isCapacitorNative()
+
+  // 서버에서 오늘 걸음 수 로드
+  useEffect(() => {
+    fetch('/api/walk/today')
+      .then(r => r.json())
+      .then(d => {
+        const s = d.steps ?? 0
+        setServerSteps(s)
+        serverStepsRef.current = s
+        setRewarded(d.rewarded ?? false)
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
+  }, [])
+
+  // APK: 네이티브 서비스 걸음 수 폴링
+  const { displaySteps: nativeDisplaySteps, inWindow } = useNativeStepSync(
+    serverSteps,
+    (steps, rew, rewNow) => {
+      setServerSteps(steps)
+      serverStepsRef.current = steps
+      setRewarded(rew)
+      if (rewNow) setJustRewarded(true)
+    }
+  )
+
+  // 웹: 센서 기반 자동 측정 (APK가 아닐 때만)
+  const onWebStep = useCallback(() => {
+    webSessionRef.current += 1
+    setWebSessionSteps(webSessionRef.current)
+  }, [])
+
+  const { tracking: webTracking, sensorMode, sensorActive, debugMag, eventCount, permError } =
+    useWebSensorTracking(!isNative && !loading, onWebStep)
+
+  // 웹: 측정 중지 시 서버 저장
+  const prevWebTracking = useRef(webTracking)
+  useEffect(() => {
+    if (prevWebTracking.current && !webTracking) {
+      // 중지됨 → 저장
+      const total = serverStepsRef.current + webSessionRef.current
+      if (total > serverStepsRef.current && webSessionRef.current > 0) {
+        setSaving(true)
+        fetch('/api/walk/steps', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ steps: total }),
         })
-        const d = await res.json()
-        if (res.ok) {
-          setTodaySteps(d.steps)
-          todayStepsRef.current = d.steps
-          setRewarded(d.rewarded)
-          if (d.rewardedNow) setJustRewarded(true)
-          sessionStepsRef.current = 0
-        }
-      } finally {
-        setSaving(false)
+          .then(r => r.json())
+          .then(d => {
+            if (d.steps) {
+              setServerSteps(d.steps)
+              serverStepsRef.current = d.steps
+              setRewarded(d.rewarded)
+              if (d.rewardedNow) setJustRewarded(true)
+              webSessionRef.current = 0
+              setWebSessionSteps(0)
+            }
+          })
+          .finally(() => setSaving(false))
       }
     }
-  }, [])
+    prevWebTracking.current = webTracking
+  }, [webTracking])
 
-  // ── 시각 기반 자동 시작/중지 스케줄러
-  useEffect(() => {
-    if (loading) return
-
-    // APK는 네이티브 서비스가 처리하므로 웹 센서 자동화 건너뜀
-    if (isCapacitorNative()) return
-
-    function checkTime() {
-      if (isTrackingHour()) {
-        if (!trackingRef.current) startTracking()
-      } else {
-        if (trackingRef.current) stopTracking()
-        else setAutoStatus('stopped')
-      }
-    }
-
-    checkTime()
-    const timer = setInterval(checkTime, 30_000) // 30초마다 확인
-    return () => clearInterval(timer)
-  }, [loading, startTracking, stopTracking])
-
-  // ── 자정 자동 리셋 (todaySteps → 0)
+  // 자정 리셋
   useEffect(() => {
     if (loading) return
     const now = new Date()
     const midnight = new Date(now)
     midnight.setHours(24, 0, 0, 0)
-    const msUntilMidnight = midnight.getTime() - now.getTime()
     const timer = setTimeout(() => {
-      setTodaySteps(0)
-      todayStepsRef.current = 0
-      sessionStepsRef.current = 0
+      setServerSteps(0)
+      serverStepsRef.current = 0
+      webSessionRef.current = 0
+      setWebSessionSteps(0)
       setRewarded(false)
       setJustRewarded(false)
-    }, msUntilMidnight)
+    }, midnight.getTime() - now.getTime())
     return () => clearTimeout(timer)
   }, [loading])
 
-  // ── 언마운트 정리
-  useEffect(() => {
-    return () => {
-      if (nativeListenerRef.current) { try { nativeListenerRef.current.remove() } catch {} }
-      if (sensorRef.current) { try { sensorRef.current.stop() } catch {} }
-      if (motionHandlerRef.current) window.removeEventListener('devicemotion', motionHandlerRef.current)
-    }
-  }, [])
-
-  const totalSteps = todaySteps
+  // 표시용 계산
+  const totalSteps = isNative ? nativeDisplaySteps : serverSteps + webSessionSteps
   const progress = Math.min(totalSteps / GOAL, 1)
   const circumference = 2 * Math.PI * 90
   const pct = Math.round(progress * 100)
-  const isActive = trackingRef.current
+  const isActive = isNative ? inWindow : webTracking
 
   const SENSOR_LABEL: Record<string, string> = {
-    native: '📱 네이티브 센서 (APK)',
     generic: '🔬 Generic Sensor',
     devicemotion: '📡 DeviceMotion',
     none: '',
@@ -396,7 +383,8 @@ export default function WalkPage() {
             />
           </svg>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            {rewarded ? <Trophy className="h-8 w-8 text-yellow-500 mb-1" />
+            {rewarded
+              ? <Trophy className="h-8 w-8 text-yellow-500 mb-1" />
               : <Footprints className={`h-8 w-8 mb-1 ${isActive ? 'text-amber-500 animate-pulse' : 'text-blue-600'}`} />
             }
             <p className="text-4xl font-bold tabular-nums">{totalSteps.toLocaleString()}</p>
@@ -406,24 +394,30 @@ export default function WalkPage() {
         </div>
       </div>
 
-      {/* 자동 측정 상태 배너 */}
+      {/* 측정 상태 배너 */}
       <div className={`rounded-xl px-4 py-3 border text-sm text-center font-medium
         ${isActive
           ? 'bg-amber-50 border-amber-200 text-amber-700'
-          : autoStatus === 'stopped'
-            ? 'bg-gray-50 border-gray-200 text-gray-500'
-            : 'bg-blue-50 border-blue-200 text-blue-700'
+          : 'bg-gray-50 border-gray-200 text-gray-500'
         }`}>
-        {isActive
-          ? '🚶 자동 측정 중 (00:01 ~ 23:59)'
-          : autoStatus === 'stopped'
-            ? saving ? '💾 저장 중...' : '⏸ 오늘 측정 완료 (자정 자동 리셋)'
-            : '⏳ 00:01 자동 시작 대기 중'
+        {saving
+          ? '💾 저장 중...'
+          : isActive
+            ? '🚶 자동 측정 중 (00:01 ~ 23:59)'
+            : '⏸ 자정(00:01) 이후 자동 시작됩니다'
         }
       </div>
 
-      {/* 센서 상태 패널 (측정 중일 때만) */}
-      {isActive && (
+      {/* APK: 백그라운드 서비스 안내 */}
+      {isNative && isActive && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-xs text-blue-700 text-center">
+          📱 앱이 꺼져도 백그라운드에서 자동 측정됩니다<br />
+          <span className="text-blue-500">알림 바의 "TimePay 만보기"가 실행 중임을 나타냅니다</span>
+        </div>
+      )}
+
+      {/* 웹: 센서 상태 패널 */}
+      {!isNative && isActive && (
         <div className={`rounded-xl px-4 py-3 border text-xs ${sensorActive ? 'bg-green-50 border-green-200 text-green-800' : 'bg-gray-50 border-gray-200 text-gray-500'}`}>
           <div className="flex items-center gap-2 mb-1">
             {sensorActive
@@ -446,20 +440,9 @@ export default function WalkPage() {
               </span>
             )}
           </div>
-          {sensorActive && sensorMode !== 'native' && (
-            <p className="pl-6 text-green-700">가속도: <strong>{debugMag} m/s²</strong> · 수신: {eventCount}회</p>
+          {sensorActive && (
+            <p className="pl-6 text-green-700">가속도: <strong>{debugMag} m/s²</strong> · 수신: {eventCount}회 · 세션: {webSessionSteps}보</p>
           )}
-          {sensorActive && sensorMode === 'native' && (
-            <p className="pl-6 text-green-700">이벤트: {eventCount}회</p>
-          )}
-        </div>
-      )}
-
-      {/* APK: 백그라운드 서비스 안내 */}
-      {isCapacitorNative() && (
-        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-xs text-blue-700 text-center">
-          📱 앱이 꺼져도 백그라운드에서 자동 측정됩니다<br />
-          <span className="text-blue-500">알림 바의 "TimePay 만보기"가 실행 중임을 나타냅니다</span>
         </div>
       )}
 
