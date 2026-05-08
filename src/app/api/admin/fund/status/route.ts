@@ -10,12 +10,12 @@ export async function GET() {
   }
 
   const [tcAgg, fundAgg] = await Promise.all([
-    prisma.member.aggregate({ _sum: { tcBalance: true } }),
-    prisma.fundTransaction.aggregate({ _sum: { tcEquivalent: true, cashAmount: true } }),
+    prisma.member.aggregate({ _sum: { tpBalance: true } }),
+    prisma.fundTransaction.aggregate({ _sum: { tpEquivalent: true, cashAmount: true } }),
   ])
 
-  const totalTC = Number(tcAgg._sum.tcBalance ?? 0)
-  const fundTC = Number(fundAgg._sum.tcEquivalent ?? 0)
+  const totalTC = Number(tcAgg._sum.tpBalance ?? 0)
+  const fundTC = Number(fundAgg._sum.tpEquivalent ?? 0)
   const fundCash = Number(fundAgg._sum.cashAmount ?? 0)
   const reserveRatio = totalTC > 0 ? Math.round((fundTC / totalTC) * 100) : 0
 

@@ -40,7 +40,7 @@ export default function AdminTCPage() {
   const [memberSearch, setMemberSearch] = useState('')
   const [selectedMember, setSelectedMember] = useState<any>(null)
   const [issueForm, setIssueForm] = useState({
-    tcAmount: '', txType: 'FREE_ALLOCATION', note: '', durationMinutes: '0',
+    tpAmount: '', txType: 'FREE_ALLOCATION', note: '', durationMinutes: '0',
   })
   const [issuing, setIssuing] = useState(false)
   const [issueResult, setIssueResult] = useState<{ ok: boolean; msg: string } | null>(null)
@@ -78,7 +78,7 @@ export default function AdminTCPage() {
   )
 
   async function handleIssue() {
-    if (!selectedMember || !issueForm.tcAmount || !issueForm.note) return
+    if (!selectedMember || !issueForm.tpAmount || !issueForm.note) return
     setIssuing(true)
     setIssueResult(null)
     const res = await fetch('/api/admin/tc', {
@@ -86,15 +86,15 @@ export default function AdminTCPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         memberId: selectedMember.id,
-        tcAmount: Number(issueForm.tcAmount),
+        tpAmount: Number(issueForm.tpAmount),
         txType: issueForm.txType,
         note: issueForm.note,
         durationMinutes: Number(issueForm.durationMinutes),
       }),
     })
     if (res.ok) {
-      setIssueResult({ ok: true, msg: `${selectedMember.name}에게 ${issueForm.tcAmount} TC 발행 완료` })
-      setIssueForm({ tcAmount: '', txType: 'FREE_ALLOCATION', note: '', durationMinutes: '0' })
+      setIssueResult({ ok: true, msg: `${selectedMember.name}에게 ${issueForm.tpAmount} TP 발행 완료` })
+      setIssueForm({ tpAmount: '', txType: 'FREE_ALLOCATION', note: '', durationMinutes: '0' })
       setSelectedMember(null)
     } else {
       const d = await res.json()
@@ -122,7 +122,7 @@ export default function AdminTCPage() {
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Coins className="h-6 w-6 text-amber-500" />
-          TC 관리
+          TP 관리
         </h1>
         <p className="text-sm text-muted-foreground mt-1">TC 발행 및 거래 수정</p>
       </div>
@@ -133,7 +133,7 @@ export default function AdminTCPage() {
           <TabsTrigger value="correct">거래 수정</TabsTrigger>
         </TabsList>
 
-        {/* ── TC 발행 탭 ── */}
+        {/* ── TP 발행 탭 ── */}
         <TabsContent value="issue" className="space-y-4 mt-4">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
@@ -163,7 +163,7 @@ export default function AdminTCPage() {
                     >
                       <span className="font-medium">{m.name}</span>
                       <span className="text-xs ml-2 opacity-70">{m.phone}</span>
-                      <span className="text-xs ml-2 opacity-70">잔액 {Number(m.tcBalance).toFixed(1)} TC</span>
+                      <span className="text-xs ml-2 opacity-70">잔액 {Number(m.tpBalance).toFixed(1)} TP</span>
                     </button>
                   ))}
                 </div>
@@ -188,21 +188,21 @@ export default function AdminTCPage() {
                   >
                     <option value="FREE_ALLOCATION">무상배분 (취약계층 월 배분)</option>
                     <option value="COMMUNITY_BONUS">공동체 보너스</option>
-                    <option value="WAGE_SUPPLEMENT">임금 보전 TC</option>
+                    <option value="WAGE_SUPPLEMENT">임금 보전 TP</option>
                     <option value="COMMUNITY_FUND_GIFT">기금 증여</option>
                   </select>
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="tcAmount">TC 수량 *</Label>
+                  <Label htmlFor="tpAmount">TC 수량 *</Label>
                   <Input
-                    id="tcAmount"
+                    id="tpAmount"
                     type="number"
                     min="0.1"
                     step="0.5"
                     placeholder="예: 10"
-                    value={issueForm.tcAmount}
-                    onChange={e => setIssueForm(f => ({ ...f, tcAmount: e.target.value }))}
+                    value={issueForm.tpAmount}
+                    onChange={e => setIssueForm(f => ({ ...f, tpAmount: e.target.value }))}
                   />
                 </div>
 
@@ -241,10 +241,10 @@ export default function AdminTCPage() {
                 <Button
                   className="w-full"
                   onClick={handleIssue}
-                  disabled={issuing || !selectedMember || !issueForm.tcAmount || !issueForm.note}
+                  disabled={issuing || !selectedMember || !issueForm.tpAmount || !issueForm.note}
                 >
                   {issuing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-                  TC 발행하기
+                  TP 발행하기
                 </Button>
               </CardContent>
             </Card>
@@ -298,7 +298,7 @@ export default function AdminTCPage() {
                             {STATUS_LABEL[tx.status]}
                           </span>
                           <span className="text-sm font-bold text-amber-600">
-                            {Number(tx.tcAmount).toFixed(2)} TC
+                            {Number(tx.tpAmount).toFixed(2)} TP
                           </span>
                         </div>
                         <div className="text-xs text-muted-foreground">

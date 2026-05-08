@@ -24,8 +24,8 @@ export async function POST(req: NextRequest) {
   const tx = await prisma.transaction.findUnique({
     where: { id: transactionId },
     include: {
-      provider: { select: { id: true, tcBalance: true } },
-      receiver: { select: { id: true, tcBalance: true } },
+      provider: { select: { id: true, tpBalance: true } },
+      receiver: { select: { id: true, tpBalance: true } },
     },
   })
 
@@ -44,9 +44,9 @@ export async function POST(req: NextRequest) {
   const durationMinutes = Math.max(1, Math.round(durationSeconds / 60))  // 최소 1분
 
   // TP 계산: 1 TP/시간 (분 단위 정밀 계산)
-  let tcAmount = Math.round((durationMinutes / 60) * 100) / 100
+  let tpAmount = Math.round((durationMinutes / 60) * 100) / 100
 
-  const receiverBalance = Number(tx.receiver!.tcBalance)
+  const receiverBalance = Number(tx.receiver!.tpBalance)
 
   // -3.0 TP 한도 체크: 수혜자 잔액이 한도 이하로 내려가지 않도록 제한
   const maxPayable = receiverBalance - MIN_BALANCE  // 수혜자가 지불 가능한 최대 TP
@@ -58,8 +58,8 @@ export async function POST(req: NextRequest) {
   }
 
   // 지불 가능 한도 내로 TP 제한
-  if (tcAmount > maxPayable) {
-    tcAmount = Math.round(maxPayable * 100) / 100
+  if (tpAmount > maxPayable) {
+    tpAmount = Math.round(maxPayable * 100) / 100
   }
 
   const [updated] = await prisma.$transaction([
@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
         endedAt,
         completedAt: endedAt,
         durationMinutes,
-        tcAmount,
+        tpAmount,
         baseRate: 1,
       },
     }),
@@ -78,16 +78,16 @@ export async function POST(req: NextRequest) {
     prisma.member.update({
       where: { id: tx.providerId! },
       data: {
-        tcBalance: { increment: tcAmount },
-        lifetimeEarned: { increment: tcAmount },
+        tpBalance: { increment: tpAmount },
+        lifetimeEarned: { increment: tpAmount },
       },
     }),
     // 수혜자 TP 차감
     prisma.member.update({
       where: { id: tx.receiverId! },
       data: {
-        tcBalance: { decrement: tcAmount },
-        lifetimeSpent: { increment: tcAmount },
+        tpBalance: { decrement: tpAmount },
+        lifetimeSpent: { increment: tpAmount },
       },
     }),
   ])
@@ -95,8 +95,8 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     transaction: updated,
     durationMinutes,
-    tcAmount,
+    tpAmount,
     durationSeconds,
-    wasLimited: tcAmount < Math.round((durationMinutes / 60) * 100) / 100,
+    wasLimited: tpAmount < Math.round((durationMinutes / 60) * 100) / 100,
   })
 }

@@ -11,21 +11,21 @@ export async function GET() {
 
   const members = await prisma.member.findMany({
     where: { status: 'ACTIVE' },
-    select: { dong: true, roles: true, tcBalance: true },
+    select: { dong: true, roles: true, tpBalance: true },
   })
 
-  const dongMap: Record<string, { members: number; providers: number; receivers: number; tcBalance: number }> = {}
+  const dongMap: Record<string, { members: number; providers: number; receivers: number; tpBalance: number }> = {}
 
   for (const m of members) {
-    if (!dongMap[m.dong]) dongMap[m.dong] = { members: 0, providers: 0, receivers: 0, tcBalance: 0 }
+    if (!dongMap[m.dong]) dongMap[m.dong] = { members: 0, providers: 0, receivers: 0, tpBalance: 0 }
     dongMap[m.dong].members += 1
-    dongMap[m.dong].tcBalance += Number(m.tcBalance)
+    dongMap[m.dong].tpBalance += Number(m.tpBalance)
     if (m.roles.includes('PROVIDER')) dongMap[m.dong].providers += 1
     if (m.roles.includes('RECEIVER')) dongMap[m.dong].receivers += 1
   }
 
   const data = Object.entries(dongMap)
-    .map(([dong, stats]) => ({ dong, ...stats, tcBalance: Math.round(stats.tcBalance * 100) / 100 }))
+    .map(([dong, stats]) => ({ dong, ...stats, tpBalance: Math.round(stats.tpBalance * 100) / 100 }))
     .sort((a, b) => b.members - a.members)
 
   return NextResponse.json({ data })

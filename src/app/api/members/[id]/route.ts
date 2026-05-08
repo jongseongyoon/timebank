@@ -23,10 +23,10 @@ export async function GET(_req: NextRequest, { params }: { params: { id: string 
       status: true,
       isVulnerable: true,
       isDisabled: true,
-      tcBalance: true,
+      tpBalance: true,
       lifetimeEarned: true,
       lifetimeSpent: true,
-      tcExpiresAt: true,
+      tpExpiresAt: true,
       createdAt: true,
     },
   })

@@ -17,15 +17,15 @@ interface Config {
 }
 
 const CONFIG_META: Record<string, { label: string; description: string; type: string }> = {
-  TC_RATE_BASE:         { label: '기본 TC 요율', description: '기본 서비스 TC/시간', type: 'number' },
-  TC_RATE_EDUCATION:    { label: '교육 TC 요율', description: '교육 서비스 TC/시간', type: 'number' },
-  TC_RATE_PROFESSIONAL: { label: '전문직 TC 요율', description: '전문직 서비스 TC/시간', type: 'number' },
-  TC_RATE_ORG:          { label: '단체 TC 요율', description: '자생단체 할인 요율', type: 'number' },
+  TC_RATE_BASE:         { label: '기본 TP 요율', description: '기본 서비스 TP/시간', type: 'number' },
+  TC_RATE_EDUCATION:    { label: '교육 TP 요율', description: '교육 서비스 TP/시간', type: 'number' },
+  TC_RATE_PROFESSIONAL: { label: '전문직 TP 요율', description: '전문직 서비스 TP/시간', type: 'number' },
+  TC_RATE_ORG:          { label: '단체 TP 요율', description: '자생단체 할인 요율', type: 'number' },
   RESERVE_RATIO_WARN:   { label: '준비금 경보선 (%)', description: '이하일 때 경고 표시', type: 'number' },
-  FREE_TC_MONTHLY:      { label: '취약계층 월 무상 TC', description: '매월 자동 지급 TC', type: 'number' },
-  TC_EXPIRY_YEARS:      { label: 'TC 만료 기간 (년)', description: '일반 회원 TC 유효 기간', type: 'number' },
-  TC_EXPIRY_SENIOR:     { label: '고령자 TC 만료 기간 (년)', description: '65세 이상 유효 기간', type: 'number' },
-  PRIVATE_MARKET_MIN_TC:{ label: '민간시장 최소 TC 잔액', description: '민간시장 거래 자격 기준', type: 'number' },
+  FREE_TC_MONTHLY:      { label: '취약계층 월 무상 TP', description: '매월 자동 지급 TP', type: 'number' },
+  TC_EXPIRY_YEARS:      { label: 'TC 만료 기간 (년)', description: '일반 회원 TP 유효 기간', type: 'number' },
+  TC_EXPIRY_SENIOR:     { label: '고령자 TP 만료 기간 (년)', description: '65세 이상 유효 기간', type: 'number' },
+  PRIVATE_MARKET_MIN_TC:{ label: '민간시장 최소 TP 잔액', description: '민간시장 거래 자격 기준', type: 'number' },
   MAX_DAILY_TX:         { label: '일일 최대 거래 건수', description: '1인당 하루 거래 한도', type: 'number' },
 }
 
@@ -183,9 +183,9 @@ export default function AdminSettingsPage() {
           <div className="text-xs text-muted-foreground bg-amber-50 border border-amber-200 rounded-md px-4 py-3">
             <p className="font-medium text-amber-800 mb-1">⚠ 설정 변경 시 주의사항</p>
             <ul className="space-y-0.5 text-amber-700">
-              <li>· TC 요율 변경은 신규 거래부터 적용되며 기존 거래에는 소급 적용되지 않습니다.</li>
+              <li>· TP 요율 변경은 신규 거래부터 적용되며 기존 거래에는 소급 적용되지 않습니다.</li>
               <li>· 준비금 경보선 변경은 즉시 반영됩니다.</li>
-              <li>· 취약계층 무상 TC는 다음 자동 지급 시점부터 적용됩니다.</li>
+              <li>· 취약계층 무상 TP는 다음 자동 지급 시점부터 적용됩니다.</li>
             </ul>
           </div>
         </>

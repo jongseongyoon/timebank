@@ -30,7 +30,7 @@ interface FundTx {
   id: string
   createdAt: string
   fundTxType: string
-  tcEquivalent: number
+  tpEquivalent: number
   cashAmount: number
   description: string
   approvedBy: string[]
@@ -63,7 +63,7 @@ export default function AdminFundPage() {
   const [submitting, setSubmitting] = useState(false)
   const [form, setForm] = useState({
     fundTxType: 'CONTRIBUTION',
-    tcEquivalent: '',
+    tpEquivalent: '',
     cashAmount: '',
     description: '',
     externalVendor: '',
@@ -93,7 +93,7 @@ export default function AdminFundPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         fundTxType: form.fundTxType,
-        tcEquivalent: Number(form.tcEquivalent),
+        tpEquivalent: Number(form.tpEquivalent),
         cashAmount: Number(form.cashAmount),
         description: form.description,
         externalVendor: form.externalVendor || null,
@@ -101,7 +101,7 @@ export default function AdminFundPage() {
     })
     if (res.ok) {
       setShowForm(false)
-      setForm({ fundTxType: 'CONTRIBUTION', tcEquivalent: '', cashAmount: '', description: '', externalVendor: '' })
+      setForm({ fundTxType: 'CONTRIBUTION', tpEquivalent: '', cashAmount: '', description: '', externalVendor: '' })
       fetchData()
     }
     setSubmitting(false)
@@ -128,13 +128,13 @@ export default function AdminFundPage() {
           <Card>
             <CardContent className="pt-4 pb-4 text-center">
               <p className="text-xs text-muted-foreground">TC 총 유통량</p>
-              <p className="text-xl font-bold text-blue-600">{status.totalTC.toFixed(1)} TC</p>
+              <p className="text-xl font-bold text-blue-600">{status.totalTC.toFixed(1)} TP</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-4 pb-4 text-center">
-              <p className="text-xs text-muted-foreground">기금 보유 TC</p>
-              <p className="text-xl font-bold text-indigo-600">{status.fundTC.toFixed(1)} TC</p>
+              <p className="text-xs text-muted-foreground">기금 보유 TP</p>
+              <p className="text-xl font-bold text-indigo-600">{status.fundTC.toFixed(1)} TP</p>
             </CardContent>
           </Card>
           <Card>
@@ -191,13 +191,13 @@ export default function AdminFundPage() {
               />
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              기금 보유 {status.fundTC.toFixed(1)} TC / 총 유통 {status.totalTC.toFixed(1)} TC
+              기금 보유 {status.fundTC.toFixed(1)} TP / 총 유통 {status.totalTC.toFixed(1)} TP
             </p>
           </CardContent>
         </Card>
       )}
 
-      {/* TC 채무 보증 현황 (광주서구청 지불보증) */}
+      {/* TP 채무 보증 현황 (광주서구청 지불보증) */}
       {coverage && (
         <Card className={coverage.coverageRatio < 50 ? 'border-orange-300' : 'border-green-200'}>
           <CardHeader className="pb-2">
@@ -205,19 +205,19 @@ export default function AdminFundPage() {
               {coverage.coverageRatio >= 80
                 ? <ShieldCheck className="h-4 w-4 text-green-500" />
                 : <ShieldAlert className="h-4 w-4 text-orange-500" />}
-              TC 채무 보증 현황 (광주서구청 지불보증)
+              TP 채무 보증 현황 (광주서구청 지불보증)
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             {/* 보증 비율 */}
             <div className="grid grid-cols-3 gap-3 text-center">
               <div className="bg-rose-50 rounded-lg p-3">
-                <p className="text-xs text-rose-600">총 미상환 TC 채무</p>
+                <p className="text-xs text-rose-600">총 미상환 TP 채무</p>
                 <p className="text-lg font-bold text-rose-700">{coverage.totalLiabilityTc.toFixed(1)}</p>
                 <p className="text-xs text-rose-500">TC (회원 잔액 합)</p>
               </div>
               <div className="bg-indigo-50 rounded-lg p-3">
-                <p className="text-xs text-indigo-600">장기저축 TC</p>
+                <p className="text-xs text-indigo-600">장기저축 TP</p>
                 <p className="text-lg font-bold text-indigo-700">{coverage.savingsTc.toFixed(1)}</p>
                 <p className="text-xs text-indigo-500">TC (미래 돌봄 예약)</p>
               </div>
@@ -237,9 +237,9 @@ export default function AdminFundPage() {
             {/* 보증 구조 설명 */}
             <div className="bg-slate-50 rounded-lg p-3 text-xs text-slate-600 space-y-1">
               <p className="font-medium text-slate-700">📋 지불보증 구조 (광주서구청 역할)</p>
-              <p>• 회원들이 적립한 TC ({coverage.totalLiabilityTc.toFixed(1)} TC)는 미래 돌봄서비스로 상환해야 할 채무</p>
+              <p>• 회원들이 적립한 TP ({coverage.totalLiabilityTc.toFixed(1)} TP)는 미래 돌봄서비스로 상환해야 할 채무</p>
               <p>• 기금은 회원 내 서비스 제공 불가 시 <strong>외부시장에서 구매</strong>하여 보증</p>
-              <p>• 기금 TC {coverage.totalFundTc.toFixed(1)} TC / 현금 {coverage.totalFundCash.toLocaleString('ko-KR')}원 보유</p>
+              <p>• 기금 TP {coverage.totalFundTc.toFixed(1)} TP / 현금 {coverage.totalFundCash.toLocaleString('ko-KR')}원 보유</p>
             </div>
 
             {/* 진행중 돌봄 패키지 */}
@@ -250,8 +250,8 @@ export default function AdminFundPage() {
                 </p>
                 <div className="space-y-1.5">
                   {coverage.activePackages.map((p: any) => {
-                    const used = Number(p.usedTcAmount)
-                    const total = Number(p.totalTcAmount)
+                    const used = Number(p.usedTpAmount)
+                    const total = Number(p.totalTpAmount)
                     const pct = total > 0 ? Math.round((used / total) * 100) : 0
                     return (
                       <div key={p.id} className="bg-white border rounded-md px-3 py-2">
@@ -263,7 +263,7 @@ export default function AdminFundPage() {
                               {p.organization && ` · ${p.organization.name}`}
                             </p>
                           </div>
-                          <span className="text-xs font-bold text-amber-600">{used.toFixed(1)}/{total.toFixed(0)} TC</span>
+                          <span className="text-xs font-bold text-amber-600">{used.toFixed(1)}/{total.toFixed(0)} TP</span>
                         </div>
                         <div className="h-1.5 bg-gray-100 rounded-full mt-1.5 overflow-hidden">
                           <div className="h-full bg-green-400 rounded-full" style={{ width: `${Math.min(pct, 100)}%` }} />
@@ -307,8 +307,8 @@ export default function AdminFundPage() {
                     min={0}
                     step={0.01}
                     placeholder="0.00"
-                    value={form.tcEquivalent}
-                    onChange={(e) => setForm((p) => ({ ...p, tcEquivalent: e.target.value }))}
+                    value={form.tpEquivalent}
+                    onChange={(e) => setForm((p) => ({ ...p, tpEquivalent: e.target.value }))}
                     className="h-9"
                     required
                   />
@@ -390,7 +390,7 @@ export default function AdminFundPage() {
                     )}
                   </div>
                   <div className="text-right shrink-0">
-                    <p className="font-bold text-blue-600">{Number(tx.tcEquivalent).toFixed(1)} TC</p>
+                    <p className="font-bold text-blue-600">{Number(tx.tpEquivalent).toFixed(1)} TP</p>
                     <p className="text-xs text-muted-foreground">{Number(tx.cashAmount).toLocaleString('ko-KR')}원</p>
                   </div>
                 </div>

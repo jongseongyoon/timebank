@@ -8,7 +8,7 @@ type UnratedTx = {
   id: string
   counterpartName: string
   isProvider: boolean
-  tcAmount: number
+  tpAmount: number
   completedAt: string
 }
 
@@ -53,7 +53,7 @@ export function RatingModal({ memberId }: { memberId: string }) {
               ? (unrated.receiver?.name ?? '상대방')
               : (unrated.provider?.name ?? '상대방'),
             isProvider,
-            tcAmount: Number(unrated.tcAmount),
+            tpAmount: Number(unrated.tpAmount),
             completedAt: unrated.completedAt ?? unrated.createdAt,
           })
         }
@@ -106,7 +106,7 @@ export function RatingModal({ memberId }: { memberId: string }) {
             {/* TP 정보 */}
             <div className="bg-blue-50 rounded-xl py-3 text-center">
               <p className="text-sm text-blue-600 font-medium">
-                {pending.isProvider ? '제공한' : '받은'} TP: {pending.tcAmount.toFixed(2)} TP
+                {pending.isProvider ? '제공한' : '받은'} TP: {pending.tpAmount.toFixed(2)} TP
               </p>
             </div>
 

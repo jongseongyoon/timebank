@@ -54,7 +54,7 @@ export default async function CoordinatorDashboard() {
     prisma.member.count({ where: { dong, status: 'ACTIVE' } }),
     prisma.member.findMany({
       where: { dong, status: 'ACTIVE' },
-      select: { roles: true, tcBalance: true },
+      select: { roles: true, tpBalance: true },
     }),
     prisma.transaction.groupBy({
       by: ['status'],
@@ -66,14 +66,14 @@ export default async function CoordinatorDashboard() {
   // 수급 현황 계산
   const providerTC = dongMembers
     .filter((m) => m.roles.includes('PROVIDER'))
-    .reduce((s, m) => s + Number(m.tcBalance), 0)
+    .reduce((s, m) => s + Number(m.tpBalance), 0)
   const receiverTC = dongMembers
     .filter((m) => m.roles.includes('RECEIVER'))
-    .reduce((s, m) => s + Number(m.tcBalance), 0)
+    .reduce((s, m) => s + Number(m.tpBalance), 0)
 
   const supplyDemandData = [
-    { name: '공급 TC', value: providerTC, fill: '#3b82f6' },
-    { name: '수요 TC', value: receiverTC, fill: '#f59e0b' },
+    { name: '공급 TP', value: providerTC, fill: '#3b82f6' },
+    { name: '수요 TP', value: receiverTC, fill: '#f59e0b' },
   ]
 
   const txStatusMap = Object.fromEntries(
@@ -186,7 +186,7 @@ export default async function CoordinatorDashboard() {
                 </p>
               </div>
               <span className="text-sm font-bold text-blue-600 shrink-0 ml-2">
-                {Number(tx.tcAmount).toFixed(2)} TC
+                {Number(tx.tpAmount).toFixed(2)} TP
               </span>
             </div>
           ))}

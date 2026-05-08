@@ -65,7 +65,7 @@ public class MainActivity extends BridgeActivity {
     }
 
     @Override
-    protected void onResume() {
+    public void onResume() {
         super.onResume();
         // 앱이 포그라운드로 돌아올 때 pending_save 확인 → JS로 처리 위임
         // JS에서 Capacitor.Plugins.StepCounter.getPendingSave() 호출 후 서버 전송

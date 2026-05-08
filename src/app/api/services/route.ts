@@ -12,7 +12,7 @@ const baseSchema = z.object({
     'MEDICAL_ESCORT', 'EDUCATION', 'DIGITAL_HELP', 'REPAIR', 'CHILDCARE',
     'LEGAL_CONSULT', 'HEALTH_CONSULT', 'ADMINISTRATIVE', 'COMMUNITY_EVENT', 'OTHER',
   ]),
-  tcPerHour: z.number().min(0.5).max(3),
+  tpPerHour: z.number().min(0.5).max(3),
   availableDong: z.array(z.string()).min(1),
   availableDays: z.array(z.enum(['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'])).min(1),
   availableTimeFrom: z.string().regex(/^\d{2}:\d{2}$/),

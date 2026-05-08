@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { formatTC, formatDate, maskName } from '@/lib/utils'
+import { formatTP, formatDate, maskName } from '@/lib/utils'
 import { TrendingUp, TrendingDown, Wallet, AlertCircle, QrCode } from 'lucide-react'
 import Link from 'next/link'
 import {
@@ -39,7 +39,7 @@ export default function WalletPage() {
   if (loading) return <div className="flex items-center justify-center h-64 text-muted-foreground">불러오는 중…</div>
   if (!member) return null
 
-  const balance = Number(member.tcBalance)
+  const balance = Number(member.tpBalance)
   const earned = Number(member.lifetimeEarned)
   const spent = Number(member.lifetimeSpent)
 
@@ -54,13 +54,13 @@ export default function WalletPage() {
     const key = new Date(t.createdAt).toLocaleDateString('ko-KR', { year: '2-digit', month: '2-digit' })
     if (!monthlyMap[key]) monthlyMap[key] = { earned: 0, spent: 0 }
     const isProvider = t.provider?.id === member.id
-    if (isProvider) monthlyMap[key].earned += Number(t.tcAmount)
-    else monthlyMap[key].spent += Number(t.tcAmount)
+    if (isProvider) monthlyMap[key].earned += Number(t.tpAmount)
+    else monthlyMap[key].spent += Number(t.tpAmount)
   })
   const barData = Object.entries(monthlyMap).slice(-6).map(([month, v]) => ({ month, ...v }))
 
-  const daysLeft = member.tcExpiresAt
-    ? Math.ceil((new Date(member.tcExpiresAt).getTime() - Date.now()) / 86400000)
+  const daysLeft = member.tpExpiresAt
+    ? Math.ceil((new Date(member.tpExpiresAt).getTime() - Date.now()) / 86400000)
     : null
 
   return (
@@ -80,7 +80,7 @@ export default function WalletPage() {
       {daysLeft !== null && daysLeft <= 30 && (
         <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 text-amber-800 rounded-md px-4 py-3 text-sm">
           <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
-          TP 만료까지 <strong>{daysLeft}일</strong> 남았습니다. ({formatDate(member.tcExpiresAt)})
+          TP 만료까지 <strong>{daysLeft}일</strong> 남았습니다. ({formatDate(member.tpExpiresAt)})
         </div>
       )}
 
@@ -181,7 +181,7 @@ export default function WalletPage() {
               {txs.map((tx) => {
                 const isProvider = tx.provider?.id === member.id
                 const counterpart = isProvider ? tx.receiver?.name : tx.provider?.name
-                const tcChange = isProvider ? `+${Number(tx.tcAmount).toFixed(2)}` : `-${Number(tx.tcAmount).toFixed(2)}`
+                const tcChange = isProvider ? `+${Number(tx.tpAmount).toFixed(2)}` : `-${Number(tx.tpAmount).toFixed(2)}`
 
                 return (
                   <div key={tx.id} className="flex items-center justify-between py-3">

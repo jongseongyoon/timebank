@@ -9,7 +9,7 @@ export default function AllocatePage() {
   const [search, setSearch] = useState('')
   const [members, setMembers] = useState<any[]>([])
   const [selected, setSelected] = useState<any>(null)
-  const [tcAmount, setTcAmount] = useState(10)
+  const [tpAmount, setTcAmount] = useState(10)
   const [reason, setReason] = useState('')
   const [stats, setStats] = useState<any>(null)
   const [recentLogs, setRecentLogs] = useState<any[]>([])
@@ -38,7 +38,7 @@ export default function AllocatePage() {
     const res = await fetch('/api/admin/allocate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ memberId: selected.id, tcAmount, reason }),
+      body: JSON.stringify({ memberId: selected.id, tpAmount, reason }),
     })
     const d = await res.json()
     setLoading(false)
@@ -58,14 +58,14 @@ export default function AllocatePage() {
 
   return (
     <div className="space-y-6 max-w-2xl">
-      <h1 className="text-2xl font-bold">TC 배분</h1>
+      <h1 className="text-2xl font-bold">TP 배분</h1>
 
       {/* 통계 카드 */}
       {stats && (
         <div className="grid grid-cols-3 gap-4">
           {[
-            { label: '총 배분 완료', value: `${Number(stats.totalAllocated).toFixed(0)} TC`, color: 'text-blue-700' },
-            { label: '총 회원 잔액', value: `${Number(stats.totalMemberBalance).toFixed(0)} TC`, color: 'text-green-700' },
+            { label: '총 배분 완료', value: `${Number(stats.totalAllocated).toFixed(0)} TP`, color: 'text-blue-700' },
+            { label: '총 회원 잔액', value: `${Number(stats.totalMemberBalance).toFixed(0)} TP`, color: 'text-green-700' },
             { label: '배분 건수', value: `${stats.allocationCount}건`, color: 'text-purple-700' },
           ].map(item => (
             <div key={item.label} className="bg-white border rounded-xl p-4 text-center">
@@ -101,7 +101,7 @@ export default function AllocatePage() {
                 className={`w-full text-left px-4 py-3 hover:bg-blue-50 transition-colors ${selected?.id === m.id ? 'bg-blue-50' : ''}`}
               >
                 <p className="text-sm font-medium">{m.name}</p>
-                <p className="text-xs text-gray-500">{m.phone} · {m.dong} · {Number(m.tcBalance).toFixed(0)} TC</p>
+                <p className="text-xs text-gray-500">{m.phone} · {m.dong} · {Number(m.tpBalance).toFixed(0)} TP</p>
               </button>
             ))}
           </div>
@@ -111,7 +111,7 @@ export default function AllocatePage() {
           <div className="bg-blue-50 rounded-lg px-4 py-3 flex items-center justify-between">
             <div>
               <p className="font-semibold">{selected.name}</p>
-              <p className="text-sm text-gray-500">{selected.dong} · 현재 {Number(selected.tcBalance).toFixed(0)} TC</p>
+              <p className="text-sm text-gray-500">{selected.dong} · 현재 {Number(selected.tpBalance).toFixed(0)} TP</p>
             </div>
             <button onClick={() => setSelected(null)} className="text-gray-400 text-sm hover:text-gray-700">변경</button>
           </div>
@@ -127,7 +127,7 @@ export default function AllocatePage() {
             <input
               type="number"
               min={1} max={10000} step={1}
-              value={tcAmount}
+              value={tpAmount}
               onChange={e => setTcAmount(Number(e.target.value))}
               className="w-32 h-10 text-center text-lg font-bold border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             />
@@ -136,7 +136,7 @@ export default function AllocatePage() {
                 <button
                   key={n}
                   onClick={() => setTcAmount(n)}
-                  className={`px-3 py-1.5 rounded-lg text-sm border ${tcAmount === n ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 hover:bg-gray-50'}`}
+                  className={`px-3 py-1.5 rounded-lg text-sm border ${tpAmount === n ? 'bg-blue-600 text-white border-blue-600' : 'border-gray-300 hover:bg-gray-50'}`}
                 >
                   {n}
                 </button>
@@ -158,7 +158,7 @@ export default function AllocatePage() {
       {error && <p className="text-sm text-red-500 bg-red-50 rounded-lg px-3 py-2">{error}</p>}
       {success && (
         <div className="flex items-center gap-2 text-green-700 bg-green-50 rounded-lg px-4 py-3">
-          <CheckCircle className="h-5 w-5" /> TC 배분이 완료됐습니다
+          <CheckCircle className="h-5 w-5" /> TP 배분이 완료됐습니다
         </div>
       )}
 
@@ -168,7 +168,7 @@ export default function AllocatePage() {
         className="w-full h-12 gap-2 text-base"
       >
         <Coins className="h-5 w-5" />
-        {loading ? '처리 중...' : `${selected?.name ?? '회원'} 님에게 ${tcAmount} TC 배분`}
+        {loading ? '처리 중...' : `${selected?.name ?? '회원'} 님에게 ${tpAmount} TP 배분`}
       </Button>
 
       {/* 최근 배분 내역 */}
@@ -187,7 +187,7 @@ export default function AllocatePage() {
                     <p className="text-xs text-gray-400">{d.reason}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-blue-700">+{d.tcAmount} TC</p>
+                    <p className="font-bold text-blue-700">+{d.tpAmount} TP</p>
                     <p className="text-xs text-gray-400">{formatDate(log.createdAt)}</p>
                   </div>
                 </div>

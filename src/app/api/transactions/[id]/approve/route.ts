@@ -22,7 +22,7 @@ export async function PATCH(_req: NextRequest, { params }: { params: { id: strin
   // 수요자 잔액 재검증 (규칙 1)
   if (tx.receiverId) {
     const receiver = await prisma.member.findUnique({ where: { id: tx.receiverId } })
-    if (!receiver || receiver.tcBalance.lessThan(tx.tcAmount)) {
+    if (!receiver || receiver.tpBalance.lessThan(tx.tpAmount)) {
       return NextResponse.json({ error: 'TC_INSUFFICIENT' }, { status: 400 })
     }
   }
@@ -38,8 +38,8 @@ export async function PATCH(_req: NextRequest, { params }: { params: { id: strin
       await trx.member.update({
         where: { id: tx.providerId },
         data: {
-          tcBalance: { increment: tx.tcAmount },
-          lifetimeEarned: { increment: tx.tcAmount },
+          tpBalance: { increment: tx.tpAmount },
+          lifetimeEarned: { increment: tx.tpAmount },
         },
       })
     }
@@ -48,8 +48,8 @@ export async function PATCH(_req: NextRequest, { params }: { params: { id: strin
       await trx.member.update({
         where: { id: tx.receiverId },
         data: {
-          tcBalance: { decrement: tx.tcAmount },
-          lifetimeSpent: { increment: tx.tcAmount },
+          tpBalance: { decrement: tx.tpAmount },
+          lifetimeSpent: { increment: tx.tpAmount },
         },
       })
     }
@@ -63,7 +63,7 @@ export async function PATCH(_req: NextRequest, { params }: { params: { id: strin
             memberId: tx.providerId,
             type: 'TX_APPROVED',
             title: '거래 승인 완료',
-            body: `${tx.tcAmount} TC가 적립되었습니다.`,
+            body: `${tx.tpAmount} TP가 적립되었습니다.`,
             link: `/history`,
           },
         })
@@ -76,7 +76,7 @@ export async function PATCH(_req: NextRequest, { params }: { params: { id: strin
             memberId: tx.receiverId,
             type: 'TX_APPROVED',
             title: '거래 승인 완료',
-            body: `${tx.tcAmount} TC가 차감되었습니다.`,
+            body: `${tx.tpAmount} TP가 차감되었습니다.`,
             link: `/history`,
           },
         })

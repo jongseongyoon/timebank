@@ -150,7 +150,7 @@ export default function MyQrPage() {
         <div className="bg-blue-50 rounded-xl px-6 py-3 w-full text-center">
           <p className="text-xs text-blue-500 font-medium">현재 TP 잔액</p>
           <p className="text-2xl font-bold text-blue-700">
-            {Number(member?.tcBalance ?? 0).toFixed(2)} TP
+            {Number(member?.tpBalance ?? 0).toFixed(2)} TP
           </p>
         </div>
       </div>

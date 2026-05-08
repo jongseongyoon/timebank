@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
 
     const birthYear = birthDate ? parseInt(birthDate.slice(0, 4), 10) : 1970
     const isSenior = new Date().getFullYear() - birthYear >= 65
-    const tcExpiresAt = calculateTcExpiry({
+    const tpExpiresAt = calculateTcExpiry({
       registrationDate: new Date(),
       isSenior,
       isDisabled,
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
         isVulnerable,
         isDisabled,
         roles,
-        tcExpiresAt,
+        tpExpiresAt,
         qrCode,
       },
       select: {
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
         phone: true,
         dong: true,
         roles: true,
-        tcExpiresAt: true,
+        tpExpiresAt: true,
         createdAt: true,
       },
     })

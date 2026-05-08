@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
     const cat = tx.serviceListing?.category ?? 'OTHER'
     if (!map[cat]) map[cat] = { txCount: 0, totalTC: 0 }
     map[cat].txCount += 1
-    map[cat].totalTC += Number(tx.tcAmount)
+    map[cat].totalTC += Number(tx.tpAmount)
   }
 
   const data = Object.entries(map).map(([category, stats]) => ({

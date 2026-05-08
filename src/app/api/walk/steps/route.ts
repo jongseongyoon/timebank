@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     create: { memberId, date: today, steps: newSteps },
   })
 
-  // 목표 달성 + 미지급 → TC 보상
+  // 목표 달성 + 미지급 → TP 보상
   let rewardedNow = false
 
   if (!record.rewarded && newSteps >= GOAL) {
@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       prisma.member.update({
         where: { id: memberId },
         data: {
-          tcBalance: { increment: REWARD_TC },
+          tpBalance: { increment: REWARD_TC },
           lifetimeEarned: { increment: REWARD_TC },
         },
       }),
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
           txType: 'COMMUNITY_BONUS',
           receiverId: memberId,
           durationMinutes: 0,
-          tcAmount: REWARD_TC,
+          tpAmount: REWARD_TC,
           baseRate: REWARD_TC,
           coordinatorId,
           verificationMethod: 'APP_CONFIRM',

@@ -60,7 +60,7 @@ export async function registerAction(
     : 1970
   const isSenior = new Date().getFullYear() - birthYear >= 65
 
-  const tcExpiresAt = calculateTcExpiry({
+  const tpExpiresAt = calculateTcExpiry({
     registrationDate: new Date(),
     isSenior,
     isDisabled: parsed.data.isDisabled,
@@ -80,7 +80,7 @@ export async function registerAction(
       isVulnerable: parsed.data.isVulnerable,
       isDisabled: parsed.data.isDisabled,
       roles: parsed.data.roles as any,
-      tcExpiresAt,
+      tpExpiresAt,
     },
   })
 

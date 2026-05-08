@@ -30,11 +30,11 @@ export async function POST(req: NextRequest) {
   // 수혜자 잔액 확인
   const receiver = await prisma.member.findUnique({
     where: { id: receiverId },
-    select: { id: true, tcBalance: true, name: true },
+    select: { id: true, tpBalance: true, name: true },
   })
   if (!receiver) return NextResponse.json({ error: '수혜자 없음' }, { status: 404 })
 
-  const receiverBalance = Number(receiver.tcBalance)
+  const receiverBalance = Number(receiver.tpBalance)
   const maxPayable = receiverBalance - MIN_BALANCE  // 수혜자가 지불 가능한 최대 TP
 
   // 이미 한도 도달 시 거래 시작 불가
@@ -56,7 +56,7 @@ export async function POST(req: NextRequest) {
       status: 'IN_PROGRESS',
       verificationMethod: 'APP_QR',
       durationMinutes: 0,     // 종료 시 계산
-      tcAmount: 0,            // 종료 시 계산
+      tpAmount: 0,            // 종료 시 계산
       baseRate: 1,
       bonusRate: 0,
       txHash,

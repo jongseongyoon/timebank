@@ -153,7 +153,7 @@ export default function MatchingPage() {
                 <div className="min-w-0">
                   <p className="text-sm font-medium">{provider.name}</p>
                   <p className="text-xs text-muted-foreground">
-                    잔액 {Number(provider.tcBalance).toFixed(1)} TC
+                    잔액 {Number(provider.tpBalance).toFixed(1)} TP
                   </p>
                 </div>
                 <Button

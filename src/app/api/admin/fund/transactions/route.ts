@@ -6,7 +6,7 @@ import { z } from 'zod'
 
 const createSchema = z.object({
   fundTxType: z.enum(['CONTRIBUTION', 'PRIVATE_PAYMENT', 'EMERGENCY_SERVICE', 'VULNERABLE_ALLOC', 'REFUND']),
-  tcEquivalent: z.number().min(0),
+  tpEquivalent: z.number().min(0),
   cashAmount: z.number().min(0),
   description: z.string().min(1),
   externalVendor: z.string().nullable().optional(),
@@ -39,12 +39,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  const { fundTxType, tcEquivalent, cashAmount, description, externalVendor, externalReceipt } = parsed.data
+  const { fundTxType, tpEquivalent, cashAmount, description, externalVendor, externalReceipt } = parsed.data
 
   const tx = await prisma.fundTransaction.create({
     data: {
       fundTxType,
-      tcEquivalent,
+      tpEquivalent,
       cashAmount,
       description,
       externalVendor: externalVendor ?? null,

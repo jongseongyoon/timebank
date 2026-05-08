@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import crypto from 'crypto'
 
-// 세션 완료 처리 → Transaction 자동 생성 + TC 이동
+// 세션 완료 처리 → Transaction 자동 생성 + TP 이동
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string; sessionId: string } }
@@ -36,7 +36,7 @@ export async function POST(
   if (careSession.status !== 'SCHEDULED') return NextResponse.json({ error: '이미 처리된 세션' }, { status: 400 })
 
   const pkg = careSession.package
-  const tcAmount = Number(careSession.tcAmount)
+  const tpAmount = Number(careSession.tpAmount)
   const durationMinutes = careSession.durationMinutes
 
   const txHash = crypto.createHash('sha256')
@@ -45,11 +45,11 @@ export async function POST(
 
   // 원자적 처리:
   // 1. Transaction 생성 (APPROVED)
-  // 2. 제공자 TC 적립 (isSavings=true → 장기저축)
-  // 3. 수혜자 TC 차감
-  // 4. 단체 TC 차감 (패키지 배분한 단체)
+  // 2. 제공자 TP 적립 (isSavings=true → 장기저축)
+  // 3. 수혜자 TP 차감
+  // 4. 단체 TP 차감 (패키지 배분한 단체)
   // 5. CareSession 완료
-  // 6. CarePackage usedTcAmount 증가
+  // 6. CarePackage usedTpAmount 증가
 
   const [tx] = await prisma.$transaction([
     // 1. 거래 생성
@@ -59,8 +59,8 @@ export async function POST(
         status: 'APPROVED',
         verificationMethod: 'COORDINATOR',
         durationMinutes,
-        tcAmount,
-        baseRate: tcAmount / (durationMinutes / 60),
+        tpAmount,
+        baseRate: tpAmount / (durationMinutes / 60),
         bonusRate: 0,
         txHash,
         note: note ?? `돌봄패키지 세션 완료: ${pkg.title}`,
@@ -69,32 +69,32 @@ export async function POST(
         receiverId: pkg.recipientId,
         organizationId: pkg.organizationId ?? undefined,
         completedAt: new Date(),
-        isSavings: true,  // 제공자 TC는 장기저축
+        isSavings: true,  // 제공자 TP는 장기저축
       },
     }),
 
-    // 2. 제공자 TC 적립 (C학생, D학생의 미래 돌봄 저축)
+    // 2. 제공자 TP 적립 (C학생, D학생의 미래 돌봄 저축)
     prisma.member.update({
       where: { id: careSession.providerId },
       data: {
-        tcBalance: { increment: tcAmount },
-        lifetimeEarned: { increment: tcAmount },
+        tpBalance: { increment: tpAmount },
+        lifetimeEarned: { increment: tpAmount },
       },
     }),
 
-    // 3. 수혜자 TC 차감 (A어르신의 배분받은 TC 사용)
+    // 3. 수혜자 TP 차감 (A어르신의 배분받은 TP 사용)
     prisma.member.update({
       where: { id: pkg.recipientId },
       data: {
-        tcBalance: { decrement: tcAmount },
-        lifetimeSpent: { increment: tcAmount },
+        tpBalance: { decrement: tpAmount },
+        lifetimeSpent: { increment: tpAmount },
       },
     }),
 
-    // 4. 패키지 usedTcAmount 갱신
+    // 4. 패키지 usedTpAmount 갱신
     prisma.carePackage.update({
       where: { id: pkg.id },
-      data: { usedTcAmount: { increment: tcAmount } },
+      data: { usedTpAmount: { increment: tpAmount } },
     }),
   ])
 
@@ -108,11 +108,11 @@ export async function POST(
     },
   })
 
-  // 단체 TC 차감 (단체가 수혜자에게 배분한 TC)
+  // 단체 TP 차감 (단체가 수혜자에게 배분한 TP)
   if (pkg.organizationId) {
     await prisma.organization.update({
       where: { id: pkg.organizationId },
-      data: { tcBalance: { decrement: tcAmount } },
+      data: { tpBalance: { decrement: tpAmount } },
     })
   }
 

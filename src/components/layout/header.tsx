@@ -13,7 +13,7 @@ import {
 
 const navItems = [
   { href: '/', label: '홈 대시보드', icon: LayoutDashboard },
-  { href: '/wallet', label: 'TC 지갑', icon: Wallet },
+  { href: '/wallet', label: 'TP 지갑', icon: Wallet },
   { href: '/wallet/qr', label: '내 QR 코드', icon: QrCode },
   { href: '/scan', label: 'QR 스캔 거래', icon: ScanLine },
   { href: '/history', label: '거래 내역', icon: ArrowLeftRight },

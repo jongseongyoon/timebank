@@ -271,7 +271,7 @@ export default function ServiceBrowsePage() {
             return (
               <Card key={listing.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => openModal(listing)}>
                 <CardContent className="pt-5 pb-4 space-y-3">
-                  {/* 카테고리 + TC */}
+                  {/* 카테고리 + TP */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex flex-wrap gap-1">
                       <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-700">
@@ -291,7 +291,7 @@ export default function ServiceBrowsePage() {
                     </div>
                     <span className="flex items-center gap-1 text-sm font-bold text-amber-600 shrink-0">
                       <Coins className="h-3.5 w-3.5" />
-                      {Number(listing.tcPerHour).toFixed(1)} TC/h
+                      {Number(listing.tpPerHour).toFixed(1)} TP/h
                     </span>
                   </div>
 
@@ -373,7 +373,7 @@ export default function ServiceBrowsePage() {
                 <div className="bg-muted/50 rounded-lg p-3 space-y-1.5 text-sm">
                   <p className="font-semibold">{selected.title}</p>
                   <p className="text-muted-foreground text-xs">
-                    {CAT_LABEL[selected.category]} · {Number(selected.tcPerHour).toFixed(1)} TC/h
+                    {CAT_LABEL[selected.category]} · {Number(selected.tpPerHour).toFixed(1)} TP/h
                   </p>
                   {selected.organization ? (
                     <p className="text-blue-600 text-xs font-medium">
@@ -422,7 +422,7 @@ export default function ServiceBrowsePage() {
                   <Label htmlFor="applyDuration">
                     소요 시간
                     <span className="text-muted-foreground ml-2 font-normal text-xs">
-                      ({applyForm.durationMinutes}분 → 예상 {(applyForm.durationMinutes / 60 * Number(selected?.tcPerHour || 1)).toFixed(2)} TC)
+                      ({applyForm.durationMinutes}분 → 예상 {(applyForm.durationMinutes / 60 * Number(selected?.tpPerHour || 1)).toFixed(2)} TP)
                     </span>
                   </Label>
                   <div className="flex items-center gap-3">

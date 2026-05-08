@@ -18,7 +18,7 @@ export async function GET(
       name: true,
       phone: true,
       dong: true,
-      tcBalance: true,
+      tpBalance: true,
       avgRating: true,
       ratingCount: true,
       roles: true,

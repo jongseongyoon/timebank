@@ -249,9 +249,9 @@ export default function ServiceRequestPage() {
               </dl>
               <div className="bg-blue-50 rounded-lg p-4 mt-4">
                 <p className="text-sm text-blue-800">
-                  예상 TC 비용: <strong className="text-lg">{estimatedTC} TC</strong>
+                  예상 TP 비용: <strong className="text-lg">{estimatedTC} TP</strong>
                 </p>
-                <p className="text-xs text-blue-600 mt-1">* 실제 TC는 코디네이터 승인 후 차감됩니다.</p>
+                <p className="text-xs text-blue-600 mt-1">* 실제 TP는 코디네이터 승인 후 차감됩니다.</p>
               </div>
               {error && (
                 <p role="alert" className="text-sm text-destructive bg-destructive/10 rounded-md px-3 py-2">{error}</p>

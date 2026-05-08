@@ -45,7 +45,7 @@ interface TcFlowItem {
 interface DongItem {
   dong: string
   members: number
-  tcBalance: number
+  tpBalance: number
   providers: number
   receivers: number
 }
@@ -100,7 +100,7 @@ export default function AdminReportsPage() {
   const barData = tcFlow.map((item) => ({
     name: SERVICE_LABEL[item.category] ?? item.category,
     거래수: item.txCount,
-    TC량: Math.round(item.totalTC * 10) / 10,
+    TP량: Math.round(item.totalTC * 10) / 10,
   }))
 
   return (
@@ -108,7 +108,7 @@ export default function AdminReportsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">보고서</h1>
-          <p className="text-muted-foreground text-sm mt-1">TC 흐름 통계 및 동별 현황</p>
+          <p className="text-muted-foreground text-sm mt-1">TP 흐름 통계 및 동별 현황</p>
         </div>
         <div className="flex items-center gap-2">
           <select
@@ -143,7 +143,7 @@ export default function AdminReportsPage() {
               {[
                 { label: '활성 회원', value: `${overview.activeMembers}명`, sub: `전체 ${overview.totalMembers}명` },
                 { label: '승인 거래', value: `${overview.approvedTx}건`, sub: `대기 ${overview.pendingTx}건` },
-                { label: 'TC 총 유통량', value: `${Number(overview.totalTC).toFixed(1)} TC`, sub: '' },
+                { label: 'TC 총 유통량', value: `${Number(overview.totalTC).toFixed(1)} TP`, sub: '' },
                 { label: '취약계층 회원', value: `${overview.vulnerableMembers}명`, sub: `제공자 ${overview.providerCount} / 수요자 ${overview.receiverCount}` },
               ].map(({ label, value, sub }) => (
                 <Card key={label}>
@@ -158,10 +158,10 @@ export default function AdminReportsPage() {
           )}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* TC 흐름 파이차트 */}
+            {/* TP 흐름 파이차트 */}
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-base">서비스 유형별 TC 비중</CardTitle>
+                <CardTitle className="text-base">서비스 유형별 TP 비중</CardTitle>
               </CardHeader>
               <CardContent>
                 {pieData.length === 0 ? (
@@ -182,14 +182,14 @@ export default function AdminReportsPage() {
                           <Cell key={i} fill={CATEGORY_COLORS[i % CATEGORY_COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip formatter={(v: number) => `${v} TC`} />
+                      <Tooltip formatter={(v: number) => `${v} TP`} />
                     </PieChart>
                   </ResponsiveContainer>
                 )}
               </CardContent>
             </Card>
 
-            {/* TC 흐름 바차트 */}
+            {/* TP 흐름 바차트 */}
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">서비스 유형별 거래 건수</CardTitle>
@@ -229,7 +229,7 @@ export default function AdminReportsPage() {
                           <th className="text-right py-2 text-xs text-muted-foreground font-medium">전체 회원</th>
                           <th className="text-right py-2 text-xs text-muted-foreground font-medium">제공자</th>
                           <th className="text-right py-2 text-xs text-muted-foreground font-medium">수요자</th>
-                          <th className="text-right py-2 text-xs text-muted-foreground font-medium">TC 잔액</th>
+                          <th className="text-right py-2 text-xs text-muted-foreground font-medium">TP 잔액</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y">
@@ -239,7 +239,7 @@ export default function AdminReportsPage() {
                             <td className="py-2.5 text-right">{d.members}명</td>
                             <td className="py-2.5 text-right text-blue-600">{d.providers}명</td>
                             <td className="py-2.5 text-right text-amber-600">{d.receivers}명</td>
-                            <td className="py-2.5 text-right font-semibold">{Number(d.tcBalance).toFixed(1)} TC</td>
+                            <td className="py-2.5 text-right font-semibold">{Number(d.tpBalance).toFixed(1)} TP</td>
                           </tr>
                         ))}
                       </tbody>
@@ -256,7 +256,7 @@ export default function AdminReportsPage() {
                           </p>
                         </div>
                         <div className="text-right">
-                          <p className="font-bold text-blue-600">{Number(d.tcBalance).toFixed(1)} TC</p>
+                          <p className="font-bold text-blue-600">{Number(d.tpBalance).toFixed(1)} TP</p>
                           <p className="text-xs text-muted-foreground">전체 {d.members}명</p>
                         </div>
                       </div>

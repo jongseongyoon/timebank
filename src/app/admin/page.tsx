@@ -33,8 +33,8 @@ export default async function AdminDashboard() {
   ] = await Promise.all([
     prisma.member.count({ where: { status: 'ACTIVE' } }),
     prisma.member.count(),
-    prisma.member.aggregate({ _sum: { tcBalance: true } }),
-    prisma.fundTransaction.aggregate({ _sum: { tcEquivalent: true, cashAmount: true } }),
+    prisma.member.aggregate({ _sum: { tpBalance: true } }),
+    prisma.fundTransaction.aggregate({ _sum: { tpEquivalent: true, cashAmount: true } }),
     prisma.transaction.count({ where: { createdAt: { gte: monthStart }, status: 'APPROVED' } }),
     prisma.serviceRequest.count({ where: { status: { in: ['OPEN', 'ESCALATED'] } } }),
     prisma.member.findMany({
@@ -55,7 +55,7 @@ export default async function AdminDashboard() {
     }),
     prisma.member.findMany({
       where: { status: 'ACTIVE' },
-      select: { dong: true, roles: true, tcBalance: true },
+      select: { dong: true, roles: true, tpBalance: true },
     }),
     prisma.transaction.findMany({
       where: { status: 'APPROVED', createdAt: { gte: weekAgo } },
@@ -63,8 +63,8 @@ export default async function AdminDashboard() {
     }),
   ])
 
-  const totalTC = Number(tcAgg._sum.tcBalance ?? 0)
-  const fundTC = Number(fundAgg._sum.tcEquivalent ?? 0)
+  const totalTC = Number(tcAgg._sum.tpBalance ?? 0)
+  const fundTC = Number(fundAgg._sum.tpEquivalent ?? 0)
   const fundCash = Number(fundAgg._sum.cashAmount ?? 0)
   const reserveRatio = totalTC > 0 ? Math.round((fundTC / totalTC) * 100) : 0
 
@@ -81,11 +81,11 @@ export default async function AdminDashboard() {
   })
 
   // Dong stats aggregated in JS
-  const dongMap: Record<string, { members: number; tcBalance: number }> = {}
+  const dongMap: Record<string, { members: number; tpBalance: number }> = {}
   allMembers.forEach((m) => {
-    if (!dongMap[m.dong]) dongMap[m.dong] = { members: 0, tcBalance: 0 }
+    if (!dongMap[m.dong]) dongMap[m.dong] = { members: 0, tpBalance: 0 }
     dongMap[m.dong].members += 1
-    dongMap[m.dong].tcBalance += Number(m.tcBalance)
+    dongMap[m.dong].tpBalance += Number(m.tpBalance)
   })
   const dongData = Object.entries(dongMap)
     .sort((a, b) => b[1].members - a[1].members)
@@ -107,7 +107,7 @@ export default async function AdminDashboard() {
       {/* KPI 카드 */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {[
-          { label: 'TC 총 유통량', value: `${totalTC.toFixed(0)} TC`, icon: Coins, color: 'text-blue-600', bg: 'bg-blue-50', href: '/admin/reports' },
+          { label: 'TC 총 유통량', value: `${totalTC.toFixed(0)} TP`, icon: Coins, color: 'text-blue-600', bg: 'bg-blue-50', href: '/admin/reports' },
           { label: '활성 회원', value: `${activeMembers}명`, icon: Users, color: 'text-green-600', bg: 'bg-green-50', href: '/admin/reports' },
           { label: '지불준비율', value: `${reserveRatio}%`, icon: Landmark, color: reserveRatio >= 30 ? 'text-emerald-600' : 'text-red-600', bg: reserveRatio >= 30 ? 'bg-emerald-50' : 'bg-red-50', href: '/admin/fund' },
           { label: '이번달 승인 거래', value: `${monthlyTxCount}건`, icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50', href: '/admin/reports' },
@@ -197,7 +197,7 @@ export default async function AdminDashboard() {
                   <p className="text-xs text-muted-foreground">{formatDate(tx.createdAt)}</p>
                 </div>
                 <span className="text-sm font-bold text-blue-600 shrink-0 ml-2">
-                  {Number(tx.tcAmount).toFixed(1)} TC
+                  {Number(tx.tpAmount).toFixed(1)} TP
                 </span>
               </div>
             ))}
@@ -220,11 +220,11 @@ export default async function AdminDashboard() {
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
               <p className="text-xs text-muted-foreground">TC 총 유통량</p>
-              <p className="text-lg font-bold text-blue-600">{totalTC.toFixed(1)} TC</p>
+              <p className="text-lg font-bold text-blue-600">{totalTC.toFixed(1)} TP</p>
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">기금 보유 TC</p>
-              <p className="text-lg font-bold text-indigo-600">{fundTC.toFixed(1)} TC</p>
+              <p className="text-xs text-muted-foreground">기금 보유 TP</p>
+              <p className="text-lg font-bold text-indigo-600">{fundTC.toFixed(1)} TP</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">지불준비율</p>

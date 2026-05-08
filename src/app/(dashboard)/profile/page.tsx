@@ -150,8 +150,8 @@ export default function ProfilePage() {
   if (!member) return null
 
   const age = calcAge(member.birthDate)
-  const daysLeft = member.tcExpiresAt
-    ? Math.ceil((new Date(member.tcExpiresAt).getTime() - Date.now()) / 86400000)
+  const daysLeft = member.tpExpiresAt
+    ? Math.ceil((new Date(member.tpExpiresAt).getTime() - Date.now()) / 86400000)
     : null
 
   return (
@@ -314,7 +314,7 @@ export default function ProfilePage() {
           <div className="grid grid-cols-3 gap-4 text-center">
             <div className="space-y-1">
               <p className="text-xs text-muted-foreground">현재 잔액</p>
-              <p className="text-2xl font-bold text-blue-600">{Number(member.tcBalance).toFixed(2)}</p>
+              <p className="text-2xl font-bold text-blue-600">{Number(member.tpBalance).toFixed(2)}</p>
               <p className="text-xs text-muted-foreground">TP</p>
             </div>
             <div className="space-y-1">
@@ -330,7 +330,7 @@ export default function ProfilePage() {
           </div>
 
           {/* TP 만료일 */}
-          {member.tcExpiresAt && (
+          {member.tpExpiresAt && (
             <div className={`mt-4 flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
               daysLeft !== null && daysLeft <= 30
                 ? 'bg-amber-50 border border-amber-200 text-amber-800'
@@ -338,12 +338,12 @@ export default function ProfilePage() {
             }`}>
               <Calendar className="h-4 w-4 shrink-0" />
               <span>
-                TP 만료일: <strong>{formatDate(member.tcExpiresAt)}</strong>
+                TP 만료일: <strong>{formatDate(member.tpExpiresAt)}</strong>
                 {daysLeft !== null && <span className="ml-2">({daysLeft > 0 ? `${daysLeft}일 남음` : '만료됨'})</span>}
               </span>
             </div>
           )}
-          {!member.tcExpiresAt && (
+          {!member.tpExpiresAt && (
             <div className="mt-4 flex items-center gap-2 rounded-md px-3 py-2 text-sm bg-green-50 border border-green-200 text-green-700">
               <Calendar className="h-4 w-4 shrink-0" />
               <span>TP 만료 없음 (취약계층/장애인 혜택 적용)</span>

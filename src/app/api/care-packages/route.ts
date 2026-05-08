@@ -14,7 +14,7 @@ const createSchema = z.object({
   description: z.string().max(500).optional(),
   recipientId: z.string(),
   organizationId: z.string().optional(),
-  totalTcAmount: z.number().positive(),
+  totalTpAmount: z.number().positive(),
   startDate: z.string().datetime(),
   endDate: z.string().datetime(),
   dailyHours: z.number().min(0.5).max(24),
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
       ...(recipientId ? { recipientId } : {}),
     },
     include: {
-      recipient: { select: { id: true, name: true, dong: true, tcBalance: true } },
+      recipient: { select: { id: true, name: true, dong: true, tpBalance: true } },
       organization: { select: { id: true, name: true, dong: true, orgType: true } },
       coordinator: { select: { id: true, name: true } },
       sessions: {
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
       description: d.description,
       recipientId: d.recipientId,
       organizationId: d.organizationId,
-      totalTcAmount: d.totalTcAmount,
+      totalTpAmount: d.totalTpAmount,
       startDate: new Date(d.startDate),
       endDate: new Date(d.endDate),
       dailyHours: d.dailyHours,

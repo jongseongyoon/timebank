@@ -106,7 +106,7 @@ export default function CommunityPage() {
                       <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
                       {Number(post.author?.avgRating ?? 0).toFixed(1)}
                     </span>
-                    <span>{Number(post.author?.tcBalance ?? 0).toFixed(0)} TC</span>
+                    <span>{Number(post.author?.tpBalance ?? 0).toFixed(0)} TP</span>
                     <span>{formatDate(post.createdAt)}</span>
                   </div>
                 </div>

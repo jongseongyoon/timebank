@@ -41,11 +41,11 @@ export default function CoordMembersPage() {
     const res = await fetch(`/api/coordinator/members/${memberId}/allocate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tcAmount: amount }),
+      body: JSON.stringify({ tpAmount: amount }),
     })
     if (res.ok) {
       setMembers((prev) =>
-        prev.map((m) => m.id === memberId ? { ...m, tcBalance: Number(m.tcBalance) + amount } : m)
+        prev.map((m) => m.id === memberId ? { ...m, tpBalance: Number(m.tpBalance) + amount } : m)
       )
       setShowAllocForm(null)
     }
@@ -110,13 +110,13 @@ export default function CoordMembersPage() {
                       {member.phone} · 가입 {formatDate(member.createdAt)}
                     </p>
                     <p className="text-xs mt-1">
-                      TC 잔액: <span className="font-semibold text-blue-600">{Number(member.tcBalance).toFixed(2)} TC</span>
-                      {member.tcExpiresAt && (
+                      TP 잔액: <span className="font-semibold text-blue-600">{Number(member.tpBalance).toFixed(2)} TP</span>
+                      {member.tpExpiresAt && (
                         <span className="text-muted-foreground ml-2">
-                          (만료 {formatDate(member.tcExpiresAt)})
+                          (만료 {formatDate(member.tpExpiresAt)})
                         </span>
                       )}
-                      {!member.tcExpiresAt && (
+                      {!member.tpExpiresAt && (
                         <span className="text-muted-foreground ml-2">(무기한)</span>
                       )}
                     </p>
@@ -127,18 +127,18 @@ export default function CoordMembersPage() {
                       size="sm"
                       variant="outline"
                       onClick={() => setShowAllocForm(showAllocForm === member.id ? null : member.id)}
-                      aria-label={`${member.name} TC 배분`}
+                      aria-label={`${member.name} TP 배분`}
                       aria-expanded={showAllocForm === member.id}
                     >
                       <Gift className="h-4 w-4 mr-1" aria-hidden="true" />
-                      TC 배분
+                      TP 배분
                     </Button>
                   )}
                 </div>
 
                 {showAllocForm === member.id && (
                   <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-md p-3">
-                    <Label htmlFor={`alloc-${member.id}`} className="shrink-0 text-sm">배분 TC</Label>
+                    <Label htmlFor={`alloc-${member.id}`} className="shrink-0 text-sm">배분 TP</Label>
                     <Input
                       id={`alloc-${member.id}`}
                       type="number"

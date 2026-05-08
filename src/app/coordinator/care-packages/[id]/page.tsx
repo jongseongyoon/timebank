@@ -41,7 +41,7 @@ export default function CarePackageDetailPage() {
     providerId: '',
     scheduledAt: '',
     durationMinutes: 180,  // 3시간 기본
-    tcAmount: 3,
+    tpAmount: 3,
     note: '',
   })
   const [addSaving, setAddSaving] = useState(false)
@@ -117,13 +117,13 @@ export default function CarePackageDetailPage() {
   }
   if (!pkg) return <p className="text-center py-10 text-muted-foreground">패키지를 찾을 수 없습니다.</p>
 
-  const pct = Number(pkg.totalTcAmount) > 0
-    ? Math.round((Number(pkg.usedTcAmount) / Number(pkg.totalTcAmount)) * 100)
+  const pct = Number(pkg.totalTpAmount) > 0
+    ? Math.round((Number(pkg.usedTpAmount) / Number(pkg.totalTpAmount)) * 100)
     : 0
-  const remainingTc = Number(pkg.totalTcAmount) - Number(pkg.usedTcAmount)
+  const remainingTc = Number(pkg.totalTpAmount) - Number(pkg.usedTpAmount)
   const pendingTc = (pkg.sessions ?? [])
     .filter((s: any) => s.status === 'SCHEDULED')
-    .reduce((sum: number, s: any) => sum + Number(s.tcAmount), 0)
+    .reduce((sum: number, s: any) => sum + Number(s.tpAmount), 0)
   const availableTc = remainingTc - pendingTc
 
   // 제공자별 집계
@@ -134,7 +134,7 @@ export default function CarePackageDetailPage() {
         providerStats[s.provider.id] = { name: s.provider.name, dong: s.provider.dong, sessions: 0, tc: 0 }
       }
       providerStats[s.provider.id].sessions++
-      providerStats[s.provider.id].tc += Number(s.tcAmount)
+      providerStats[s.provider.id].tc += Number(s.tpAmount)
     }
   }
 
@@ -192,19 +192,19 @@ export default function CarePackageDetailPage() {
         </Card>
       </div>
 
-      {/* TC 현황 */}
+      {/* TP 현황 */}
       <Card>
-        <CardHeader><CardTitle className="text-base flex items-center gap-2"><Coins className="h-4 w-4 text-amber-500" /> TC 현황</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base flex items-center gap-2"><Coins className="h-4 w-4 text-amber-500" /> TP 현황</CardTitle></CardHeader>
         <CardContent className="space-y-3">
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
             <div className="bg-amber-50 rounded-lg p-3">
               <p className="text-xs text-amber-700">총 배분</p>
-              <p className="text-xl font-bold text-amber-600">{Number(pkg.totalTcAmount).toFixed(0)}</p>
+              <p className="text-xl font-bold text-amber-600">{Number(pkg.totalTpAmount).toFixed(0)}</p>
               <p className="text-xs text-amber-500">TC</p>
             </div>
             <div className="bg-green-50 rounded-lg p-3">
               <p className="text-xs text-green-700">사용 완료</p>
-              <p className="text-xl font-bold text-green-600">{Number(pkg.usedTcAmount).toFixed(1)}</p>
+              <p className="text-xl font-bold text-green-600">{Number(pkg.usedTpAmount).toFixed(1)}</p>
               <p className="text-xs text-green-500">TC</p>
             </div>
             <div className="bg-blue-50 rounded-lg p-3">
@@ -233,7 +233,7 @@ export default function CarePackageDetailPage() {
       {/* 제공자별 실적 */}
       {Object.keys(providerStats).length > 0 && (
         <Card>
-          <CardHeader><CardTitle className="text-base">제공자별 실적 (적립된 TC 저축)</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-base">제공자별 실적 (적립된 TP 저축)</CardTitle></CardHeader>
           <CardContent>
             <div className="space-y-2">
               {Object.values(providerStats).map((p, i) => (
@@ -244,14 +244,14 @@ export default function CarePackageDetailPage() {
                     <span className="text-xs text-muted-foreground">{p.dong}</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-sm font-bold text-indigo-700">{p.tc.toFixed(1)} TC 적립</span>
+                    <span className="text-sm font-bold text-indigo-700">{p.tc.toFixed(1)} TP 적립</span>
                     <span className="text-xs text-muted-foreground ml-2">({p.sessions}회)</span>
                   </div>
                 </div>
               ))}
             </div>
             <p className="text-xs text-muted-foreground mt-2 px-1">
-              💡 적립된 TC는 장기저축으로 분류됩니다 — 만 50세 이후 돌봄서비스 수령 시 사용 가능
+              💡 적립된 TP는 장기저축으로 분류됩니다 — 만 50세 이후 돌봄서비스 수령 시 사용 가능
             </p>
           </CardContent>
         </Card>
@@ -305,16 +305,16 @@ export default function CarePackageDetailPage() {
                     onChange={e => setAddForm(f => ({
                       ...f,
                       durationMinutes: Number(e.target.value),
-                      tcAmount: Number((Number(e.target.value) / 60).toFixed(2)),
+                      tpAmount: Number((Number(e.target.value) / 60).toFixed(2)),
                     }))}
                     className="w-full mt-2" />
                 </div>
               </div>
 
               <div className="flex items-center justify-between bg-amber-50 rounded-md px-3 py-2">
-                <span className="text-xs text-amber-700">이 세션 TC</span>
-                <span className="font-bold text-amber-600">{addForm.tcAmount.toFixed(2)} TC</span>
-                <span className="text-xs text-amber-500">(잔여 가용: {availableTc.toFixed(1)} TC)</span>
+                <span className="text-xs text-amber-700">이 세션 TP</span>
+                <span className="font-bold text-amber-600">{addForm.tpAmount.toFixed(2)} TP</span>
+                <span className="text-xs text-amber-500">(잔여 가용: {availableTc.toFixed(1)} TP)</span>
               </div>
 
               {addResult && (
@@ -362,7 +362,7 @@ export default function CarePackageDetailPage() {
                       </span>
                       <span className="flex items-center gap-1 font-medium text-amber-600">
                         <Coins className="h-3 w-3" />
-                        {Number(s.tcAmount).toFixed(1)} TC
+                        {Number(s.tpAmount).toFixed(1)} TP
                         {s.status === 'COMPLETED' && <span className="text-green-600 ml-1">저축완료</span>}
                       </span>
                     </div>

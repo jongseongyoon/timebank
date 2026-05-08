@@ -4,7 +4,7 @@ import { useRef, useState } from 'react'
 import { Upload, Download, CheckCircle, XCircle, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-type Row = { phone: string; name: string; tcAmount: number; reason: string }
+type Row = { phone: string; name: string; tpAmount: number; reason: string }
 type Result = Row & { status: 'success' | 'error'; reason: string }
 
 export default function BulkAllocatePage() {
@@ -32,10 +32,10 @@ export default function BulkAllocatePage() {
       .map(r => ({
         phone: String(r[0]).trim(),
         name: String(r[1] ?? '').trim(),
-        tcAmount: Number(r[2]),
+        tpAmount: Number(r[2]),
         reason: String(r[3] ?? '일괄 배분').trim(),
       }))
-      .filter(r => r.tcAmount > 0)
+      .filter(r => r.tpAmount > 0)
 
     setPreview(rows)
   }
@@ -72,7 +72,7 @@ export default function BulkAllocatePage() {
     import('xlsx').then(XLSX => {
       const ws = XLSX.utils.aoa_to_sheet([
         ['전화번호', '이름', 'TC수량', '사유', '결과'],
-        ...results.map(r => [r.phone, r.name, r.tcAmount, r.reason, r.status === 'success' ? '✓ 성공' : `✗ ${r.reason}`]),
+        ...results.map(r => [r.phone, r.name, r.tpAmount, r.reason, r.status === 'success' ? '✓ 성공' : `✗ ${r.reason}`]),
       ])
       const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(wb, ws, '처리결과')
@@ -91,7 +91,7 @@ export default function BulkAllocatePage() {
       <div className="bg-white border-2 border-dashed border-gray-300 rounded-xl p-8 text-center space-y-3">
         <Upload className="h-10 w-10 text-gray-400 mx-auto" />
         <p className="text-sm text-gray-600">엑셀 파일을 업로드하세요 (.xlsx)</p>
-        <p className="text-xs text-gray-400">형식: 전화번호 | 이름 | TC수량 | 사유</p>
+        <p className="text-xs text-gray-400">형식: 전화번호 | 이름 | TP수량 | 사유</p>
         <div className="flex justify-center gap-3">
           <Button variant="outline" size="sm" onClick={downloadTemplate} className="gap-1">
             <Download className="h-4 w-4" /> 템플릿 다운로드
@@ -130,7 +130,7 @@ export default function BulkAllocatePage() {
                     <td className="px-4 py-2 text-gray-400">{i + 1}</td>
                     <td className="px-4 py-2">{r.phone}</td>
                     <td className="px-4 py-2 font-medium">{r.name}</td>
-                    <td className="px-4 py-2 text-right font-bold text-blue-700">{r.tcAmount}</td>
+                    <td className="px-4 py-2 text-right font-bold text-blue-700">{r.tpAmount}</td>
                     <td className="px-4 py-2 text-gray-500 max-w-[200px] truncate">{r.reason}</td>
                   </tr>
                 ))}
@@ -179,7 +179,7 @@ export default function BulkAllocatePage() {
                   <tr key={i} className={r.status === 'error' ? 'bg-red-50' : ''}>
                     <td className="px-4 py-2">{r.phone}</td>
                     <td className="px-4 py-2 font-medium">{r.name}</td>
-                    <td className="px-4 py-2 text-right">{r.tcAmount}</td>
+                    <td className="px-4 py-2 text-right">{r.tpAmount}</td>
                     <td className="px-4 py-2">
                       {r.status === 'success'
                         ? <span className="text-green-600 font-medium">✓ 완료</span>

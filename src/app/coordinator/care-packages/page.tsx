@@ -59,7 +59,7 @@ export default function CarePackagesPage() {
   const [recipientSearch, setRecipientSearch] = useState('')
   const [orgSearch, setOrgSearch] = useState('')
 
-  const totalTcAmount = form.dailyHours * form.totalDays
+  const totalTpAmount = form.dailyHours * form.totalDays
 
   useEffect(() => {
     Promise.all([
@@ -100,7 +100,7 @@ export default function CarePackagesPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ...form,
-        totalTcAmount,
+        totalTpAmount,
         startDate: new Date(form.startDate).toISOString(),
         endDate: new Date(form.endDate || form.startDate).toISOString(),
         organizationId: form.organizationId || undefined,
@@ -109,7 +109,7 @@ export default function CarePackagesPage() {
 
     if (res.ok) {
       const d = await res.json()
-      setResult({ ok: true, msg: `"${d.pkg.title}" 패키지 생성 완료 (${totalTcAmount} TC)` })
+      setResult({ ok: true, msg: `"${d.pkg.title}" 패키지 생성 완료 (${totalTpAmount} TP)` })
       setForm({
         title: '', category: 'HOUSEKEEPING', description: '',
         recipientId: '', organizationId: '', dailyHours: 3,
@@ -137,7 +137,7 @@ export default function CarePackagesPage() {
           <HeartHandshake className="h-6 w-6 text-rose-500" /> 돌봄 패키지 관리
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          단체가 수혜자에게 TC를 배분하고 복수의 제공자가 나눠 이행하는 패키지 서비스
+          단체가 수혜자에게 TP를 배분하고 복수의 제공자가 나눠 이행하는 패키지 서비스
         </p>
       </div>
 
@@ -167,8 +167,8 @@ export default function CarePackagesPage() {
           ) : (
             <div className="space-y-3">
               {packages.map(pkg => {
-                const pct = Number(pkg.totalTcAmount) > 0
-                  ? Math.round((Number(pkg.usedTcAmount) / Number(pkg.totalTcAmount)) * 100)
+                const pct = Number(pkg.totalTpAmount) > 0
+                  ? Math.round((Number(pkg.usedTpAmount) / Number(pkg.totalTpAmount)) * 100)
                   : 0
                 const completedSessions = pkg.sessions?.filter((s: any) => s.status === 'COMPLETED').length ?? 0
                 const totalSessions = pkg.sessions?.length ?? 0
@@ -202,10 +202,10 @@ export default function CarePackagesPage() {
                             </span>
                           </div>
 
-                          {/* TC 진행 바 */}
+                          {/* TP 진행 바 */}
                           <div className="mt-2 space-y-1">
                             <div className="flex justify-between text-xs text-muted-foreground">
-                              <span>TC 사용: {Number(pkg.usedTcAmount).toFixed(1)} / {Number(pkg.totalTcAmount).toFixed(1)} TC</span>
+                              <span>TC 사용: {Number(pkg.usedTpAmount).toFixed(1)} / {Number(pkg.totalTpAmount).toFixed(1)} TP</span>
                               <span>{pct}%</span>
                             </div>
                             <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
@@ -256,7 +256,7 @@ export default function CarePackagesPage() {
                       className={`w-full text-left px-3 py-2 text-sm transition-colors ${form.recipientId === m.id ? 'bg-rose-50 text-rose-700 font-medium' : 'hover:bg-muted'}`}>
                       <span className="font-medium">{m.name}</span>
                       <span className="text-xs text-muted-foreground ml-2">{m.dong} · {m.phone}</span>
-                      <span className="text-xs text-amber-600 ml-2">잔액 {Number(m.tcBalance).toFixed(1)} TC</span>
+                      <span className="text-xs text-amber-600 ml-2">잔액 {Number(m.tpBalance).toFixed(1)} TP</span>
                     </button>
                   ))}
                 </div>
@@ -284,7 +284,7 @@ export default function CarePackagesPage() {
                       className={`w-full text-left px-3 py-2 text-sm transition-colors ${form.organizationId === o.id ? 'bg-indigo-50 text-indigo-700 font-medium' : 'hover:bg-muted'}`}>
                       <span className="font-medium">{o.name}</span>
                       <span className="text-xs text-muted-foreground ml-2">{o.dong}</span>
-                      <span className="text-xs text-amber-600 ml-2">잔액 {Number(o.tcBalance).toFixed(1)} TC</span>
+                      <span className="text-xs text-amber-600 ml-2">잔액 {Number(o.tpBalance).toFixed(1)} TP</span>
                     </button>
                   ))}
                 </div>
@@ -341,13 +341,13 @@ export default function CarePackagesPage() {
                   </div>
                 </div>
 
-                {/* TC 자동 계산 */}
+                {/* TP 자동 계산 */}
                 <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-center justify-between">
                   <div className="text-sm text-amber-700">
-                    <p className="font-medium">배분 TC 자동 계산</p>
-                    <p className="text-xs mt-0.5">{form.dailyHours}시간 × {form.totalDays}일 × 1 TC/h</p>
+                    <p className="font-medium">배분 TP 자동 계산</p>
+                    <p className="text-xs mt-0.5">{form.dailyHours}시간 × {form.totalDays}일 × 1 TP/h</p>
                   </div>
-                  <div className="text-2xl font-bold text-amber-600">{totalTcAmount} TC</div>
+                  <div className="text-2xl font-bold text-amber-600">{totalTpAmount} TP</div>
                 </div>
 
                 <div className="space-y-1.5">

@@ -105,7 +105,7 @@ export default function ServiceRegisterPage() {
     const res = await fetch('/api/services', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...form, tcPerHour: tcRate }),
+      body: JSON.stringify({ ...form, tpPerHour: tcRate }),
     })
 
     if (res.ok) {
@@ -222,7 +222,7 @@ export default function ServiceRegisterPage() {
             {form.category && (
               <div className="mt-4 flex items-center gap-2 bg-blue-50 text-blue-800 rounded-md px-3 py-2 text-sm">
                 <Info className="h-4 w-4 shrink-0" aria-hidden="true" />
-                이 서비스를 등록하면 시간당 <strong>{tcRate.toFixed(1)} TC</strong>를 적립받습니다.
+                이 서비스를 등록하면 시간당 <strong>{tcRate.toFixed(1)} TP</strong>를 적립받습니다.
               </div>
             )}
           </CardContent>

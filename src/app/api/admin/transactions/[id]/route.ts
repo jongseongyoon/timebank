@@ -42,7 +42,7 @@ export async function PATCH(
   return NextResponse.json({ transaction: updated })
 }
 
-// 관리자 거래 삭제 + TC 자동 복구
+// 관리자 거래 삭제 + TP 자동 복구
 export async function DELETE(
   _req: NextRequest,
   { params }: { params: { id: string } }
@@ -57,31 +57,31 @@ export async function DELETE(
   })
   if (!tx) return NextResponse.json({ error: '거래 없음' }, { status: 404 })
 
-  const tcAmount = Number(tx.tcAmount)
+  const tpAmount = Number(tx.tpAmount)
   const ops: any[] = []
 
-  // APPROVED 거래만 TC 복구
+  // APPROVED 거래만 TP 복구
   if (tx.status === 'APPROVED') {
-    // 제공자 TC 차감 복구
+    // 제공자 TP 차감 복구
     if (tx.providerId) {
       ops.push(
         prisma.member.update({
           where: { id: tx.providerId },
           data: {
-            tcBalance: { decrement: tcAmount },
-            lifetimeEarned: { decrement: tcAmount },
+            tpBalance: { decrement: tpAmount },
+            lifetimeEarned: { decrement: tpAmount },
           },
         })
       )
     }
-    // 수혜자 TC 증가 복구
+    // 수혜자 TP 증가 복구
     if (tx.receiverId) {
       ops.push(
         prisma.member.update({
           where: { id: tx.receiverId },
           data: {
-            tcBalance: { increment: tcAmount },
-            lifetimeSpent: { decrement: tcAmount },
+            tpBalance: { increment: tpAmount },
+            lifetimeSpent: { decrement: tpAmount },
           },
         })
       )
@@ -95,7 +95,7 @@ export async function DELETE(
         action: 'TRANSACTION_DELETE',
         targetId: params.id,
         details: JSON.stringify({
-          txType: tx.txType, tcAmount, status: tx.status,
+          txType: tx.txType, tpAmount, status: tx.status,
           providerId: tx.providerId, receiverId: tx.receiverId,
           note: tx.note,
         }),
@@ -116,5 +116,5 @@ export async function DELETE(
   await prisma.$transaction(ops)
   await prisma.transaction.delete({ where: { id: params.id } })
 
-  return NextResponse.json({ ok: true, tcRestored: tx.status === 'APPROVED' ? tcAmount : 0 })
+  return NextResponse.json({ ok: true, tcRestored: tx.status === 'APPROVED' ? tpAmount : 0 })
 }

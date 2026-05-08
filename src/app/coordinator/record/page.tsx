@@ -53,7 +53,7 @@ export default function RecordTransactionPage() {
   const [form, setForm] = useState({
     category: 'EDUCATION',
     durationMinutes: 60,
-    tcPerHour: 1.0,
+    tpPerHour: 1.0,
     note: '',
     completedAt: new Date().toISOString().slice(0, 16),
   })
@@ -81,7 +81,7 @@ export default function RecordTransactionPage() {
     setProviderSearch('')
   }, [txType])
 
-  const tcAmount = parseFloat(((form.durationMinutes / 60) * form.tcPerHour).toFixed(2))
+  const tpAmount = parseFloat(((form.durationMinutes / 60) * form.tpPerHour).toFixed(2))
 
   const filteredProviders = providerType === 'org'
     ? orgs.filter(o => !providerSearch || o.name.includes(providerSearch) || o.dong.includes(providerSearch))
@@ -102,7 +102,7 @@ export default function RecordTransactionPage() {
       txType,
       category: form.category,
       durationMinutes: form.durationMinutes,
-      tcAmount,
+      tpAmount,
       note: form.note,
       completedAt: new Date(form.completedAt).toISOString(),
       receiverId: selectedReceiver.id,
@@ -122,7 +122,7 @@ export default function RecordTransactionPage() {
 
     if (res.ok) {
       const d = await res.json()
-      setResult({ ok: true, msg: `거래 등록 완료! ${tcAmount} TC (${form.durationMinutes}분)` })
+      setResult({ ok: true, msg: `거래 등록 완료! ${tpAmount} TP (${form.durationMinutes}분)` })
       setSelectedProvider(null)
       setSelectedReceiver(null)
       setProviderSearch('')
@@ -262,7 +262,7 @@ export default function RecordTransactionPage() {
                   <span className="font-medium">{m.name}</span>
                   <span className="text-xs text-muted-foreground ml-2">{m.dong}</span>
                   <span className="text-xs text-muted-foreground ml-1">{m.phone}</span>
-                  <span className="text-xs text-amber-600 ml-2">잔액 {Number(m.tcBalance).toFixed(1)} TC</span>
+                  <span className="text-xs text-amber-600 ml-2">잔액 {Number(m.tpBalance).toFixed(1)} TP</span>
                 </button>
               ))}
               {filteredReceivers.length === 0 && (
@@ -325,16 +325,16 @@ export default function RecordTransactionPage() {
               <Label>TC 단가 (시간당)</Label>
               <Input
                 type="number" min={0.5} max={3} step={0.5}
-                value={form.tcPerHour}
-                onChange={e => setForm(f => ({ ...f, tcPerHour: Number(e.target.value) }))}
+                value={form.tpPerHour}
+                onChange={e => setForm(f => ({ ...f, tpPerHour: Number(e.target.value) }))}
               />
             </div>
           </div>
 
-          {/* TC 계산 결과 */}
+          {/* TP 계산 결과 */}
           <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-center justify-between">
-            <span className="text-sm text-amber-700">예상 TC</span>
-            <span className="text-xl font-bold text-amber-600">{tcAmount.toFixed(2)} TC</span>
+            <span className="text-sm text-amber-700">예상 TP</span>
+            <span className="text-xl font-bold text-amber-600">{tpAmount.toFixed(2)} TP</span>
           </div>
 
           <div className="space-y-1.5">
@@ -360,7 +360,7 @@ export default function RecordTransactionPage() {
               {selectedProvider && <p>• 제공: <strong>{selectedProvider.name}</strong> ({selectedProvider.dong})</p>}
               <p>• 수혜: <strong>{selectedReceiver.name}</strong> ({selectedReceiver.dong})</p>
               <p>• 서비스: {CATEGORIES.find(c => c.value === form.category)?.label} / {form.durationMinutes}분</p>
-              <p>• TC: <strong>{tcAmount.toFixed(2)} TC</strong> 발생</p>
+              <p>• TP: <strong>{tpAmount.toFixed(2)} TP</strong> 발생</p>
             </div>
           </CardContent>
         </Card>

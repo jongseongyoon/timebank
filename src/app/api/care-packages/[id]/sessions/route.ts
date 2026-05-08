@@ -9,7 +9,7 @@ const addSchema = z.object({
   providerId: z.string(),
   scheduledAt: z.string().datetime(),
   durationMinutes: z.number().int().min(15),
-  tcAmount: z.number().positive(),
+  tpAmount: z.number().positive(),
   note: z.string().max(300).optional(),
 })
 
@@ -21,8 +21,8 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const sessions = await prisma.careSession.findMany({
     where: { packageId: params.id },
     include: {
-      provider: { select: { id: true, name: true, dong: true, tcBalance: true } },
-      transaction: { select: { id: true, status: true, tcAmount: true } },
+      provider: { select: { id: true, name: true, dong: true, tpBalance: true } },
+      transaction: { select: { id: true, status: true, tpAmount: true } },
     },
     orderBy: { scheduledAt: 'asc' },
   })
@@ -57,16 +57,16 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
       return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
     }
 
-    // 사용 TC 초과 검증
-    const currentUsed = Number(pkg.usedTcAmount)
+    // 사용 TP 초과 검증
+    const currentUsed = Number(pkg.usedTpAmount)
     const pendingUsed = pkg.sessions
       .filter(s => s.status === 'SCHEDULED')
-      .reduce((sum, s) => sum + Number(s.tcAmount), 0)
-    const available = Number(pkg.totalTcAmount) - currentUsed - pendingUsed
+      .reduce((sum, s) => sum + Number(s.tpAmount), 0)
+    const available = Number(pkg.totalTpAmount) - currentUsed - pendingUsed
 
-    if (parsed.data.tcAmount > available + 0.01) {
+    if (parsed.data.tpAmount > available + 0.01) {
       return NextResponse.json({
-        error: `TC 부족: 남은 TC ${available.toFixed(2)} TC (요청: ${parsed.data.tcAmount} TC)`
+        error: `TC 부족: 남은 TP ${available.toFixed(2)} TP (요청: ${parsed.data.tpAmount} TP)`
       }, { status: 400 })
     }
 
@@ -76,7 +76,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
         providerId: parsed.data.providerId,
         scheduledAt: new Date(parsed.data.scheduledAt),
         durationMinutes: parsed.data.durationMinutes,
-        tcAmount: parsed.data.tcAmount,
+        tpAmount: parsed.data.tpAmount,
         note: parsed.data.note,
         status: 'SCHEDULED',
       },

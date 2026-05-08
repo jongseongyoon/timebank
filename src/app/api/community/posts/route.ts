@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
     prisma.post.findMany({
       where,
       include: {
-        author: { select: { id: true, name: true, dong: true, tcBalance: true, avgRating: true } },
+        author: { select: { id: true, name: true, dong: true, tpBalance: true, avgRating: true } },
         _count: { select: { comments: true } },
       },
       orderBy: [{ isPinned: 'desc' }, { createdAt: 'desc' }],

@@ -7,7 +7,7 @@ import crypto from 'crypto'
 type AllocRow = {
   phone: string
   name: string
-  tcAmount: number
+  tpAmount: number
   reason: string
 }
 
@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: '데이터 없음' }, { status: 400 })
   }
 
-  const results: { phone: string; name: string; tcAmount: number; status: 'success' | 'error'; reason: string }[] = []
+  const results: { phone: string; name: string; tpAmount: number; status: 'success' | 'error'; reason: string }[] = []
 
   for (const row of rows) {
     try {
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       }
 
       const txHash = crypto.createHash('sha256')
-        .update(`bulk-allocate-${member.id}-${row.tcAmount}-${Date.now()}-${Math.random()}`)
+        .update(`bulk-allocate-${member.id}-${row.tpAmount}-${Date.now()}-${Math.random()}`)
         .digest('hex')
 
       await prisma.$transaction([
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
             status: 'APPROVED',
             verificationMethod: 'COORDINATOR',
             durationMinutes: 0,
-            tcAmount: row.tcAmount,
+            tpAmount: row.tpAmount,
             baseRate: 0,
             bonusRate: 0,
             txHash,
@@ -58,13 +58,13 @@ export async function POST(req: NextRequest) {
         prisma.member.update({
           where: { id: member.id },
           data: {
-            tcBalance: { increment: row.tcAmount },
-            lifetimeEarned: { increment: row.tcAmount },
+            tpBalance: { increment: row.tpAmount },
+            lifetimeEarned: { increment: row.tpAmount },
           },
         }),
       ])
 
-      results.push({ phone: row.phone, name: member.name, tcAmount: row.tcAmount, status: 'success', reason: row.reason })
+      results.push({ phone: row.phone, name: member.name, tpAmount: row.tpAmount, status: 'success', reason: row.reason })
     } catch {
       results.push({ ...row, status: 'error', reason: '처리 오류' })
     }

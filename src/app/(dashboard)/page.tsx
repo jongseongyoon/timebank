@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { formatTC, formatDate, maskName } from '@/lib/utils'
+import { formatTP, formatDate, maskName } from '@/lib/utils'
 import {
   Wallet, TrendingUp, TrendingDown, ClipboardList, PlusCircle,
   ArrowRight, ChevronRight,
@@ -35,7 +35,7 @@ export default async function DashboardPage() {
   const [member, recentTxs, nearbyListings, walkRecord] = await Promise.all([
     prisma.member.findUnique({
       where: { id: memberId },
-      select: { name: true, tcBalance: true, lifetimeEarned: true, lifetimeSpent: true, tcExpiresAt: true, dong: true },
+      select: { name: true, tpBalance: true, lifetimeEarned: true, lifetimeSpent: true, tpExpiresAt: true, dong: true },
     }),
     prisma.transaction.findMany({
       where: { OR: [{ providerId: memberId }, { receiverId: memberId }] },
@@ -79,7 +79,7 @@ export default async function DashboardPage() {
               <Wallet className="h-8 w-8 text-blue-200 opacity-70 shrink-0" aria-hidden="true" />
               <div>
                 <p className="text-blue-100 text-xs">현재 TP 잔액</p>
-                <p className="text-4xl font-bold leading-tight">{Number(member.tcBalance).toFixed(2)}</p>
+                <p className="text-4xl font-bold leading-tight">{Number(member.tpBalance).toFixed(2)}</p>
                 <p className="text-blue-200 text-xs">TP (타임페이)</p>
               </div>
             </div>
@@ -87,16 +87,16 @@ export default async function DashboardPage() {
             <div className="flex flex-col gap-1.5 text-right shrink-0">
               <div>
                 <p className="text-blue-200 text-[10px]">총 적립</p>
-                <p className="text-white font-semibold text-sm">{formatTC(member.lifetimeEarned.toString())}</p>
+                <p className="text-white font-semibold text-sm">{formatTP(member.lifetimeEarned.toString())}</p>
               </div>
               <div>
                 <p className="text-blue-200 text-[10px]">총 소진</p>
-                <p className="text-white font-semibold text-sm">{formatTC(member.lifetimeSpent.toString())}</p>
+                <p className="text-white font-semibold text-sm">{formatTP(member.lifetimeSpent.toString())}</p>
               </div>
               <div>
                 <p className="text-blue-200 text-[10px]">만료일</p>
                 <p className="text-white font-semibold text-xs">
-                  {member.tcExpiresAt ? formatDate(member.tcExpiresAt) : '무기한'}
+                  {member.tpExpiresAt ? formatDate(member.tpExpiresAt) : '무기한'}
                 </p>
               </div>
             </div>
@@ -141,7 +141,7 @@ export default async function DashboardPage() {
           {recentTxs.map((tx) => {
             const isProvider = tx.providerId === memberId
             const counterpart = isProvider ? tx.receiver?.name : tx.provider?.name
-            const tcChange = isProvider ? `+${Number(tx.tcAmount).toFixed(2)}` : `-${Number(tx.tcAmount).toFixed(2)}`
+            const tcChange = isProvider ? `+${Number(tx.tpAmount).toFixed(2)}` : `-${Number(tx.tpAmount).toFixed(2)}`
             const isPositive = isProvider
 
             return (
@@ -196,7 +196,7 @@ export default async function DashboardPage() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold text-primary">
-                  {Number(listing.tcPerHour).toFixed(1)} TP/h
+                  {Number(listing.tpPerHour).toFixed(1)} TP/h
                 </span>
                 <Button asChild size="sm" variant="outline">
                   <Link href="/services/request" aria-label={`${listing.title} 요청하기`}>

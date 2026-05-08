@@ -5,7 +5,7 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatTC(amount: number | string): string {
+export function formatTP(amount: number | string): string {
   return `${Number(amount).toFixed(2)} TP`
 }
 

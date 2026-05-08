@@ -174,7 +174,7 @@ export function BottomNav() {
                 <div>
                   <p className="font-bold text-gray-900 text-base">상대방 QR 스캔</p>
                   <p className="text-sm text-gray-500 mt-0.5">
-                    서비스를 <strong>제공할 때</strong> · TC 송금 시 사용
+                    서비스를 <strong>제공할 때</strong> · TP 송금 시 사용
                   </p>
                 </div>
               </button>

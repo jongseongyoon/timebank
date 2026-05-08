@@ -1,6 +1,6 @@
 /**
  * tc-calculator.ts
- * 모든 TC 적립/소진 계산의 단일 진실 원천 (Single Source of Truth)
+ * 모든 TP 적립/소진 계산의 단일 진실 원천 (Single Source of Truth)
  * 주의: @prisma/client를 직접 import하지 않음 → Client Component에서도 안전하게 사용 가능
  */
 
@@ -92,8 +92,8 @@ export function calculateSpentTC(params: {
   return new Decimal(hours * rate).toDecimalPlaces(2)
 }
 
-export function tcToKrw(tcAmount: Decimal): number {
-  return tcAmount.mul(MINIMUM_WAGE).toNumber()
+export function tcToKrw(tpAmount: Decimal): number {
+  return tpAmount.mul(MINIMUM_WAGE).toNumber()
 }
 
 export function krwToTC(krwAmount: number): Decimal {
@@ -124,7 +124,7 @@ export function checkPrivateMarketEligibility(params: {
   const remaining = monthlyLimit.minus(params.monthlyUsedTC)
 
   if (params.memberTcBalance.lessThan(params.requestedTC)) {
-    return { eligible: false, reason: 'TC 잔액 부족', remainingMonthlyLimit: remaining }
+    return { eligible: false, reason: 'TP 잔액 부족', remainingMonthlyLimit: remaining }
   }
   if (remaining.lessThan(params.requestedTC)) {
     return { eligible: false, reason: '월 한도 초과', remainingMonthlyLimit: remaining }

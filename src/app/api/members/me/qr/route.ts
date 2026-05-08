@@ -31,7 +31,7 @@ export async function POST() {
       where: { id: session.user.id },
       data: {
         qrCode,
-        tcBalance: { increment: 1 },
+        tpBalance: { increment: 1 },
         lifetimeEarned: { increment: 1 },
       },
     }),
@@ -42,7 +42,7 @@ export async function POST() {
         status: 'APPROVED',
         verificationMethod: 'APP_QR',
         durationMinutes: 60,   // 1시간 = 1 TP
-        tcAmount: 1,
+        tpAmount: 1,
         baseRate: 1,
         bonusRate: 0,
         txHash,

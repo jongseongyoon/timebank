@@ -70,7 +70,7 @@ function TxList({ status }: { status: string }) {
                 )}
               </div>
               <span className="text-base font-bold text-blue-600 shrink-0">
-                {Number(tx.tcAmount).toFixed(2)} TC
+                {Number(tx.tpAmount).toFixed(2)} TP
               </span>
             </div>
 

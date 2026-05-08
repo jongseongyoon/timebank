@@ -65,7 +65,12 @@
       "Bash(mkdir -p \"C:/Users/chan0/timebank/src/app/api/community/posts/[id]/comments\")",
       "Bash(mkdir -p \"C:/Users/chan0/timebank/src/app/api/community/posts/[id]/like\")",
       "Bash(mkdir -p \"C:/Users/chan0/timebank/src/app/api/admin/transactions/[id]\")",
-      "Bash(npx next *)"
+      "Bash(npx next *)",
+      "Bash(powershell -Command \"\\(Get-Content prisma\\\\seed.ts -Raw\\) -replace 'birthDate: \\\\\"\\\\\" \\\\+ \\\\\"0101\\\\\"', 'birthDate: \\\\\"19800101\\\\\"' | Set-Content prisma\\\\seed.ts -Encoding utf8\")",
+      "Bash(npx tsx *)",
+      "Bash(del C:\\\\Users\\\\chan0\\\\timebank\\\\scripts\\\\check-members.ts)",
+      "Bash(git check-ignore *)",
+      "Bash(npx cap *)"
     ]
   }
 }

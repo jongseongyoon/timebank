@@ -13,7 +13,7 @@ const schema = z.object({
     'LEGAL_CONSULT', 'HEALTH_CONSULT', 'ADMINISTRATIVE', 'COMMUNITY_EVENT', 'OTHER',
   ]),
   durationMinutes: z.number().int().min(1),
-  tcAmount: z.number().positive(),
+  tpAmount: z.number().positive(),
   note: z.string().max(500).optional(),
   completedAt: z.string().datetime(),
   receiverId: z.string(),
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   if (!parsed.success)
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const { txType, category, durationMinutes, tcAmount, note, completedAt, receiverId, providerId, organizationId } = parsed.data
+  const { txType, category, durationMinutes, tpAmount, note, completedAt, receiverId, providerId, organizationId } = parsed.data
 
   // 수혜자 확인
   const receiver = await prisma.member.findUnique({ where: { id: receiverId } })
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
   }
 
   const txHash = crypto.createHash('sha256')
-    .update(`record-${receiverId}-${tcAmount}-${Date.now()}`)
+    .update(`record-${receiverId}-${tpAmount}-${Date.now()}`)
     .digest('hex')
 
   // 거래 생성 + 잔액 업데이트 (원자적)
@@ -64,8 +64,8 @@ export async function POST(req: NextRequest) {
         status: 'APPROVED',
         verificationMethod: 'COORDINATOR',
         durationMinutes,
-        tcAmount,
-        baseRate: parsed.data.tcAmount / (durationMinutes / 60),
+        tpAmount,
+        baseRate: parsed.data.tpAmount / (durationMinutes / 60),
         bonusRate: 0,
         txHash,
         note: note ?? `${category} 서비스 완료 (직접 입력)`,
@@ -76,35 +76,35 @@ export async function POST(req: NextRequest) {
         completedAt: new Date(completedAt),
       },
     }),
-    // 수혜자: TC 차감 (서비스를 받았으므로 지출)
+    // 수혜자: TP 차감 (서비스를 받았으므로 지출)
     prisma.member.update({
       where: { id: receiverId },
       data: {
-        tcBalance: { decrement: tcAmount },
-        lifetimeSpent: { increment: tcAmount },
+        tpBalance: { decrement: tpAmount },
+        lifetimeSpent: { increment: tpAmount },
       },
     }),
   ]
 
-  // 개인 제공자가 있으면 TC 적립
+  // 개인 제공자가 있으면 TP 적립
   if (resolvedProviderId) {
     ops.push(
       prisma.member.update({
         where: { id: resolvedProviderId },
         data: {
-          tcBalance: { increment: tcAmount },
-          lifetimeEarned: { increment: tcAmount },
+          tpBalance: { increment: tpAmount },
+          lifetimeEarned: { increment: tpAmount },
         },
       })
     )
   }
 
-  // 단체 제공자가 있으면 단체 TC 적립
+  // 단체 제공자가 있으면 단체 TP 적립
   if (organizationId) {
     ops.push(
       prisma.organization.update({
         where: { id: organizationId },
-        data: { tcBalance: { increment: tcAmount } },
+        data: { tpBalance: { increment: tpAmount } },
       })
     )
   }

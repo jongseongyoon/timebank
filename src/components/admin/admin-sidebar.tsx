@@ -11,7 +11,7 @@ import {
 const navItems = [
   { href: '/admin', label: '대시보드', icon: LayoutDashboard },
   { href: '/admin/tc', label: 'TC 관리', icon: Coins },
-  { href: '/admin/allocate', label: 'TC 배분', icon: Gift },
+  { href: '/admin/allocate', label: 'TP 배분', icon: Gift },
   { href: '/admin/bulk-allocate', label: '엑셀 일괄 배분', icon: FileSpreadsheet },
   { href: '/admin/organizations', label: '단체 관리', icon: Building2 },
   { href: '/admin/fund', label: '기금 관리', icon: Landmark },

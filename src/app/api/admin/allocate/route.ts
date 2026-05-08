@@ -7,11 +7,11 @@ import { z } from 'zod'
 
 const schema = z.object({
   memberId: z.string().uuid(),
-  tcAmount: z.number().positive().max(10000),
+  tpAmount: z.number().positive().max(10000),
   reason: z.string().min(2).max(300),
 })
 
-// 개별 TC 배분
+// 개별 TP 배분
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: '인증 필요' }, { status: 401 })
@@ -23,13 +23,13 @@ export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
 
-  const { memberId, tcAmount, reason } = parsed.data
+  const { memberId, tpAmount, reason } = parsed.data
 
   const target = await prisma.member.findUnique({ where: { id: memberId } })
   if (!target) return NextResponse.json({ error: '회원 없음' }, { status: 404 })
 
   const txHash = crypto.createHash('sha256')
-    .update(`admin-allocate-${memberId}-${tcAmount}-${Date.now()}`)
+    .update(`admin-allocate-${memberId}-${tpAmount}-${Date.now()}`)
     .digest('hex')
 
   await prisma.$transaction([
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
         status: 'APPROVED',
         verificationMethod: 'COORDINATOR',
         durationMinutes: 0,
-        tcAmount,
+        tpAmount,
         baseRate: 0,
         bonusRate: 0,
         txHash,
@@ -50,12 +50,12 @@ export async function POST(req: NextRequest) {
         completedAt: new Date(),
       },
     }),
-    // 수혜자 TC 증가
+    // 수혜자 TP 증가
     prisma.member.update({
       where: { id: memberId },
       data: {
-        tcBalance: { increment: tcAmount },
-        lifetimeEarned: { increment: tcAmount },
+        tpBalance: { increment: tpAmount },
+        lifetimeEarned: { increment: tpAmount },
       },
     }),
     // 감사 로그
@@ -64,12 +64,12 @@ export async function POST(req: NextRequest) {
         adminId: session.user.id,
         action: 'TC_ALLOCATE',
         targetId: memberId,
-        details: JSON.stringify({ memberId, tcAmount, reason, targetName: target.name }),
+        details: JSON.stringify({ memberId, tpAmount, reason, targetName: target.name }),
       },
     }),
   ])
 
-  return NextResponse.json({ ok: true, memberId, tcAmount })
+  return NextResponse.json({ ok: true, memberId, tpAmount })
 }
 
 // 배분 현황 조회
@@ -81,11 +81,11 @@ export async function GET(_req: NextRequest) {
   const [allocations, memberStats] = await Promise.all([
     prisma.transaction.aggregate({
       where: { txType: 'FREE_ALLOCATION', status: 'APPROVED' },
-      _sum: { tcAmount: true },
+      _sum: { tpAmount: true },
       _count: true,
     }),
     prisma.member.aggregate({
-      _sum: { tcBalance: true, lifetimeEarned: true },
+      _sum: { tpBalance: true, lifetimeEarned: true },
       _count: true,
     }),
   ])
@@ -97,9 +97,9 @@ export async function GET(_req: NextRequest) {
   })
 
   return NextResponse.json({
-    totalAllocated: Number(allocations._sum.tcAmount ?? 0),
+    totalAllocated: Number(allocations._sum.tpAmount ?? 0),
     allocationCount: allocations._count,
-    totalMemberBalance: Number(memberStats._sum.tcBalance ?? 0),
+    totalMemberBalance: Number(memberStats._sum.tpBalance ?? 0),
     totalLifetimeEarned: Number(memberStats._sum.lifetimeEarned ?? 0),
     memberCount: memberStats._count,
     recentLogs,

@@ -75,7 +75,7 @@ export default function HistoryPage() {
           {txs.map((tx) => {
             const isProvider = tx.provider?.id === memberId
             const counterpart = isProvider ? tx.receiver?.name : tx.provider?.name
-            const tcChange = isProvider ? `+${Number(tx.tcAmount).toFixed(2)}` : `-${Number(tx.tcAmount).toFixed(2)}`
+            const tcChange = isProvider ? `+${Number(tx.tpAmount).toFixed(2)}` : `-${Number(tx.tpAmount).toFixed(2)}`
 
             return (
               <div key={tx.id} className="flex items-center justify-between py-3">
@@ -97,7 +97,7 @@ export default function HistoryPage() {
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
                   <span className={`text-sm font-bold ${isProvider ? 'text-green-600' : 'text-red-600'}`}>
-                    {tcChange} TC
+                    {tcChange} TP
                   </span>
                   <Badge variant={TX_STATUS_VARIANT[tx.status]}>
                     {TX_STATUS_LABEL[tx.status]}

@@ -45,7 +45,7 @@ export async function GET(req: NextRequest) {
     tx.receiver?.name ?? '',
     tx.coordinator?.name ?? '',
     SERVICE_LABEL[tx.serviceListing?.category ?? ''] ?? tx.serviceListing?.category ?? '',
-    Number(tx.tcAmount).toFixed(2),
+    Number(tx.tpAmount).toFixed(2),
     tx.durationMinutes,
     tx.verificationMethod,
     (tx.note ?? '').replace(/"/g, '""'),

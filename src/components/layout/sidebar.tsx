@@ -10,7 +10,7 @@ import {
 
 const navItems = [
   { href: '/', label: '대시보드', icon: LayoutDashboard },
-  { href: '/wallet', label: 'TC 지갑', icon: Wallet },
+  { href: '/wallet', label: 'TP 지갑', icon: Wallet },
   { href: '/history', label: '거래 내역', icon: ArrowLeftRight },
   { href: '/services/browse', label: '서비스 찾기', icon: Search },
   { href: '/services/request', label: '서비스 요청', icon: ClipboardList },

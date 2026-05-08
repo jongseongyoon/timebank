@@ -18,7 +18,7 @@ export async function GET() {
   if (!session) return NextResponse.json({ error: '인증 필요' }, { status: 401 })
 
   const organizations = await prisma.organization.findMany({
-    select: { id: true, name: true, orgType: true, dong: true, tcBalance: true },
+    select: { id: true, name: true, orgType: true, dong: true, tpBalance: true },
     orderBy: [{ dong: 'asc' }, { name: 'asc' }],
   })
   return NextResponse.json({ organizations })

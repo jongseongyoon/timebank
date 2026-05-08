@@ -9,7 +9,7 @@ type ScannedMember = {
   name: string
   phone: string
   dong: string
-  tcBalance: string
+  tpBalance: string
   avgRating: string
   ratingCount: number
   roles: string[]
@@ -207,7 +207,7 @@ export default function ScanPage() {
     const res = await fetch('/api/scan/transfer', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ receiverId: scannedMember!.id, tcAmount: transferAmount }),
+      body: JSON.stringify({ receiverId: scannedMember!.id, tpAmount: transferAmount }),
     })
     const data = await res.json()
     setLoading(false)
@@ -320,7 +320,7 @@ export default function ScanPage() {
   const estimatedTP = Math.min(elapsedSec / 3600, maxPayable > 0 ? maxPayable : Infinity)
   const remainingSec = maxMinutes * 60 - elapsedSec
   const isNearLimit = maxMinutes > 0 && remainingSec <= 300 && remainingSec > 0
-  const receiverBalance = scannedMember ? Number(scannedMember.tcBalance) : 0
+  const receiverBalance = scannedMember ? Number(scannedMember.tpBalance) : 0
   const isBalanceLow = receiverBalance <= MIN_BALANCE + 0.5
 
   return (
@@ -399,7 +399,7 @@ export default function ScanPage() {
             <div className={`rounded-xl px-4 py-3 text-center ${isBalanceLow ? 'bg-red-50 border border-red-200' : 'bg-gray-50'}`}>
               <p className="text-xs text-gray-500 font-medium mb-0.5">상대방 TP 잔액</p>
               <p className={`text-xl font-bold ${isBalanceLow ? 'text-red-600' : 'text-blue-700'}`}>
-                {Number(scannedMember.tcBalance).toFixed(2)} TP
+                {Number(scannedMember.tpBalance).toFixed(2)} TP
               </p>
               <p className="text-xs text-gray-400 mt-0.5">최대 {Math.max(0, receiverBalance - MIN_BALANCE).toFixed(2)} TP 거래 가능</p>
               {isBalanceLow && (
@@ -566,8 +566,8 @@ export default function ScanPage() {
           <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center text-5xl">✅</div>
           <div>
             <h2 className="text-2xl font-bold">완료!</h2>
-            {activeTransaction?.tcAmount !== undefined && (
-              <p className="text-gray-500 mt-2">{activeTransaction.durationMinutes}분 · {Number(activeTransaction.tcAmount).toFixed(2)} TP 정산</p>
+            {activeTransaction?.tpAmount !== undefined && (
+              <p className="text-gray-500 mt-2">{activeTransaction.durationMinutes}분 · {Number(activeTransaction.tpAmount).toFixed(2)} TP 정산</p>
             )}
           </div>
           <Button onClick={reset} className="w-full h-12 text-base">새로운 거래 시작</Button>

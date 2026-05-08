@@ -5,7 +5,7 @@ export function computeTxHash(params: {
   createdAt: Date
   providerId: string | null
   receiverId: string | null
-  tcAmount: string
+  tpAmount: string
   prevTxHash: string | null
 }): string {
   const payload = [
@@ -13,7 +13,7 @@ export function computeTxHash(params: {
     params.createdAt.toISOString(),
     params.providerId ?? 'NULL',
     params.receiverId ?? 'NULL',
-    params.tcAmount,
+    params.tpAmount,
     params.prevTxHash ?? 'GENESIS',
   ].join('|')
 

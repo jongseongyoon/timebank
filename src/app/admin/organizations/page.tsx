@@ -42,7 +42,7 @@ export default function AdminOrganizationsPage() {
   // 단체 서비스 등록 폼
   const [svcForm, setSvcForm] = useState({
     organizationId: '', title: '', description: '', category: 'COMMUNITY_EVENT',
-    tcPerHour: '1.0', availableDong: [] as string[], availableDays: [] as string[],
+    tpPerHour: '1.0', availableDong: [] as string[], availableDays: [] as string[],
     availableTimeFrom: '09:00', availableTimeTo: '17:00',
   })
   const [svcSaving, setSvcSaving] = useState(false)
@@ -95,7 +95,7 @@ export default function AdminOrganizationsPage() {
     setSvcSaving(true)
     const res = await fetch('/api/services', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...svcForm, tcPerHour: Number(svcForm.tcPerHour) }),
+      body: JSON.stringify({ ...svcForm, tpPerHour: Number(svcForm.tpPerHour) }),
     })
     if (res.ok) {
       setSvcMsg({ ok: true, text: '서비스가 등록됐습니다. 서비스 찾기에서 확인하세요.' })
@@ -137,7 +137,7 @@ export default function AdminOrganizationsPage() {
                   <CardContent className="pt-4 space-y-1">
                     <p className="font-semibold">{org.name}</p>
                     <p className="text-sm text-muted-foreground">{ORG_TYPE_LABEL[org.orgType]} · {org.dong}</p>
-                    <p className="text-sm text-amber-600 font-medium">TC 잔액: {Number(org.tcBalance).toFixed(2)}</p>
+                    <p className="text-sm text-amber-600 font-medium">TP 잔액: {Number(org.tpBalance).toFixed(2)}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -230,8 +230,8 @@ export default function AdminOrganizationsPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label>TC 단가 (시간당)</Label>
-                  <Input type="number" min="0.5" max="3" step="0.5" value={svcForm.tcPerHour}
-                    onChange={e => setSvcForm(f => ({ ...f, tcPerHour: e.target.value }))} />
+                  <Input type="number" min="0.5" max="3" step="0.5" value={svcForm.tpPerHour}
+                    onChange={e => setSvcForm(f => ({ ...f, tpPerHour: e.target.value }))} />
                 </div>
                 <div className="space-y-1.5">
                   <Label>운영 시간</Label>
