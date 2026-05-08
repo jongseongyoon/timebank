@@ -38,7 +38,7 @@ async function main() {
       dong: '\uCE58\uD3C9\uB3D9',
       memberType: MemberType.PUBLIC,
       roles: [Role.ADMIN, Role.COORDINATOR],
-      tcBalance: 0,
+      tpBalance: 0,
     },
   })
 
@@ -54,7 +54,7 @@ async function main() {
       birthDate: '19750101',
       dong: '\uC0C1\uBB34\u0031\uB3D9',
       roles: [Role.COORDINATOR],
-      tcBalance: 0,
+      tpBalance: 0,
     },
   })
 
@@ -69,7 +69,7 @@ async function main() {
       birthDate: '19780101',
       dong: '\ud48d\uc554\ub3d9',
       roles: [Role.COORDINATOR],
-      tcBalance: 0,
+      tpBalance: 0,
     },
   })
 
@@ -85,7 +85,7 @@ async function main() {
       birthDate: '19680101',
       dong: '\uC0C1\uBB34\u0031\uB3D9',
       roles: [Role.PROVIDER, Role.RECEIVER],
-      tcBalance: 15,
+      tpBalance: 15,
       lifetimeEarned: 25,
       lifetimeSpent: 10,
       tcExpiresAt: new Date('2029-01-01'),
@@ -103,7 +103,7 @@ async function main() {
       birthDate: '19720101',
       dong: '\ud48d\uc554\ub3d9',
       roles: [Role.PROVIDER],
-      tcBalance: 8,
+      tpBalance: 8,
       lifetimeEarned: 8,
       lifetimeSpent: 0,
       tcExpiresAt: new Date('2029-06-01'),
@@ -123,7 +123,7 @@ async function main() {
       dong: '\uC0C1\uBB34\u0031\uB3D9',
       roles: [Role.RECEIVER],
       isVulnerable: true,
-      tcBalance: 20,
+      tpBalance: 20,
       lifetimeEarned: 30,
       lifetimeSpent: 10,
       tcExpiresAt: null,
@@ -141,7 +141,7 @@ async function main() {
       birthDate: '19500101',
       dong: '\ud48d\uc554\ub3d9',
       roles: [Role.RECEIVER],
-      tcBalance: 5,
+      tpBalance: 5,
       lifetimeEarned: 5,
       lifetimeSpent: 0,
       tcExpiresAt: new Date('2034-01-01'),
@@ -157,7 +157,7 @@ async function main() {
       name: '\uC0C1\uBB34\u0031\uB3D9 \uC8FC\uBBFC\uC790\uCE58\uD68C',
       orgType: OrgType.COMMUNITY_COUNCIL,
       dong: '\uC0C1\uBB34\u0031\uB3D9',
-      tcBalance: 50,
+      tpBalance: 50,
       tcExpiresAt: new Date('2027-01-01'),
     },
   })
@@ -172,7 +172,7 @@ async function main() {
       title: '\uc7a5\ubcf4\uae30 \ub3c4\uc6c0',
       description: '\uc2dc\uc7a5 \uc7a5\ubcf4\uae30 \ub300\ud589 \uc11c\ube44\uc2a4',
       category: ServiceCategory.SHOPPING,
-      tcPerHour: 1.0,
+      tpPerHour: 1.0,
       availableDong: ['\uC0C1\uBB34\u0031\uB3D9', '\uC0C1\uBB34\u0032\uB3D9'],
       availableDays: ['MON', 'WED', 'FRI'],
       availableTimeFrom: '09:00',
@@ -188,7 +188,7 @@ async function main() {
       providerId: provider2.id,
       title: '\ub9d0\ubc97 \uc11c\ube44\uc2a4',
       category: ServiceCategory.COMPANION,
-      tcPerHour: 1.0,
+      tpPerHour: 1.0,
       availableDong: ['\ud48d\uc554\ub3d9'],
       availableDays: ['TUE', 'THU', 'SAT'],
       availableTimeFrom: '10:00',
@@ -203,7 +203,7 @@ async function main() {
     create: {
       id: 'fund-seed-001',
       fundTxType: 'CONTRIBUTION',
-      tcEquivalent: 10000,
+      tpEquivalent: 10000,
       cashAmount: 100300000,
       description: '\uAD11\uC8FC\uC11C\uAD6C\uCCAD \uCD08\uAE30 \uAE30\uAE08 \uCD9C\uC5F0',
       approvedBy: [admin.id],

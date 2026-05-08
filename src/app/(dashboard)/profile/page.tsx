@@ -5,8 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { User, Phone, Mail, MapPin, Coins, Calendar, Shield, Pencil, Check, X, Loader2 } from 'lucide-react'
+import { User, Phone, Mail, MapPin, Coins, Calendar, Shield, Pencil, Check, X, Loader2, Star } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
+import { CareLevelBadge } from '@/components/care/CareLevelBadge'
 
 const DONGS = [
   '양동', '양3동', '농성1동', '농성2동', '광천동', '유덕동',
@@ -199,6 +200,25 @@ export default function ProfilePage() {
             {member.isVulnerable && <span className="text-xs font-medium px-2 py-1 rounded-full bg-amber-100 text-amber-700">취약계층</span>}
             {member.isDisabled && <span className="text-xs font-medium px-2 py-1 rounded-full bg-amber-100 text-amber-700">장애인</span>}
           </div>
+
+          {/* 별점 */}
+          {member.ratingCount > 0 && (
+            <div className="flex items-center gap-2 text-sm">
+              <Star className="h-4 w-4 fill-yellow-400 text-yellow-400 shrink-0" />
+              <span>
+                평균 별점: <strong>{Number(member.avgRating).toFixed(1)}</strong>점
+                <span className="text-muted-foreground ml-1">({member.ratingCount}건 평가)</span>
+              </span>
+            </div>
+          )}
+
+          {/* 돌봄 필요도 */}
+          {member.careLevel && member.careLevel >= 1 && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground">돌봄 필요도</span>
+              <CareLevelBadge level={member.careLevel} showStars showDesc />
+            </div>
+          )}
 
           {/* 전화번호 */}
           <div className="flex items-center gap-3 text-sm">

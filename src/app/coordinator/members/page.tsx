@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { formatDate } from '@/lib/utils'
-import { Search, Loader2, Gift } from 'lucide-react'
+import { Search, Loader2, Gift, Star } from 'lucide-react'
+import { CareLevelBadge } from '@/components/care/CareLevelBadge'
 
 const ROLE_LABEL: Record<string, string> = {
   RECEIVER: '수요자', PROVIDER: '제공자', COORDINATOR: '코디', ADMIN: '관리자',
@@ -120,6 +121,19 @@ export default function CoordMembersPage() {
                         <span className="text-muted-foreground ml-2">(무기한)</span>
                       )}
                     </p>
+                    {/* 별점 */}
+                    {member.ratingCount > 0 && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
+                        <Star className="h-3 w-3 fill-yellow-400 text-yellow-400" />
+                        {Number(member.avgRating).toFixed(1)} ({member.ratingCount}건)
+                      </p>
+                    )}
+                    {/* 돌봄 필요도 */}
+                    {member.careLevel && member.careLevel > 1 && (
+                      <div className="mt-1">
+                        <CareLevelBadge level={member.careLevel} size="sm" showStars />
+                      </div>
+                    )}
                   </div>
 
                   {member.isVulnerable && (

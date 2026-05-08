@@ -11,6 +11,7 @@ import {
   AlertTriangle, TrendingUp, ChevronRight, ArrowRight,
 } from 'lucide-react'
 import { TxTrendChart, DongMembersChart } from '@/components/charts/admin-charts'
+import { CareLevelBadge } from '@/components/care/CareLevelBadge'
 
 export default async function AdminDashboard() {
   const session = await auth()
@@ -30,6 +31,7 @@ export default async function AdminDashboard() {
     recentTxs,
     allMembers,
     weeklyTxs,
+    careLevelStats,
   ] = await Promise.all([
     prisma.member.count({ where: { status: 'ACTIVE' } }),
     prisma.member.count(),
@@ -61,12 +63,19 @@ export default async function AdminDashboard() {
       where: { status: 'APPROVED', createdAt: { gte: weekAgo } },
       select: { createdAt: true },
     }),
+    // 돌봄 필요도 분포
+    prisma.member.groupBy({
+      by: ['careLevel'],
+      where: { status: 'ACTIVE', careLevel: { not: null } },
+      _count: { careLevel: true },
+      orderBy: { careLevel: 'asc' },
+    }),
   ])
 
-  const totalTC = Number(tcAgg._sum.tpBalance ?? 0)
-  const fundTC = Number(fundAgg._sum.tpEquivalent ?? 0)
+  const totalTP = Number(tcAgg._sum.tpBalance ?? 0)
+  const fundTP = Number(fundAgg._sum.tpEquivalent ?? 0)
   const fundCash = Number(fundAgg._sum.cashAmount ?? 0)
-  const reserveRatio = totalTC > 0 ? Math.round((fundTC / totalTC) * 100) : 0
+  const reserveRatio = totalTP > 0 ? Math.round((fundTP / totalTP) * 100) : 0
 
   // Aggregate weekly tx by day in JS (avoids groupBy DateTime issue)
   const dayMap: Record<string, number> = {}
@@ -107,7 +116,7 @@ export default async function AdminDashboard() {
       {/* KPI 카드 */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         {[
-          { label: 'TC 총 유통량', value: `${totalTC.toFixed(0)} TP`, icon: Coins, color: 'text-blue-600', bg: 'bg-blue-50', href: '/admin/reports' },
+          { label: 'TP 총 유통량', value: `${totalTP.toFixed(0)} TP`, icon: Coins, color: 'text-blue-600', bg: 'bg-blue-50', href: '/admin/reports' },
           { label: '활성 회원', value: `${activeMembers}명`, icon: Users, color: 'text-green-600', bg: 'bg-green-50', href: '/admin/reports' },
           { label: '지불준비율', value: `${reserveRatio}%`, icon: Landmark, color: reserveRatio >= 30 ? 'text-emerald-600' : 'text-red-600', bg: reserveRatio >= 30 ? 'bg-emerald-50' : 'bg-red-50', href: '/admin/fund' },
           { label: '이번달 승인 거래', value: `${monthlyTxCount}건`, icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50', href: '/admin/reports' },
@@ -219,12 +228,12 @@ export default async function AdminDashboard() {
         <CardContent>
           <div className="grid grid-cols-3 gap-4 text-center">
             <div>
-              <p className="text-xs text-muted-foreground">TC 총 유통량</p>
-              <p className="text-lg font-bold text-blue-600">{totalTC.toFixed(1)} TP</p>
+              <p className="text-xs text-muted-foreground">TP 총 유통량</p>
+              <p className="text-lg font-bold text-blue-600">{totalTP.toFixed(1)} TP</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">기금 보유 TP</p>
-              <p className="text-lg font-bold text-indigo-600">{fundTC.toFixed(1)} TP</p>
+              <p className="text-lg font-bold text-indigo-600">{fundTP.toFixed(1)} TP</p>
             </div>
             <div>
               <p className="text-xs text-muted-foreground">지불준비율</p>
@@ -257,6 +266,45 @@ export default async function AdminDashboard() {
           </p>
         </CardContent>
       </Card>
+
+      {/* 돌봄 필요도 분포 */}
+      {careLevelStats.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Users className="h-4 w-4" aria-hidden="true" />
+              돌봄 필요도 분포
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {[1,2,3,4,5].map((level) => {
+                const stat = careLevelStats.find(s => s.careLevel === level)
+                const count = stat?._count.careLevel ?? 0
+                const total = careLevelStats.reduce((sum, s) => sum + s._count.careLevel, 0)
+                const pct = total > 0 ? Math.round((count / total) * 100) : 0
+                const colors = ['bg-green-500','bg-blue-500','bg-yellow-500','bg-orange-500','bg-red-500']
+                return (
+                  <div key={level} className="flex items-center gap-3">
+                    <div className="w-28 shrink-0">
+                      <CareLevelBadge level={level} size="sm" />
+                    </div>
+                    <div className="flex-1 h-4 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full ${colors[level-1]} transition-all`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="text-sm font-medium w-16 text-right shrink-0">
+                      {count}명 ({pct}%)
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

@@ -48,6 +48,14 @@ model Member {
   avgRating   Decimal @default(0) @db.Decimal(3, 2)
   ratingCount Int     @default(0)
 
+  // 돌봄 필요도 (1=자립 ~ 5=완전의존)
+  careLevel          Int?      @default(1)
+  careLevelUpdatedAt DateTime?
+  careLevelNote      String?
+
+  careLevelRecords   CareLevelRecord[] @relation("CareLevelMember")
+  assessedLevels     CareLevelRecord[] @relation("CareLevelAssessor")
+
   // 관계
   organization   Organization? @relation(fields: [organizationId], references: [id])
   organizationId String?
@@ -516,6 +524,29 @@ model PostLike {
   member    Member   @relation(fields: [memberId], references: [id])
 
   @@unique([postId, memberId])
+}
+
+// ─────────────────────────────────────────
+// 돌봄 필요도 변경 이력
+// ─────────────────────────────────────────
+
+model CareLevelRecord {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  memberId   String
+  member     Member @relation("CareLevelMember", fields: [memberId], references: [id])
+
+  assessedBy String
+  assessor   Member @relation("CareLevelAssessor", fields: [assessedBy], references: [id])
+
+  previousLevel Int?
+  newLevel      Int
+  note          String?
+  transactionId String?
+
+  @@index([memberId])
+  @@index([assessedBy])
 }
 
 // ─────────────────────────────────────────

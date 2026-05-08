@@ -1,12 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Star, X, Heart, AlertTriangle } from 'lucide-react'
+import { Star, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { CareLevelSelector } from '@/components/care/CareLevelSelector'
 
 type UnratedTx = {
   id: string
   counterpartName: string
+  counterpartId: string
   isProvider: boolean
   tpAmount: number
   completedAt: string
@@ -17,17 +19,9 @@ export function RatingModal({ memberId }: { memberId: string }) {
   const [rating, setRating] = useState(0)
   const [hover, setHover] = useState(0)
   const [review, setReview] = useState('')
-
-  // 건강 위기 별점 (제공자가 수혜자 건강 상태 기록)
-  const [healthRating, setHealthRating] = useState(0)
-  const [healthHover, setHealthHover] = useState(0)
-  const [healthSituation, setHealthSituation] = useState('')
-  const [healthAction, setHealthAction] = useState('')
-
+  const [careLevel, setCareLevel] = useState(1)
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
-
-  const needsHealthDetail = healthRating >= 3
 
   useEffect(() => {
     if (!memberId) return
@@ -52,6 +46,9 @@ export function RatingModal({ memberId }: { memberId: string }) {
             counterpartName: isProvider
               ? (unrated.receiver?.name ?? '상대방')
               : (unrated.provider?.name ?? '상대방'),
+            counterpartId: isProvider
+              ? (unrated.receiverId ?? '')
+              : (unrated.providerId ?? ''),
             isProvider,
             tpAmount: Number(unrated.tpAmount),
             completedAt: unrated.completedAt ?? unrated.createdAt,
@@ -62,10 +59,6 @@ export function RatingModal({ memberId }: { memberId: string }) {
 
   async function handleSubmit() {
     if (!rating || !pending) return
-    // 건강 별점 3점 이상이면 상황+대책 필수
-    if (pending.isProvider && needsHealthDetail && (!healthSituation.trim() || !healthAction.trim())) {
-      return
-    }
     setLoading(true)
     await fetch(`/api/transactions/${pending.id}/rate`, {
       method: 'POST',
@@ -73,11 +66,7 @@ export function RatingModal({ memberId }: { memberId: string }) {
       body: JSON.stringify({
         rating,
         review,
-        ...(pending.isProvider && healthRating > 0 ? {
-          healthRating,
-          healthSituation: healthSituation.trim() || undefined,
-          healthAction: healthAction.trim() || undefined,
-        } : {}),
+        ...(pending.isProvider ? { careLevel, careLevelTargetId: pending.counterpartId } : {}),
       }),
     })
     setLoading(false)
@@ -90,6 +79,7 @@ export function RatingModal({ memberId }: { memberId: string }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/50 p-4">
       <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl max-h-[90vh] overflow-y-auto">
+
         {/* 헤더 */}
         <div className="flex items-center justify-between p-5 border-b">
           <div>
@@ -112,7 +102,7 @@ export function RatingModal({ memberId }: { memberId: string }) {
 
             {/* 서비스 만족도 별점 */}
             <div className="space-y-2">
-              <p className="text-sm font-medium text-center">서비스 만족도를 선택해주세요</p>
+              <p className="text-sm font-medium text-center">서비스 만족도</p>
               <div className="flex justify-center gap-2">
                 {[1, 2, 3, 4, 5].map(star => (
                   <button
@@ -139,7 +129,7 @@ export function RatingModal({ memberId }: { memberId: string }) {
               )}
             </div>
 
-            {/* 후기 */}
+            {/* 한 줄 후기 */}
             <div className="space-y-1">
               <label className="text-sm font-medium">한 줄 후기 (선택)</label>
               <textarea
@@ -152,96 +142,25 @@ export function RatingModal({ memberId }: { memberId: string }) {
               />
             </div>
 
-            {/* ── 건강 위기 별점 (제공자만 표시) ── */}
+            {/* 돌봄 필요도 평가 — 제공자만 */}
             {pending.isProvider && (
               <div className="space-y-3 border-t pt-4">
-                <div className="flex items-center gap-2">
-                  <Heart className="h-5 w-5 text-red-500" />
-                  <p className="text-sm font-semibold text-gray-800">이용자 건강 상태 기록</p>
-                </div>
-                <p className="text-xs text-gray-500">
-                  서비스를 제공하면서 이용자의 건강 상태를 5점 기준으로 평가해주세요.
-                  <br />3점 이상이면 상황과 대책을 추가 기록해 주세요.
+                <p className="text-sm font-semibold text-gray-800 text-center">
+                  이용자 돌봄 필요도 평가
                 </p>
-
-                {/* 건강 별점 */}
-                <div className="flex justify-center gap-2">
-                  {[1, 2, 3, 4, 5].map(star => (
-                    <button
-                      key={star}
-                      onClick={() => setHealthRating(star)}
-                      onMouseEnter={() => setHealthHover(star)}
-                      onMouseLeave={() => setHealthHover(0)}
-                      className="p-1 transition-transform hover:scale-110"
-                    >
-                      <Heart
-                        className={`h-8 w-8 transition-colors ${
-                          star <= (healthHover || healthRating)
-                            ? 'fill-red-400 text-red-400'
-                            : 'text-gray-300'
-                        }`}
-                      />
-                    </button>
-                  ))}
-                </div>
-                {healthRating > 0 && (
-                  <p className="text-center text-xs text-gray-500">
-                    {['', '매우 양호', '양호', '주의 필요 ⚠️', '위험 🚨', '응급 🆘'][healthRating]}
-                  </p>
-                )}
-
-                {/* 3점 이상: 상황 + 대책 입력 */}
-                {needsHealthDetail && (
-                  <div className="space-y-3 bg-red-50 rounded-xl p-4 border border-red-200">
-                    <div className="flex items-center gap-1.5 text-red-700">
-                      <AlertTriangle className="h-4 w-4" />
-                      <p className="text-sm font-semibold">건강 이상 — 상세 기록 필요</p>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-gray-700">현재 상황 *</label>
-                      <textarea
-                        value={healthSituation}
-                        onChange={e => setHealthSituation(e.target.value)}
-                        maxLength={300}
-                        rows={2}
-                        required
-                        placeholder="이용자의 현재 건강 상황을 기록해주세요 (증상, 불편사항 등)"
-                        className="w-full border rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-400"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-xs font-medium text-gray-700">필요 대책 *</label>
-                      <textarea
-                        value={healthAction}
-                        onChange={e => setHealthAction(e.target.value)}
-                        maxLength={300}
-                        rows={2}
-                        required
-                        placeholder="필요한 조치나 대책을 기록해주세요 (병원 방문 권유, 가족 연락 등)"
-                        className="w-full border rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-400"
-                      />
-                    </div>
-                  </div>
-                )}
+                <p className="text-xs text-gray-500 text-center">
+                  서비스 중 관찰한 이용자의 돌봄 필요 수준을 선택해주세요
+                </p>
+                <CareLevelSelector
+                  currentLevel={careLevel}
+                  onSelect={setCareLevel}
+                />
               </div>
-            )}
-
-            {/* 제출 불가 안내 */}
-            {pending.isProvider && needsHealthDetail && (!healthSituation.trim() || !healthAction.trim()) && (
-              <p className="text-xs text-center text-red-500">
-                건강 이상 기록 시 현재 상황과 필요 대책을 모두 입력해주세요
-              </p>
             )}
 
             <div className="grid grid-cols-2 gap-3">
               <Button variant="outline" onClick={() => setPending(null)}>나중에</Button>
-              <Button
-                onClick={handleSubmit}
-                disabled={
-                  !rating || loading ||
-                  (pending.isProvider && needsHealthDetail && (!healthSituation.trim() || !healthAction.trim()))
-                }
-              >
+              <Button onClick={handleSubmit} disabled={!rating || loading}>
                 {loading ? '제출 중...' : '후기 제출'}
               </Button>
             </div>

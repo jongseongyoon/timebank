@@ -32,8 +32,15 @@ export async function GET(req: NextRequest) {
       tpBalance: true,
       tpExpiresAt: true,
       createdAt: true,
+      careLevel: true,
+      careLevelUpdatedAt: true,
+      avgRating: true,
+      ratingCount: true,
     },
-    orderBy: { name: 'asc' },
+    orderBy: [
+      { careLevel: 'desc' },
+      { name: 'asc' },
+    ],
   })
 
   return NextResponse.json({ members })
