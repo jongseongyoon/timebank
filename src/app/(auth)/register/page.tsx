@@ -117,6 +117,7 @@ export default function RegisterPage() {
               <label htmlFor="name" className="text-sm font-medium">이름 *</label>
               <input
                 id="name" name="name" required placeholder="홍길동"
+                lang="ko" inputMode="text"
                 className="w-full h-10 px-3 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>

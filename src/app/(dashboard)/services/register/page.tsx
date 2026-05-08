@@ -150,6 +150,8 @@ export default function ServiceRegisterPage() {
                 value={form.title}
                 onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
                 placeholder="예: 장보기 도우미"
+                lang="ko"
+                inputMode="text"
                 required
               />
             </div>
@@ -161,6 +163,8 @@ export default function ServiceRegisterPage() {
                 onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 rows={3}
                 placeholder="제공 가능한 서비스를 구체적으로 설명해 주세요."
+                lang="ko"
+                inputMode="text"
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring resize-none"
               />
             </div>

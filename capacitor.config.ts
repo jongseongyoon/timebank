@@ -14,6 +14,7 @@ const config: CapacitorConfig = {
   android: {
     allowMixedContent: false,
     captureInput: true,
+    useLegacyBridge: false,
     // 만보기: ACTIVITY_RECOGNITION 권한 필요 (Android 10+)
     // AndroidManifest.xml 에 자동 추가됨
   },

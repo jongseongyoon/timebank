@@ -68,6 +68,8 @@ export default function WritePage() {
             placeholder="제목을 입력하세요"
             required
             maxLength={100}
+            lang="ko"
+            inputMode="text"
             className="w-full text-lg font-medium border-b pb-3 focus:outline-none"
           />
           <textarea
@@ -77,6 +79,8 @@ export default function WritePage() {
             required
             maxLength={3000}
             rows={12}
+            lang="ko"
+            inputMode="text"
             className="w-full text-sm resize-none focus:outline-none"
           />
           <div className="text-right text-xs text-gray-400">{content.length}/3000</div>

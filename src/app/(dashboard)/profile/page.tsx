@@ -294,6 +294,8 @@ export default function ProfilePage() {
                 value={form.address}
                 onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
                 placeholder="상세 주소 (선택)"
+                lang="ko"
+                inputMode="text"
                 className="h-8 text-sm"
               />
             ) : (

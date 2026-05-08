@@ -138,6 +138,8 @@ export function RatingModal({ memberId }: { memberId: string }) {
                 maxLength={200}
                 rows={2}
                 placeholder="거래 경험을 짧게 남겨주세요"
+                lang="ko"
+                inputMode="text"
                 className="w-full border rounded-xl px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
