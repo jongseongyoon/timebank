@@ -4,6 +4,8 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { calculateEarnedTC, calculateSpentTC } from '@/lib/tc-calculator'
 import { computeTxHash } from '@/lib/hash'
+import { sendPushToMember } from '@/lib/web-push'
+import { SERVICE_CATEGORY_MAP } from '@/lib/constants'
 import { z } from 'zod'
 
 const createSchema = z.object({
@@ -100,6 +102,55 @@ export async function POST(req: NextRequest) {
       note: data.note,
     },
   })
+
+  // 거래 완료 알림 전송 (비동기, 오류 무시)
+  const categoryLabel = SERVICE_CATEGORY_MAP[data.category] ?? data.category
+  const tpEarned = Number(earned.totalTC).toFixed(1)
+  const tpSpent = Number(spent).toFixed(1)
+
+  const notifyPromises: Promise<any>[] = []
+
+  if (data.providerId) {
+    notifyPromises.push(
+      prisma.notification.create({
+        data: {
+          memberId: data.providerId,
+          type: 'TX_COMPLETE',
+          title: '서비스 제공 완료',
+          body: `${categoryLabel} 서비스 제공으로 ${tpEarned} TP가 적립되었습니다.`,
+          link: '/transactions',
+        },
+      }).then(() =>
+        sendPushToMember(data.providerId!, {
+          title: '서비스 제공 완료 ✅',
+          body: `${categoryLabel} → ${tpEarned} TP 적립`,
+          link: '/transactions',
+        })
+      ).catch(() => {})
+    )
+  }
+
+  if (data.receiverId) {
+    notifyPromises.push(
+      prisma.notification.create({
+        data: {
+          memberId: data.receiverId,
+          type: 'TX_COMPLETE',
+          title: '서비스 이용 완료',
+          body: `${categoryLabel} 서비스 이용으로 ${tpSpent} TP가 차감되었습니다.`,
+          link: '/transactions',
+        },
+      }).then(() =>
+        sendPushToMember(data.receiverId!, {
+          title: '서비스 이용 완료 🎉',
+          body: `${categoryLabel} → ${tpSpent} TP 차감`,
+          link: '/transactions',
+        })
+      ).catch(() => {})
+    )
+  }
+
+  Promise.allSettled(notifyPromises).catch(() => {})
 
   return NextResponse.json({ transaction: tx }, { status: 201 })
 }

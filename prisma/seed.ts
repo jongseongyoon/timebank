@@ -88,7 +88,7 @@ async function main() {
       tpBalance: 15,
       lifetimeEarned: 25,
       lifetimeSpent: 10,
-      tcExpiresAt: new Date('2029-01-01'),
+      tpExpiresAt: new Date('2029-01-01'),
     },
   })
 
@@ -106,7 +106,7 @@ async function main() {
       tpBalance: 8,
       lifetimeEarned: 8,
       lifetimeSpent: 0,
-      tcExpiresAt: new Date('2029-06-01'),
+      tpExpiresAt: new Date('2029-06-01'),
     },
   })
 
@@ -126,7 +126,7 @@ async function main() {
       tpBalance: 20,
       lifetimeEarned: 30,
       lifetimeSpent: 10,
-      tcExpiresAt: null,
+      tpExpiresAt: null,
     },
   })
 
@@ -144,7 +144,7 @@ async function main() {
       tpBalance: 5,
       lifetimeEarned: 5,
       lifetimeSpent: 0,
-      tcExpiresAt: new Date('2034-01-01'),
+      tpExpiresAt: new Date('2034-01-01'),
     },
   })
 
@@ -158,7 +158,7 @@ async function main() {
       orgType: OrgType.COMMUNITY_COUNCIL,
       dong: '\uC0C1\uBB34\u0031\uB3D9',
       tpBalance: 50,
-      tcExpiresAt: new Date('2027-01-01'),
+      tpExpiresAt: new Date('2027-01-01'),
     },
   })
 

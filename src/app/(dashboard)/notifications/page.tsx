@@ -1,8 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Bell, BellOff, CheckCheck } from 'lucide-react'
+import { Bell, BellOff, CheckCheck, BellRing } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { usePushSubscription } from '@/hooks/use-push-subscription'
 
 type Notification = {
   id: string
@@ -17,6 +18,11 @@ type Notification = {
 export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
+  const { permission, subscribed, loading: pushLoading, subscribe, unsubscribe } = usePushSubscription()
+
+  // Capacitor 네이티브 여부
+  const isNative = typeof window !== 'undefined' && !!(window as any).Capacitor?.isNativePlatform?.()
+  const supportsPush = !isNative && typeof window !== 'undefined' && 'PushManager' in window
 
   async function load() {
     const res = await fetch('/api/notifications')
@@ -64,6 +70,51 @@ export default function NotificationsPage() {
           </Button>
         )}
       </div>
+
+      {/* 푸시 구독 카드 (PWA 브라우저에서만 표시) */}
+      {supportsPush && (
+        <div className={`rounded-2xl p-4 border flex items-center gap-3 ${
+          subscribed ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'
+        }`}>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+            subscribed ? 'bg-green-600' : 'bg-blue-600'
+          }`}>
+            <BellRing className="h-5 w-5 text-white" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className={`text-sm font-semibold ${subscribed ? 'text-green-900' : 'text-blue-900'}`}>
+              {subscribed ? '푸시 알림 켜짐' : '푸시 알림 받기'}
+            </p>
+            <p className={`text-xs mt-0.5 ${subscribed ? 'text-green-700' : 'text-blue-700'}`}>
+              {subscribed
+                ? '앱 종료 후에도 알림을 받습니다'
+                : '서비스 연결·취소 등 중요 알림을 즉시 받으세요'}
+            </p>
+          </div>
+          {permission === 'denied' ? (
+            <p className="text-xs text-red-600 shrink-0">차단됨<br/>브라우저 설정에서 허용</p>
+          ) : subscribed ? (
+            <Button
+              size="sm"
+              variant="outline"
+              className="shrink-0 border-green-400 text-green-700 hover:bg-green-100"
+              onClick={unsubscribe}
+              disabled={pushLoading}
+            >
+              해제
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              className="shrink-0 bg-blue-600 hover:bg-blue-700 text-white"
+              onClick={subscribe}
+              disabled={pushLoading}
+            >
+              {pushLoading ? '처리 중…' : '허용'}
+            </Button>
+          )}
+        </div>
+      )}
 
       {/* 알림 목록 */}
       {notifications.length === 0 ? (

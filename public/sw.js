@@ -1,4 +1,4 @@
-const CACHE_NAME = 'timepay-v4'
+const CACHE_NAME = 'timepay-v5'
 const STATIC_ASSETS = [
   '/',
   '/login',
@@ -23,6 +23,47 @@ self.addEventListener('activate', (event) => {
     )
   )
   self.clients.claim()
+})
+
+// ── 웹 푸시 수신 ──────────────────────────────────────────────────────────────
+self.addEventListener('push', (event) => {
+  if (!event.data) return
+
+  let payload
+  try {
+    payload = event.data.json()
+  } catch {
+    payload = { title: '타임뱅크', body: event.data.text(), link: '/' }
+  }
+
+  const title = payload.title ?? '타임뱅크'
+  const options = {
+    body: payload.body ?? '',
+    icon: payload.icon ?? '/icons/icon-192.svg',
+    badge: payload.badge ?? '/icons/icon-192.svg',
+    data: { link: payload.link ?? '/' },
+    vibrate: [200, 100, 200],
+    requireInteraction: false,
+  }
+
+  event.waitUntil(self.registration.showNotification(title, options))
+})
+
+// 알림 클릭 시 해당 링크로 이동
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close()
+  const link = event.notification.data?.link ?? '/'
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if (client.url.includes(self.location.origin) && 'focus' in client) {
+          client.navigate(link)
+          return client.focus()
+        }
+      }
+      return clients.openWindow(link)
+    })
+  )
 })
 
 // 네트워크 우선 전략 (Network First)

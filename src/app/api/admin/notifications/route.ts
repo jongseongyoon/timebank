@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
+import { sendPushToMembers } from '@/lib/web-push'
 
 const schema = z.object({
   title: z.string().min(1).max(100),
@@ -57,6 +58,11 @@ export async function POST(req: NextRequest) {
       link: link ?? '/',
     })),
   })
+
+  // 웹 푸시 전송 (구독한 기기로)
+  sendPushToMembers(memberIds, { title, body: msgBody, link: link ?? '/' }).catch(
+    (e) => console.error('[admin-push] 웹 푸시 오류:', e)
+  )
 
   return NextResponse.json({ sent: memberIds.length })
 }
