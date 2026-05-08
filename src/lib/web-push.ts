@@ -1,12 +1,14 @@
 import webpush from 'web-push'
 import { prisma } from '@/lib/prisma'
 
-// VAPID 설정 (서버 초기화 시 1회)
-webpush.setVapidDetails(
-  process.env.VAPID_EMAIL ?? 'mailto:admin@timebank.kr',
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '',
-  process.env.VAPID_PRIVATE_KEY ?? ''
-)
+// VAPID 설정 (환경변수가 있을 때만 초기화)
+if (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
+  webpush.setVapidDetails(
+    process.env.VAPID_EMAIL ?? 'mailto:admin@timebank.kr',
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  )
+}
 
 export interface PushPayload {
   title: string
