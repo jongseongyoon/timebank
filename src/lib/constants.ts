@@ -15,7 +15,7 @@ export const SERVICE_CATEGORY_MAP: Record<string, string> = {
   CHILDCARE:       '아이돌봄',
   LEGAL_CONSULT:   '법률상담',
   HEALTH_CONSULT:  '건강상담',
-  ADMINISTRATIVE:  '행정업무보조',
+  ADMINISTRATIVE:  '행정보조',
   COMMUNITY_EVENT: '공동체행사',
   OTHER:           '기타',
 }

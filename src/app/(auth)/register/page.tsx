@@ -5,13 +5,7 @@ import { useFormState, useFormStatus } from 'react-dom'
 import Link from 'next/link'
 import { Coins } from 'lucide-react'
 import { registerAction, type RegisterState } from './actions'
-
-const DONGS = [
-  '양동', '양3동', '농성1동', '농성2동', '광천동', '유덕동',
-  '치평동', '상무1동', '상무2동', '화정1동', '화정2동',
-  '화정3동', '화정4동', '서창동', '금호1동', '금호2동',
-  '풍암동', '동천동', '관외',
-]
+import { DONGS } from '@/lib/constants'
 
 /* ── 제출 버튼 (useFormStatus는 반드시 별도 컴포넌트) ── */
 function SubmitButton() {

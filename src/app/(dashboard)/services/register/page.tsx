@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { CheckCircle, Loader2, Info, Navigation } from 'lucide-react'
 import { getRateByCategory } from '@/lib/tc-calculator'
+import { DONGS } from '@/lib/constants'
 
 const CATEGORIES = [
   { value: 'TRANSPORT', label: '이동지원', emoji: '🚗' },
@@ -31,13 +32,6 @@ const DAYS = [
   { value: 'MON', label: '월' }, { value: 'TUE', label: '화' }, { value: 'WED', label: '수' },
   { value: 'THU', label: '목' }, { value: 'FRI', label: '금' }, { value: 'SAT', label: '토' },
   { value: 'SUN', label: '일' },
-]
-
-const DONGS = [
-  '양동', '양3동', '농성1동', '농성2동', '광천동', '유덕동',
-  '치평동', '상무1동', '상무2동', '화정1동', '화정2동',
-  '화정3동', '화정4동', '서창동', '금호1동', '금호2동',
-  '풍암동', '동천동', '관외',
 ]
 
 export default function ServiceRegisterPage() {

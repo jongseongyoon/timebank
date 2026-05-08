@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { ChevronLeft, ChevronRight, CheckCircle, Loader2 } from 'lucide-react'
+import { DONGS } from '@/lib/constants'
 
 const CATEGORIES = [
   { value: 'TRANSPORT', label: '이동지원', emoji: '🚗' },
@@ -25,13 +26,6 @@ const CATEGORIES = [
   { value: 'ADMINISTRATIVE', label: '행정보조', emoji: '📋' },
   { value: 'COMMUNITY_EVENT', label: '공동체행사', emoji: '🎉' },
   { value: 'OTHER', label: '기타', emoji: '✨' },
-]
-
-const DONGS = [
-  '양동', '양3동', '농성1동', '농성2동', '광천동', '유덕동',
-  '치평동', '상무1동', '상무2동', '화정1동', '화정2동',
-  '화정3동', '화정4동', '서창동', '금호1동', '금호2동',
-  '풍암동', '동천동', '관외',
 ]
 
 const STEPS = ['카테고리', '일정 · 시간', '장소 · 상세', '긴급도', '확인']
