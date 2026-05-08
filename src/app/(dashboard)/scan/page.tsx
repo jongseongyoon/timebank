@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Star, Send, Play, ArrowLeft, Camera, AlertTriangle, Phone, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SERVICE_CATEGORY_MAP } from '@/lib/constants'
 
 type ScannedMember = {
   id: string
@@ -17,10 +18,8 @@ type ScannedMember = {
 
 type Step = 'scan' | 'confirm' | 'transfer' | 'service_start' | 'service_running' | 'done'
 
-const CATEGORIES = [
-  '이동지원', '장보기', '말벗', '식사지원', '가사지원',
-  '의료동행', '교육', '디지털지원', '수리', '아이돌봄', '기타',
-]
+// ServiceCategory enum 키 → 한국어 레이블 (서비스 찾기와 동일 기준)
+const CATEGORIES = Object.entries(SERVICE_CATEGORY_MAP).map(([key, label]) => ({ key, label }))
 
 const MIN_BALANCE = -3.0
 
@@ -40,7 +39,7 @@ export default function ScanPage() {
   const [error, setError] = useState('')
   const [scannedMember, setScannedMember] = useState<ScannedMember | null>(null)
   const [transferAmount, setTransferAmount] = useState(1)
-  const [selectedCategory, setSelectedCategory] = useState(CATEGORIES[0])
+  const [selectedCategory, setSelectedCategory] = useState(CATEGORIES[0].key)
   const [activeTransaction, setActiveTransaction] = useState<any>(null)
   const [elapsedSec, setElapsedSec] = useState(0)
   const [loading, setLoading] = useState(false)
@@ -472,10 +471,10 @@ export default function ScanPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium">서비스 종류</label>
               <div className="flex flex-wrap gap-2">
-                {CATEGORIES.map(cat => (
-                  <button key={cat} onClick={() => setSelectedCategory(cat)}
-                    className={`px-3 py-2 rounded-full text-sm border transition-colors ${selectedCategory === cat ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'}`}>
-                    {cat}
+                {CATEGORIES.map(({ key, label }) => (
+                  <button key={key} onClick={() => setSelectedCategory(key)}
+                    className={`px-3 py-2 rounded-full text-sm border transition-colors ${selectedCategory === key ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:border-blue-400'}`}>
+                    {label}
                   </button>
                 ))}
               </div>
@@ -521,7 +520,7 @@ export default function ScanPage() {
 
           {/* 타이머 카드 */}
           <div className="bg-blue-600 rounded-2xl p-8 flex flex-col items-center gap-3 text-white">
-            <p className="text-sm opacity-80">{selectedCategory}</p>
+            <p className="text-sm opacity-80">{SERVICE_CATEGORY_MAP[selectedCategory] ?? selectedCategory}</p>
             <p className="text-6xl font-bold font-mono tracking-wider">{fmtTime(elapsedSec)}</p>
             <p className="text-base font-semibold">예상 TP: {estimatedTP.toFixed(2)} TP</p>
             {maxPayable > 0 && (

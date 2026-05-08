@@ -44,11 +44,15 @@ export function WalkCard({ serverSteps, rewarded: serverRewarded }: Props) {
           const { pending, steps: pendingSteps, date } = await plugin.getPendingSave()
           if (pending && pendingSteps > 0) {
             const today = new Date().toISOString().slice(0, 10)
-            if (date === today) {
+            // 오늘 또는 어제 기록만 소급 처리 (자정 이후 앱 열어도 전날 TP 적립 가능)
+            const clientDate = new Date(date)
+            const todayDate = new Date(today)
+            const diffDays = Math.floor((todayDate.getTime() - clientDate.getTime()) / 86400000)
+            if (diffDays >= 0 && diffDays <= 1) {
               const res = await fetch('/api/walk/steps', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ steps: pendingSteps }),
+                body: JSON.stringify({ steps: pendingSteps, date }), // date 전달로 소급 가능
               })
               if (res.ok) {
                 const d = await res.json()

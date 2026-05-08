@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 
 const GOAL = 10000
-const REWARD_TC = 0.5
+const REWARD_TP = 0.5
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -14,40 +14,55 @@ export async function POST(req: NextRequest) {
   const steps: number =
     typeof body.steps === 'number' ? Math.max(0, Math.round(body.steps)) : 0
 
+  // 클라이언트가 date를 보내면 사용 (pending_save 소급 처리용)
+  // 허용 범위: 오늘 또는 어제까지 (최대 1일 소급)
+  const serverToday = new Date().toISOString().slice(0, 10)
+  let date = serverToday
+
+  if (body.date && typeof body.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
+    const clientDate = new Date(body.date)
+    const todayDate = new Date(serverToday)
+    const diffDays = Math.floor(
+      (todayDate.getTime() - clientDate.getTime()) / (1000 * 60 * 60 * 24)
+    )
+    // 오늘(0) 또는 어제(1)까지만 허용
+    if (diffDays >= 0 && diffDays <= 1) {
+      date = body.date
+    }
+  }
+
   const memberId = session.user.id
-  const today = new Date().toISOString().slice(0, 10)
 
   // 기존 기록 조회 (걸음 수는 감소하지 않음)
   const existing = await prisma.walkRecord.findUnique({
-    where: { memberId_date: { memberId, date: today } },
+    where: { memberId_date: { memberId, date } },
   })
 
   const newSteps = Math.max(existing?.steps ?? 0, steps)
 
   const record = await prisma.walkRecord.upsert({
-    where: { memberId_date: { memberId, date: today } },
+    where: { memberId_date: { memberId, date } },
     update: { steps: newSteps },
-    create: { memberId, date: today, steps: newSteps },
+    create: { memberId, date, steps: newSteps },
   })
 
   // 목표 달성 + 미지급 → TP 보상
   let rewardedNow = false
 
   if (!record.rewarded && newSteps >= GOAL) {
-    // 코디네이터 = 첫 번째 ADMIN or 본인
     const admin = await prisma.member.findFirst({
       where: { roles: { has: 'ADMIN' } },
       select: { id: true },
     })
     const coordinatorId = admin?.id ?? memberId
-    const txHash = `walk:${memberId}:${today}`
+    const txHash = `walk:${memberId}:${date}`
 
     await prisma.$transaction([
       prisma.member.update({
         where: { id: memberId },
         data: {
-          tpBalance: { increment: REWARD_TC },
-          lifetimeEarned: { increment: REWARD_TC },
+          tpBalance: { increment: REWARD_TP },
+          lifetimeEarned: { increment: REWARD_TP },
         },
       }),
       prisma.transaction.create({
@@ -55,18 +70,18 @@ export async function POST(req: NextRequest) {
           txType: 'COMMUNITY_BONUS',
           receiverId: memberId,
           durationMinutes: 0,
-          tpAmount: REWARD_TC,
-          baseRate: REWARD_TC,
+          tpAmount: REWARD_TP,
+          baseRate: REWARD_TP,
           coordinatorId,
           verificationMethod: 'APP_CONFIRM',
           txHash,
           status: 'APPROVED',
           completedAt: new Date(),
-          note: `만보기 달성 보상 (${today}, ${newSteps.toLocaleString()}보)`,
+          note: `만보기 달성 보상 (${date}, ${newSteps.toLocaleString()}보)`,
         },
       }),
       prisma.walkRecord.update({
-        where: { memberId_date: { memberId, date: today } },
+        where: { memberId_date: { memberId, date } },
         data: { rewarded: true },
       }),
     ])
@@ -79,5 +94,6 @@ export async function POST(req: NextRequest) {
     rewarded: record.rewarded || rewardedNow,
     rewardedNow,
     goal: GOAL,
+    date,
   })
 }

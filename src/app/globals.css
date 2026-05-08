@@ -54,6 +54,14 @@
   body { @apply bg-background text-foreground; font-family: 'Pretendard', -apple-system, sans-serif; }
 }
 
+/* GBoard 한글 입력 호환 — WebView에서 텍스트 선택/입력 허용 */
+input, textarea, [contenteditable] {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+  /* 조합 문자(한글 조합 중) 커서 표시 */
+  caret-color: auto;
+}
+
 /* 노인 모드 (큰 글씨) */
 .elder-mode { font-size: 20px; }
 .elder-mode .text-sm { font-size: 1rem; }

@@ -8,13 +8,7 @@ import { Input } from '@/components/ui/input'
 import { User, Phone, Mail, MapPin, Coins, Calendar, Shield, Pencil, Check, X, Loader2, Star } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { CareLevelBadge } from '@/components/care/CareLevelBadge'
-
-const DONGS = [
-  '양동', '양3동', '농성1동', '농성2동', '광천동', '유덕동',
-  '치평동', '상무1동', '상무2동', '화정1동', '화정2동',
-  '화정3동', '화정4동', '서창동', '금호1동', '금호2동',
-  '풍암동', '동천동',
-]
+import { DONGS } from '@/lib/constants'
 
 const ROLE_LABEL: Record<string, string> = {
   RECEIVER: '수요자',

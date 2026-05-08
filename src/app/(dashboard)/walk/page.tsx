@@ -57,11 +57,13 @@ function useNativeStepSync(serverSteps: number, onSynced: (steps: number, reward
         const { pending, steps, date } = await plugin.getPendingSave()
         if (!pending || steps <= 0) return
         const today = new Date().toISOString().slice(0, 10)
-        if (date !== today) return
+        // 오늘 또는 어제 기록까지 소급 처리 (자정 이후 앱 열어도 전날 TP 적립)
+        const diffDays = Math.floor((new Date(today).getTime() - new Date(date).getTime()) / 86400000)
+        if (diffDays < 0 || diffDays > 1) return
         const res = await fetch('/api/walk/steps', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ steps }),
+          body: JSON.stringify({ steps, date }), // date 전달로 소급 가능
         })
         if (res.ok) {
           const d = await res.json()
