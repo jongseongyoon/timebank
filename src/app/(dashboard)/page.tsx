@@ -67,7 +67,7 @@ export default async function DashboardPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">안녕하세요, {member.name}님 👋</h1>
-        <p className="text-muted-foreground text-sm mt-1">{member.dong} 타임뱅크</p>
+        <p className="text-muted-foreground text-sm mt-1">{member.dong} TimePay</p>
       </div>
 
       {/* TP 지갑 카드 */}

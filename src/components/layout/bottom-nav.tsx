@@ -1,9 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { QrCode, ScanLine, X } from 'lucide-react'
+
+const TX_KEY = 'timepay_active_tx'
 
 const NAV_ITEMS = [
   {
@@ -73,11 +75,41 @@ export function BottomNav() {
   const pathname = usePathname()
   const router = useRouter()
   const [qrSheetOpen, setQrSheetOpen] = useState(false)
+  const [serviceActive, setServiceActive] = useState(false)
+
+  // 서비스 진행 중 여부 감지 (localStorage)
+  useEffect(() => {
+    function check() {
+      try {
+        const raw = localStorage.getItem(TX_KEY)
+        setServiceActive(!!raw)
+      } catch {}
+    }
+    check()
+    window.addEventListener('storage', check)
+    // 500ms 폴링 (같은 탭에서 변경 감지)
+    const timer = setInterval(check, 500)
+    return () => {
+      window.removeEventListener('storage', check)
+      clearInterval(timer)
+    }
+  }, [])
 
   return (
     <>
+      {/* ── 서비스 진행 중 상단 고정 배너 ── */}
+      {serviceActive && (
+        <div
+          className="fixed top-14 left-0 right-0 z-30 bg-red-500 text-white px-4 py-2 flex items-center justify-between text-sm md:hidden cursor-pointer"
+          onClick={() => router.push('/scan')}
+        >
+          <span className="font-semibold">🔴 서비스 진행 중 — 탭하여 돌아가기</span>
+          <span className="text-red-200 text-xs">진행 중 이동 불가</span>
+        </div>
+      )}
+
       {/* ── 하단 네비게이션 바 ── */}
-      <nav className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white border-t border-gray-200 safe-area-bottom">
+      <nav className={`fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white border-t border-gray-200 safe-area-bottom transition-opacity ${serviceActive ? 'opacity-40 pointer-events-none' : ''}`}>
         <div className="flex items-end justify-around h-16 px-2">
           {NAV_ITEMS.map(({ href, label, icon }) => {
             const isQR = href === '__qr__'
