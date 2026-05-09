@@ -26,7 +26,7 @@ export default function BulkAllocatePage() {
     const ws = wb.Sheets[wb.SheetNames[0]]
     const raw: any[][] = XLSX.utils.sheet_to_json(ws, { header: 1 })
 
-    // 첫 행은 헤더 (전화번호|이름|TC수량|사유)
+    // 첫 행은 헤더 (전화번호|이름|TP수량|사유)
     const rows: Row[] = raw.slice(1)
       .filter(r => r[0] && r[2])
       .map(r => ({
@@ -58,7 +58,7 @@ export default function BulkAllocatePage() {
   function downloadTemplate() {
     import('xlsx').then(XLSX => {
       const ws = XLSX.utils.aoa_to_sheet([
-        ['전화번호', '이름', 'TC수량', '사유'],
+        ['전화번호', '이름', 'TP수량', '사유'],
         ['010-1234-5678', '홍길동', 30, '봉사활동 인정'],
         ['010-9876-5432', '김철수', 50, '이벤트 참여'],
       ])
@@ -71,7 +71,7 @@ export default function BulkAllocatePage() {
   function downloadResults() {
     import('xlsx').then(XLSX => {
       const ws = XLSX.utils.aoa_to_sheet([
-        ['전화번호', '이름', 'TC수량', '사유', '결과'],
+        ['전화번호', '이름', 'TP수량', '사유', '결과'],
         ...results.map(r => [r.phone, r.name, r.tpAmount, r.reason, r.status === 'success' ? '✓ 성공' : `✗ ${r.reason}`]),
       ])
       const wb = XLSX.utils.book_new()
@@ -120,7 +120,7 @@ export default function BulkAllocatePage() {
                   <th className="px-4 py-2 text-left">#</th>
                   <th className="px-4 py-2 text-left">전화번호</th>
                   <th className="px-4 py-2 text-left">이름</th>
-                  <th className="px-4 py-2 text-right">TC</th>
+                  <th className="px-4 py-2 text-right">TP</th>
                   <th className="px-4 py-2 text-left">사유</th>
                 </tr>
               </thead>
@@ -170,7 +170,7 @@ export default function BulkAllocatePage() {
                 <tr>
                   <th className="px-4 py-2 text-left">전화번호</th>
                   <th className="px-4 py-2 text-left">이름</th>
-                  <th className="px-4 py-2 text-right">TC</th>
+                  <th className="px-4 py-2 text-right">TP</th>
                   <th className="px-4 py-2 text-left">결과</th>
                 </tr>
               </thead>

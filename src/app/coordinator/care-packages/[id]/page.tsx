@@ -200,22 +200,22 @@ export default function CarePackageDetailPage() {
             <div className="bg-amber-50 rounded-lg p-3">
               <p className="text-xs text-amber-700">총 배분</p>
               <p className="text-xl font-bold text-amber-600">{Number(pkg.totalTpAmount).toFixed(0)}</p>
-              <p className="text-xs text-amber-500">TC</p>
+              <p className="text-xs text-amber-500">TP</p>
             </div>
             <div className="bg-green-50 rounded-lg p-3">
               <p className="text-xs text-green-700">사용 완료</p>
               <p className="text-xl font-bold text-green-600">{Number(pkg.usedTpAmount).toFixed(1)}</p>
-              <p className="text-xs text-green-500">TC</p>
+              <p className="text-xs text-green-500">TP</p>
             </div>
             <div className="bg-blue-50 rounded-lg p-3">
               <p className="text-xs text-blue-700">예정 사용</p>
               <p className="text-xl font-bold text-blue-600">{pendingTc.toFixed(1)}</p>
-              <p className="text-xs text-blue-500">TC</p>
+              <p className="text-xs text-blue-500">TP</p>
             </div>
             <div className="bg-gray-50 rounded-lg p-3">
               <p className="text-xs text-gray-600">잔여 가용</p>
               <p className="text-xl font-bold text-gray-700">{availableTc.toFixed(1)}</p>
-              <p className="text-xs text-gray-500">TC</p>
+              <p className="text-xs text-gray-500">TP</p>
             </div>
           </div>
           <div className="space-y-1">

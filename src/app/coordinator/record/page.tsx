@@ -322,7 +322,7 @@ export default function RecordTransactionPage() {
               </Label>
             </div>
             <div className="space-y-1.5">
-              <Label>TC 단가 (시간당)</Label>
+              <Label>TP 단가 (시간당)</Label>
               <Input
                 type="number" min={0.5} max={3} step={0.5}
                 value={form.tpPerHour}

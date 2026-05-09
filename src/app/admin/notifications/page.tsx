@@ -178,8 +178,8 @@ export default function NotificationsPage() {
           <div className="divide-y max-h-64 overflow-y-auto">
             {logs.map(log => {
               const ACTION_LABEL: Record<string, string> = {
-                TC_ALLOCATE: 'TC 개별 배분',
-                BULK_ALLOCATE: 'TC 일괄 배분',
+                TC_ALLOCATE: 'TP 개별 배분',
+                BULK_ALLOCATE: 'TP 일괄 배분',
                 TRANSACTION_DELETE: '거래 삭제',
                 TRANSACTION_EDIT: '거래 수정',
               }

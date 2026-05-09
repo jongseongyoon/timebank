@@ -23,7 +23,7 @@ const CONFIG_META: Record<string, { label: string; description: string; type: st
   TC_RATE_ORG:          { label: '단체 TP 요율', description: '자생단체 할인 요율', type: 'number' },
   RESERVE_RATIO_WARN:   { label: '준비금 경보선 (%)', description: '이하일 때 경고 표시', type: 'number' },
   FREE_TC_MONTHLY:      { label: '취약계층 월 무상 TP', description: '매월 자동 지급 TP', type: 'number' },
-  TC_EXPIRY_YEARS:      { label: 'TC 만료 기간 (년)', description: '일반 회원 TP 유효 기간', type: 'number' },
+  TC_EXPIRY_YEARS:      { label: 'TP 만료 기간 (년)', description: '일반 회원 TP 유효 기간', type: 'number' },
   TC_EXPIRY_SENIOR:     { label: '고령자 TP 만료 기간 (년)', description: '65세 이상 유효 기간', type: 'number' },
   PRIVATE_MARKET_MIN_TC:{ label: '민간시장 최소 TP 잔액', description: '민간시장 거래 자격 기준', type: 'number' },
   MAX_DAILY_TX:         { label: '일일 최대 거래 건수', description: '1인당 하루 거래 한도', type: 'number' },

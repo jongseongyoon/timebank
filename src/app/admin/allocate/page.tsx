@@ -122,7 +122,7 @@ export default function AllocatePage() {
       <div className="bg-white border rounded-xl p-5 space-y-4">
         <h2 className="font-semibold">2. 배분 설정</h2>
         <div className="space-y-2">
-          <label className="text-sm font-medium">TC 수량</label>
+          <label className="text-sm font-medium">TP 수량</label>
           <div className="flex items-center gap-3">
             <input
               type="number"

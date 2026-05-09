@@ -229,7 +229,7 @@ export default function AdminOrganizationsPage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <Label>TC 단가 (시간당)</Label>
+                  <Label>TP 단가 (시간당)</Label>
                   <Input type="number" min="0.5" max="3" step="0.5" value={svcForm.tpPerHour}
                     onChange={e => setSvcForm(f => ({ ...f, tpPerHour: e.target.value }))} />
                 </div>

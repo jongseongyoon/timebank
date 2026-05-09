@@ -124,12 +124,12 @@ export default function AdminTCPage() {
           <Coins className="h-6 w-6 text-amber-500" />
           TP 관리
         </h1>
-        <p className="text-sm text-muted-foreground mt-1">TC 발행 및 거래 수정</p>
+        <p className="text-sm text-muted-foreground mt-1">TP 발행 및 거래 수정</p>
       </div>
 
       <Tabs defaultValue="issue">
         <TabsList>
-          <TabsTrigger value="issue">TC 발행</TabsTrigger>
+          <TabsTrigger value="issue">TP 발행</TabsTrigger>
           <TabsTrigger value="correct">거래 수정</TabsTrigger>
         </TabsList>
 
@@ -194,7 +194,7 @@ export default function AdminTCPage() {
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label htmlFor="tpAmount">TC 수량 *</Label>
+                  <Label htmlFor="tpAmount">TP 수량 *</Label>
                   <Input
                     id="tpAmount"
                     type="number"

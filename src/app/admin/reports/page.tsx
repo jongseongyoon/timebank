@@ -143,7 +143,7 @@ export default function AdminReportsPage() {
               {[
                 { label: '활성 회원', value: `${overview.activeMembers}명`, sub: `전체 ${overview.totalMembers}명` },
                 { label: '승인 거래', value: `${overview.approvedTx}건`, sub: `대기 ${overview.pendingTx}건` },
-                { label: 'TC 총 유통량', value: `${Number(overview.totalTC).toFixed(1)} TP`, sub: '' },
+                { label: 'TP 총 유통량', value: `${Number(overview.totalTC).toFixed(1)} TP`, sub: '' },
                 { label: '취약계층 회원', value: `${overview.vulnerableMembers}명`, sub: `제공자 ${overview.providerCount} / 수요자 ${overview.receiverCount}` },
               ].map(({ label, value, sub }) => (
                 <Card key={label}>
