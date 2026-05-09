@@ -13,8 +13,9 @@ const config: CapacitorConfig = {
   },
   android: {
     allowMixedContent: false,
-    // captureInput: true 를 제거 → GBoard 조합 이벤트 차단 문제 수정
-    // Samsung 키보드는 windowSoftInputMode="adjustResize" 로 대응
+    // captureInput: false (명시) → IME가 직접 키 이벤트 처리
+    // true 시 GBoard 조합 이벤트 차단; Samsung 키보드 한영전환도 영향받아 false 유지
+    captureInput: false,
     useLegacyBridge: false,
     // 만보기: ACTIVITY_RECOGNITION 권한 필요 (Android 10+)
     // AndroidManifest.xml 에 자동 추가됨

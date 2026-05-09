@@ -13,22 +13,32 @@ import { useRouter, usePathname } from 'next/navigation'
  * 구현:
  * - window.Capacitor.Plugins.App 직접 접근 (구 APK 호환, npm import 불필요)
  * - @capacitor/app npm 패키지로 폴백
- * - 깊이 카운터로 홈 여부 이중 확인
+ * - 내비게이션 깊이 카운터로 홈 여부 판단 (canGoBack 미사용 — Next.js SPA에서 불안정)
  */
 export function useBackButton() {
   const router = useRouter()
   const pathname = usePathname()
   const pathnameRef = useRef(pathname)
   const depthRef = useRef(0)
+  // router.back() 호출 후 pathname 변경 시 depth를 중복 증가하지 않기 위한 플래그
+  const justWentBackRef = useRef(false)
 
   // pathname 변경마다 ref 동기화 + 깊이 갱신
   useEffect(() => {
     const prev = pathnameRef.current
     pathnameRef.current = pathname
+
     if (pathname === '/') {
       depthRef.current = 0
+      justWentBackRef.current = false
     } else if (prev !== pathname) {
-      depthRef.current = Math.max(depthRef.current, 1)
+      if (justWentBackRef.current) {
+        // 뒤로가기로 인한 변경 → 핸들러에서 이미 depth 감소 처리
+        justWentBackRef.current = false
+      } else {
+        // 앞으로 이동 → depth 1 증가
+        depthRef.current += 1
+      }
     }
   }, [pathname])
 
@@ -44,15 +54,17 @@ export function useBackButton() {
     function attachBackButton(AppPlugin: any) {
       AppPlugin.addListener(
         'backButton',
-        ({ canGoBack }: { canGoBack: boolean }) => {
+        // canGoBack은 Next.js SPA + server.url 환경에서 신뢰할 수 없으므로 사용하지 않음
+        (_: { canGoBack: boolean }) => {
           const isHome = pathnameRef.current === '/' || depthRef.current === 0
 
-          if (isHome || !canGoBack) {
+          if (isHome) {
             // 최소화 (홈 화면으로 내려가기)
             Promise.resolve(AppPlugin.minimizeApp()).catch(() => {
               try { AppPlugin.exitApp() } catch {}
             })
           } else {
+            justWentBackRef.current = true
             depthRef.current = Math.max(0, depthRef.current - 1)
             router.back()
           }
