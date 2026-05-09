@@ -52,7 +52,7 @@ export function useBackButton() {
     let removeListener: (() => void) | null = null
 
     function attachBackButton(AppPlugin: any) {
-      AppPlugin.addListener(
+      const result = AppPlugin.addListener(
         'backButton',
         // canGoBack은 Next.js SPA + server.url 환경에서 신뢰할 수 없으므로 사용하지 않음
         (_: { canGoBack: boolean }) => {
@@ -69,9 +69,17 @@ export function useBackButton() {
             router.back()
           }
         }
-      ).then((handle: any) => {
-        removeListener = () => { try { handle.remove() } catch {} }
-      }).catch(() => {})
+      )
+
+      // 네이티브 플러그인(window.Capacitor.Plugins.App)은 핸들을 동기로 반환,
+      // npm @capacitor/app 패키지는 Promise를 반환 — 양쪽 모두 대응
+      if (result && typeof result.then === 'function') {
+        result.then((handle: any) => {
+          removeListener = () => { try { handle.remove() } catch {} }
+        }).catch(() => {})
+      } else if (result && typeof result.remove === 'function') {
+        removeListener = () => { try { result.remove() } catch {} }
+      }
     }
 
     // 1순위: window.Capacitor.Plugins.App (APK에 빌드된 네이티브 플러그인 직접 접근)
