@@ -13,6 +13,8 @@ import { Coins, Loader2 } from 'lucide-react'
 // useSearchParams를 쓰는 부분만 별도 컴포넌트로 분리
 function RegisteredBanner() {
   const searchParams = useSearchParams()
+  // Capacitor WebView 하이드레이션 시 useSearchParams()가 일시적으로 null 반환 가능
+  if (!searchParams) return null
   const registered = searchParams.get('registered') === '1'
   if (!registered) return null
   return (
