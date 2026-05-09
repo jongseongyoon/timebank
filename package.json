@@ -16,7 +16,13 @@
     "db:reset": "prisma migrate reset",
     "test": "vitest",
     "test:ui": "vitest --ui",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "icons": "node scripts/gen-icons.mjs",
+    "cap:sync": "npx cap sync android",
+    "cap:open": "npx cap open android",
+    "apk:debug": "cd android && gradlew assembleDebug && cd ..",
+    "apk:release": "cd android && gradlew assembleRelease && cd ..",
+    "apk:copy": "node scripts/copy-apk.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.4",
@@ -73,6 +79,7 @@
     "eslint-config-next": "14.2.18",
     "postcss": "^8.5.10",
     "prisma": "^5.22.0",
+    "sharp": "^0.34.5",
     "tailwindcss": "^3.4.1",
     "tsx": "^4.19.2",
     "typescript": "^5",

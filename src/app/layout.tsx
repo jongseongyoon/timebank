@@ -3,8 +3,8 @@ import './globals.css'
 import { BackButtonHandler } from '@/components/layout/back-button-handler'
 
 export const metadata: Metadata = {
-  title: 'TimePay',
-  description: '시간으로 연결하는 주민 공동체',
+  title: 'TimePay - 광주서구 타임뱅크',
+  description: '시간으로 연결하는 광주서구 주민 공동체 타임뱅크',
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -12,8 +12,17 @@ export const metadata: Metadata = {
     title: 'TimePay',
   },
   icons: {
-    icon: '/icons/icon-192.svg',
-    apple: '/icons/icon-192.svg',
+    icon: [
+      { url: '/favicon-32.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon-16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+    other: [
+      { rel: 'mask-icon', url: '/icons/icon-192.svg', color: '#3b5bdb' },
+    ],
   },
 }
 
