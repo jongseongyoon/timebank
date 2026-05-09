@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { BackButtonHandler } from '@/components/layout/back-button-handler'
+import { ImeHandler } from '@/components/layout/ime-handler'
 
 export const metadata: Metadata = {
   title: 'TimePay - 광주서구 타임뱅크',
@@ -39,6 +40,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="ko">
       <body>
         <BackButtonHandler />
+        <ImeHandler />
         {children}
         <script
           dangerouslySetInnerHTML={{
