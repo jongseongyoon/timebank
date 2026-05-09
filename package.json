@@ -20,8 +20,8 @@
     "icons": "node scripts/gen-icons.mjs",
     "cap:sync": "npx cap sync android",
     "cap:open": "npx cap open android",
-    "apk:debug": "cd android && gradlew assembleDebug && cd ..",
-    "apk:release": "cd android && gradlew assembleRelease && cd ..",
+    "apk:debug": "cd android && .\\gradlew assembleDebug",
+    "apk:release": "cd android && .\\gradlew assembleRelease",
     "apk:copy": "node scripts/copy-apk.mjs"
   },
   "dependencies": {
