@@ -9,14 +9,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Building2, Plus, Loader2, CheckCircle } from 'lucide-react'
 
 const ORG_TYPE_LABEL: Record<string, string> = {
-  COMMUNITY_COUNCIL: '주민자치회', WELFARE_COUNCIL: '사회복지협의회',
+  COMMUNITY_COUNCIL: '주민자치회', WELFARE_COUNCIL: '지역사회보장협의체',
   SAEMAEUL: '새마을운동', WOMENS_CLUB: '여성단체', RIGHT_LIVING: '바르게살기운동',
   VOLUNTEER_CAMP: '자원봉사캠프', RED_CROSS: '적십자', SOCIAL_COOP: '사회적협동조합', OTHER: '기타',
 }
 
 const DONGS = [
   '양동','양3동','농성1동','농성2동','광천동','유덕동','치평동','상무1동','상무2동',
-  '화정1동','화정2동','화정3동','화정4동','서창동','금호1동','금호2동','풍암동','동천동',
+  '화정1동','화정2동','화정3동','화정4동','서창동','금호1동','금호2동','풍암동','동천동','관외',
 ]
 
 const CATEGORIES = [
