@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/button'
 import { formatTP, formatDate, maskName } from '@/lib/utils'
 import {
   Wallet, TrendingUp, TrendingDown, ClipboardList, PlusCircle,
-  ArrowRight, ChevronRight,
+  ArrowRight, ChevronRight, QrCode, ScanLine, Footprints,
+  MessageSquare, Search, ArrowLeftRight,
 } from 'lucide-react'
 import { WalkCard } from '@/components/layout/walk-card'
 
@@ -110,20 +111,32 @@ export default async function DashboardPage() {
         rewarded={walkRecord?.rewarded ?? false}
       />
 
-      {/* 빠른 실행 */}
-      <div className="grid grid-cols-2 gap-3">
-        <Button asChild size="lg" className="h-14 text-base">
-          <Link href="/services/request">
-            <ClipboardList className="mr-2 h-5 w-5" aria-hidden="true" />
-            서비스 요청하기
-          </Link>
-        </Button>
-        <Button asChild size="lg" variant="outline" className="h-14 text-base">
-          <Link href="/services/register">
-            <PlusCircle className="mr-2 h-5 w-5" aria-hidden="true" />
-            활동 등록하기
-          </Link>
-        </Button>
+      {/* ── 주요 기능 바로가기 ── */}
+      <div>
+        <h2 className="text-sm font-semibold text-muted-foreground mb-3">주요 기능</h2>
+        <div className="grid grid-cols-4 gap-2">
+          {[
+            { href: '/wallet/qr',         icon: QrCode,         label: '내 QR',     bg: 'bg-blue-100',   color: 'text-blue-700' },
+            { href: '/scan',              icon: ScanLine,       label: 'QR 스캔',   bg: 'bg-indigo-100', color: 'text-indigo-700' },
+            { href: '/walk',              icon: Footprints,     label: '만보기',    bg: 'bg-green-100',  color: 'text-green-700' },
+            { href: '/community',         icon: MessageSquare,  label: '커뮤니티',  bg: 'bg-purple-100', color: 'text-purple-700' },
+            { href: '/services/browse',   icon: Search,         label: '서비스찾기', bg: 'bg-orange-100', color: 'text-orange-700' },
+            { href: '/services/request',  icon: ClipboardList,  label: '서비스요청', bg: 'bg-red-100',    color: 'text-red-700' },
+            { href: '/services/register', icon: PlusCircle,     label: '서비스등록', bg: 'bg-teal-100',   color: 'text-teal-700' },
+            { href: '/history',           icon: ArrowLeftRight, label: '거래내역',  bg: 'bg-gray-100',   color: 'text-gray-700' },
+          ].map(({ href, icon: Icon, label, bg, color }) => (
+            <Link
+              key={href}
+              href={href}
+              className="flex flex-col items-center gap-1.5 py-3 rounded-2xl bg-white border border-gray-100 hover:shadow-sm active:scale-95 transition-all"
+            >
+              <div className={`w-11 h-11 rounded-xl flex items-center justify-center ${bg}`}>
+                <Icon className={`h-5 w-5 ${color}`} aria-hidden="true" />
+              </div>
+              <span className="text-[11px] font-medium text-gray-700 text-center leading-tight">{label}</span>
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* 최근 거래 */}

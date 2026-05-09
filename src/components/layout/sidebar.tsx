@@ -6,16 +6,21 @@ import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Wallet, ArrowLeftRight, ClipboardList,
   PlusCircle, User, Coins, ListChecks, Search,
+  QrCode, ScanLine, Footprints, MessageSquare,
 } from 'lucide-react'
 
 const navItems = [
-  { href: '/', label: '대시보드', icon: LayoutDashboard },
+  { href: '/', label: '홈 대시보드', icon: LayoutDashboard },
   { href: '/wallet', label: 'TP 지갑', icon: Wallet },
+  { href: '/wallet/qr', label: '내 QR 코드', icon: QrCode },
+  { href: '/scan', label: 'QR 스캔 거래', icon: ScanLine },
   { href: '/history', label: '거래 내역', icon: ArrowLeftRight },
   { href: '/services/browse', label: '서비스 찾기', icon: Search },
   { href: '/services/request', label: '서비스 요청', icon: ClipboardList },
   { href: '/services/my-requests', label: '내 요청 목록', icon: ListChecks },
   { href: '/services/register', label: '서비스 등록', icon: PlusCircle },
+  { href: '/walk', label: '만보기', icon: Footprints },
+  { href: '/community', label: '커뮤니티', icon: MessageSquare },
   { href: '/profile', label: '내 정보', icon: User },
 ]
 
