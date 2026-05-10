@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Footprints, Trophy, CircleOff, Activity, Cpu, Heart, RefreshCw } from 'lucide-react'
+import { Footprints, Trophy, CircleOff, Activity, Cpu, Heart } from 'lucide-react'
 
 const GOAL = 10000
 const REWARD_TP = 0.5
 
-// ── 재원 현황 카드 ────────────────────────────────────────────────────────────
+// ── 재원 현황 카드 (단순화 버전: 건강증진 기금만 표시) ────────────────────────
 interface FundStatus {
   healthFund:      { tpBalance: number; totalDistributed: number } | null
   circulationPool: { tpBalance: number; totalCirculated: number } | null
@@ -14,59 +14,53 @@ interface FundStatus {
 }
 
 function FundStatusCard({ status }: { status: FundStatus | null }) {
-  if (!status) return null
-  const { healthFund, circulationPool, walkConfig } = status
+  if (!status?.healthFund) return null
+  const { healthFund, walkConfig } = status
 
-  const fundBal  = healthFund?.tpBalance  ?? 0
-  const circBal  = circulationPool?.tpBalance ?? 0
+  const fundBal  = healthFund.tpBalance
   const yearDist = walkConfig?.distributedThisYear ?? 0
-  const yearLimit= walkConfig?.annualTpLimit ?? 0
-  const yearPct  = yearLimit > 0 ? Math.min(yearDist / yearLimit * 100, 100) : 0
+  const yearLimit = walkConfig?.annualTpLimit ?? 0
+  const yearPct   = yearLimit > 0 ? Math.min(yearDist / yearLimit * 100, 100) : 0
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">만보기 재원 현황</p>
+    <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-5 space-y-3">
+      <div className="flex items-center gap-2">
+        <div className="bg-green-100 rounded-full p-2">
+          <Heart className="h-4 w-4 text-green-600" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-green-800">오늘의 만보기 재원</p>
+          <p className="text-xs text-green-600">건강증진 기금</p>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-2 gap-3">
-        {/* 건강증진 기금 */}
-        <div className="bg-green-50 rounded-xl p-3 space-y-1">
-          <div className="flex items-center gap-1.5">
-            <Heart className="h-3.5 w-3.5 text-green-600" />
-            <p className="text-xs text-green-700 font-medium">건강증진 기금</p>
-          </div>
-          <p className="text-lg font-bold text-green-800 tabular-nums">
+      <div className="flex items-end justify-between">
+        <div>
+          <p className="text-3xl font-bold text-green-800 tabular-nums">
             {fundBal.toLocaleString()} TP
           </p>
-          <p className="text-xs text-green-600">지급분: 0.3 TP</p>
+          <p className="text-xs text-green-600 mt-0.5">1만보 달성 시 <strong>0.5 TP</strong> 지급</p>
         </div>
-
-        {/* 순환 풀 */}
-        <div className="bg-blue-50 rounded-xl p-3 space-y-1">
-          <div className="flex items-center gap-1.5">
-            <RefreshCw className="h-3.5 w-3.5 text-blue-600" />
-            <p className="text-xs text-blue-700 font-medium">공동체 순환 풀</p>
-          </div>
-          <p className="text-lg font-bold text-blue-800 tabular-nums">
-            {circBal.toLocaleString()} TP
-          </p>
-          <p className="text-xs text-blue-600">지급분: 0.2 TP</p>
+        <div className="text-right text-xs text-green-500">
+          <p>지자체·기업 출연 기금</p>
+          <p>만보기 보상 전담</p>
         </div>
       </div>
 
       {/* 연간 발행 진행률 */}
       {walkConfig && (
-        <div className="space-y-1">
-          <div className="flex justify-between text-xs text-gray-500">
-            <span>연간 발행량</span>
+        <div className="space-y-1 pt-1 border-t border-green-200">
+          <div className="flex justify-between text-xs text-green-600">
+            <span>올해 발행량</span>
             <span className="tabular-nums">{yearDist.toLocaleString()} / {yearLimit.toLocaleString()} TP</span>
           </div>
-          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-2 bg-green-100 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-green-400 to-blue-400 rounded-full transition-all"
+              className="h-full bg-green-500 rounded-full transition-all"
               style={{ width: `${yearPct}%` }}
             />
           </div>
-          <p className="text-xs text-gray-400 text-right">{yearPct.toFixed(1)}% 사용</p>
+          <p className="text-xs text-green-400 text-right">{yearPct.toFixed(1)}% 사용</p>
         </div>
       )}
     </div>
@@ -533,32 +527,19 @@ export default function WalkPage() {
       {justRewarded && (
         <div className="bg-yellow-50 border border-yellow-300 rounded-2xl p-5 text-center space-y-2">
           <p className="text-4xl">🎉</p>
-          <p className="font-bold text-yellow-800 text-lg">10,000보 달성!</p>
-          <p className="text-sm text-yellow-700">{REWARD_TP} TP가 지갑에 자동 적립됐습니다</p>
-          {rewardSource && (
-            <div className="mt-2 flex justify-center gap-3 text-xs">
-              <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full">
-                💚 건강기금 {rewardSource.fromFund} TP
-              </span>
-              <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                🔄 순환풀 {rewardSource.fromCirc} TP
-              </span>
-            </div>
-          )}
+          <p className="font-bold text-yellow-800 text-xl">오늘 1만보 달성!</p>
+          <p className="text-sm text-yellow-700">
+            건강증진 기금에서 <strong className="text-green-700">{REWARD_TP} TP</strong> 적립!
+          </p>
+          <p className="text-xs text-green-600 mt-1">건강한 당신이 공동체를 지킵니다 💚</p>
         </div>
       )}
 
       {rewarded && !justRewarded && (
         <div className="bg-green-50 border border-green-200 rounded-2xl p-4 text-center space-y-1">
-          <p className="text-green-700 font-semibold">✅ 오늘 {REWARD_TP} TP 이미 적립됨</p>
-          {rewardSource && (
-            <div className="flex justify-center gap-2 text-xs mt-1">
-              <span className="text-green-600">💚 건강기금 {rewardSource.fromFund} TP</span>
-              <span className="text-blue-500">·</span>
-              <span className="text-blue-600">🔄 순환풀 {rewardSource.fromCirc} TP</span>
-            </div>
-          )}
-          <p className="text-xs text-green-500">내일 다시 도전하세요!</p>
+          <p className="text-green-700 font-semibold text-base">✅ 오늘 {REWARD_TP} TP 적립 완료</p>
+          <p className="text-xs text-green-600">건강증진 기금에서 전액 지급됐습니다</p>
+          <p className="text-xs text-green-500 mt-1">내일 다시 도전하세요!</p>
         </div>
       )}
 
