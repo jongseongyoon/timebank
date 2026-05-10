@@ -94,6 +94,7 @@ export async function GET(req: NextRequest) {
         receiver:    { select: { id: true, name: true, dong: true } },
         prescriber:  { select: { id: true, name: true } },
         coordinator: { select: { id: true, name: true } },
+        history:     { orderBy: { createdAt: 'desc' }, take: 5 },
       },
     }),
     prisma.socialPrescription.count({ where }),

@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, GitMerge, CheckSquare, Users,
-  ClipboardList, Coins, PenLine, HeartHandshake,
+  ClipboardList, Coins, PenLine, HeartHandshake, Stethoscope,
 } from 'lucide-react'
 
 const navItems = [
@@ -16,6 +16,7 @@ const navItems = [
   { href: '/coordinator/approval', label: '거래 승인', icon: CheckSquare },
   { href: '/coordinator/members', label: '회원 관리', icon: Users },
   { href: '/coordinator/offline-sync', label: '오프라인 등록', icon: ClipboardList },
+  { href: '/coordinator/social-prescription', label: '사회적처방', icon: Stethoscope },
 ]
 
 export function CoordSidebar() {
