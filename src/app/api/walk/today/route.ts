@@ -13,8 +13,10 @@ export async function GET() {
   })
 
   return NextResponse.json({
-    steps: record?.steps ?? 0,
-    rewarded: record?.rewarded ?? false,
+    steps:             record?.steps     ?? 0,
+    rewarded:          record?.rewarded  ?? false,
+    tpFromFund:        record?.tpFromFund        ? Number(record.tpFromFund)        : null,
+    tpFromCirculation: record?.tpFromCirculation ? Number(record.tpFromCirculation) : null,
     goal: 10000,
     date: today,
   })

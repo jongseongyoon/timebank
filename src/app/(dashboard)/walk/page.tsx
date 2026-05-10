@@ -1,10 +1,77 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Footprints, Trophy, CircleOff, Activity, Cpu } from 'lucide-react'
+import { Footprints, Trophy, CircleOff, Activity, Cpu, Heart, RefreshCw } from 'lucide-react'
 
 const GOAL = 10000
 const REWARD_TP = 0.5
+
+// ── 재원 현황 카드 ────────────────────────────────────────────────────────────
+interface FundStatus {
+  healthFund:      { tpBalance: number; totalDistributed: number } | null
+  circulationPool: { tpBalance: number; totalCirculated: number } | null
+  walkConfig:      { annualTpLimit: number; distributedThisYear: number; tpPerGoal: number } | null
+}
+
+function FundStatusCard({ status }: { status: FundStatus | null }) {
+  if (!status) return null
+  const { healthFund, circulationPool, walkConfig } = status
+
+  const fundBal  = healthFund?.tpBalance  ?? 0
+  const circBal  = circulationPool?.tpBalance ?? 0
+  const yearDist = walkConfig?.distributedThisYear ?? 0
+  const yearLimit= walkConfig?.annualTpLimit ?? 0
+  const yearPct  = yearLimit > 0 ? Math.min(yearDist / yearLimit * 100, 100) : 0
+
+  return (
+    <div className="bg-white border border-gray-200 rounded-2xl p-4 space-y-3">
+      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">만보기 재원 현황</p>
+
+      <div className="grid grid-cols-2 gap-3">
+        {/* 건강증진 기금 */}
+        <div className="bg-green-50 rounded-xl p-3 space-y-1">
+          <div className="flex items-center gap-1.5">
+            <Heart className="h-3.5 w-3.5 text-green-600" />
+            <p className="text-xs text-green-700 font-medium">건강증진 기금</p>
+          </div>
+          <p className="text-lg font-bold text-green-800 tabular-nums">
+            {fundBal.toLocaleString()} TP
+          </p>
+          <p className="text-xs text-green-600">지급분: 0.3 TP</p>
+        </div>
+
+        {/* 순환 풀 */}
+        <div className="bg-blue-50 rounded-xl p-3 space-y-1">
+          <div className="flex items-center gap-1.5">
+            <RefreshCw className="h-3.5 w-3.5 text-blue-600" />
+            <p className="text-xs text-blue-700 font-medium">공동체 순환 풀</p>
+          </div>
+          <p className="text-lg font-bold text-blue-800 tabular-nums">
+            {circBal.toLocaleString()} TP
+          </p>
+          <p className="text-xs text-blue-600">지급분: 0.2 TP</p>
+        </div>
+      </div>
+
+      {/* 연간 발행 진행률 */}
+      {walkConfig && (
+        <div className="space-y-1">
+          <div className="flex justify-between text-xs text-gray-500">
+            <span>연간 발행량</span>
+            <span className="tabular-nums">{yearDist.toLocaleString()} / {yearLimit.toLocaleString()} TP</span>
+          </div>
+          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div
+              className="h-full bg-gradient-to-r from-green-400 to-blue-400 rounded-full transition-all"
+              style={{ width: `${yearPct}%` }}
+            />
+          </div>
+          <p className="text-xs text-gray-400 text-right">{yearPct.toFixed(1)}% 사용</p>
+        </div>
+      )}
+    </div>
+  )
+}
 const COOLDOWN_MS = 280
 const STEP_DELTA_PURE = 1.2
 const STEP_DELTA_GRAVITY = 2.0
@@ -39,7 +106,8 @@ function isTrackingHour(): boolean {
 // ═══════════════════════════════════════════════════════
 // APK 전용: 네이티브 서비스 걸음 수 폴링 + 서버 동기화
 // ═══════════════════════════════════════════════════════
-function useNativeStepSync(serverSteps: number, onSynced: (steps: number, rewarded: boolean, rewardedNow: boolean) => void) {
+type SyncedInfo = { steps: number; rewarded: boolean; rewardedNow: boolean; tpFromFund?: number; tpFromCirc?: number }
+function useNativeStepSync(serverSteps: number, onSynced: (info: SyncedInfo) => void) {
   const [nativeSteps, setNativeSteps] = useState(serverSteps)
   const [inWindow, setInWindow] = useState(isTrackingHour())
   const serverStepsRef = useRef(serverSteps)
@@ -67,7 +135,7 @@ function useNativeStepSync(serverSteps: number, onSynced: (steps: number, reward
         })
         if (res.ok) {
           const d = await res.json()
-          onSynced(d.steps, d.rewarded, !!d.rewardedNow)
+          onSynced({ steps: d.steps, rewarded: d.rewarded, rewardedNow: !!d.rewardedNow, tpFromFund: d.tpFromFund, tpFromCirc: d.tpFromCirculation })
           await plugin.markSaved()
         }
       } catch {}
@@ -257,31 +325,41 @@ export default function WalkPage() {
   const [webSessionSteps, setWebSessionSteps] = useState(0)
   const webSessionRef = useRef(0)
   const serverStepsRef = useRef(0)
+  // 재원 출처
+  const [rewardSource, setRewardSource] = useState<{ fromFund: number; fromCirc: number } | null>(null)
+  const [fundStatus, setFundStatus] = useState<FundStatus | null>(null)
 
   const isNative = isCapacitorNative()
 
-  // 서버에서 오늘 걸음 수 로드
+  // 서버에서 오늘 걸음 수 + 재원 현황 로드
   useEffect(() => {
-    fetch('/api/walk/today')
-      .then(r => r.json())
-      .then(d => {
-        const s = d.steps ?? 0
-        setServerSteps(s)
-        serverStepsRef.current = s
-        setRewarded(d.rewarded ?? false)
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
+    Promise.all([
+      fetch('/api/walk/today').then(r => r.json()),
+      fetch('/api/walk/fund-status').then(r => r.json()).catch(() => null),
+    ]).then(([d, fs]) => {
+      const s = d.steps ?? 0
+      setServerSteps(s)
+      serverStepsRef.current = s
+      setRewarded(d.rewarded ?? false)
+      if (d.rewarded && d.tpFromFund != null) {
+        setRewardSource({ fromFund: d.tpFromFund, fromCirc: d.tpFromCirculation ?? 0 })
+      }
+      if (fs && !fs.error) setFundStatus(fs)
+      setLoading(false)
+    }).catch(() => setLoading(false))
   }, [])
 
   // APK: 네이티브 서비스 걸음 수 폴링
   const { displaySteps: nativeDisplaySteps, inWindow } = useNativeStepSync(
     serverSteps,
-    (steps, rew, rewNow) => {
+    ({ steps, rewarded: rew, rewardedNow: rewNow, tpFromFund, tpFromCirc }) => {
       setServerSteps(steps)
       serverStepsRef.current = steps
       setRewarded(rew)
-      if (rewNow) setJustRewarded(true)
+      if (rewNow) {
+        setJustRewarded(true)
+        if (tpFromFund != null) setRewardSource({ fromFund: tpFromFund, fromCirc: tpFromCirc ?? 0 })
+      }
     }
   )
 
@@ -313,7 +391,10 @@ export default function WalkPage() {
               setServerSteps(d.steps)
               serverStepsRef.current = d.steps
               setRewarded(d.rewarded)
-              if (d.rewardedNow) setJustRewarded(true)
+              if (d.rewardedNow) {
+                setJustRewarded(true)
+                if (d.tpFromFund != null) setRewardSource({ fromFund: d.tpFromFund, fromCirc: d.tpFromCirculation ?? 0 })
+              }
               webSessionRef.current = 0
               setWebSessionSteps(0)
             }
@@ -454,15 +535,35 @@ export default function WalkPage() {
           <p className="text-4xl">🎉</p>
           <p className="font-bold text-yellow-800 text-lg">10,000보 달성!</p>
           <p className="text-sm text-yellow-700">{REWARD_TP} TP가 지갑에 자동 적립됐습니다</p>
+          {rewardSource && (
+            <div className="mt-2 flex justify-center gap-3 text-xs">
+              <span className="bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                💚 건강기금 {rewardSource.fromFund} TP
+              </span>
+              <span className="bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
+                🔄 순환풀 {rewardSource.fromCirc} TP
+              </span>
+            </div>
+          )}
         </div>
       )}
 
       {rewarded && !justRewarded && (
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 text-center">
+        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 text-center space-y-1">
           <p className="text-green-700 font-semibold">✅ 오늘 {REWARD_TP} TP 이미 적립됨</p>
-          <p className="text-xs text-green-500 mt-1">내일 다시 도전하세요!</p>
+          {rewardSource && (
+            <div className="flex justify-center gap-2 text-xs mt-1">
+              <span className="text-green-600">💚 건강기금 {rewardSource.fromFund} TP</span>
+              <span className="text-blue-500">·</span>
+              <span className="text-blue-600">🔄 순환풀 {rewardSource.fromCirc} TP</span>
+            </div>
+          )}
+          <p className="text-xs text-green-500">내일 다시 도전하세요!</p>
         </div>
       )}
+
+      {/* 재원 현황 카드 */}
+      <FundStatusCard status={fundStatus} />
 
       {permError && (
         <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex gap-2 text-sm text-red-700">
