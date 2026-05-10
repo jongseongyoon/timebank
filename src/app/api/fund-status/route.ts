@@ -8,18 +8,20 @@
 export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getReserveRatioStatus } from '@/lib/reserve-fund'
 
 export async function GET() {
   try {
     const year = new Date().getFullYear()
 
-    const [healthFund, circPool, spFund, walkConfig, totalMembers, totalTransactions] = await Promise.all([
+    const [healthFund, circPool, spFund, walkConfig, totalMembers, totalTransactions, reserveStatus] = await Promise.all([
       prisma.healthFund.findUnique({ where: { id: 'health-fund-001' } }),
       prisma.circulationPool.findUnique({ where: { id: 'circulation-pool-001' } }),
       prisma.socialPrescriptionFund.findUnique({ where: { id: 'sp-fund-001' } }),
       prisma.walkRewardConfig.findUnique({ where: { year } }),
       prisma.member.count({ where: { roles: { isEmpty: false } } }),
       prisma.transaction.count({ where: { status: 'APPROVED' } }),
+      getReserveRatioStatus(),
     ])
 
     return NextResponse.json({
@@ -32,10 +34,19 @@ export async function GET() {
         totalContributed: Number(healthFund.totalContributed),
         totalDistributed: Number(healthFund.totalDistributed),
       } : null,
-      circulationPool: circPool ? {
-        tpBalance:        Number(circPool.tpBalance),
-        totalCirculated:  Number(circPool.totalCirculated),
-        totalDistributed: Number(circPool.totalDistributed),
+      // 지불준비금 (순환 풀)
+      reserveFund: circPool ? {
+        tpBalance:       Number(circPool.tpBalance),
+        totalCirculated: Number(circPool.totalCirculated),
+        // 지불준비율
+        reserveRatio:    reserveStatus.reserveRatio,
+        circulatingTP:   reserveStatus.circulatingTP,
+        targetRatio:     reserveStatus.targetRatio,
+        isHealthy:       reserveStatus.isHealthy,
+        isWarning:       reserveStatus.isWarning,
+        isCritical:      reserveStatus.isCritical,
+        // 민간대행 가능 여부 (지불준비율 1% 이상이면 가능)
+        privateMarketAvailable: !reserveStatus.isCritical,
       } : null,
       socialPrescriptionFund: spFund ? {
         tpBalance:           Number(spFund.tpBalance),

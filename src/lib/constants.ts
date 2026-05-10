@@ -94,3 +94,38 @@ export function getCareLevel(level: number) {
 export function getCareStars(level: number): string {
   return '★'.repeat(level) + '☆'.repeat(5 - level)
 }
+
+// ─────────────────────────────────────────────
+// TP 재원 구조 상수 (최종 단순화)
+// ─────────────────────────────────────────────
+
+export const TP_FUND_STRUCTURE = {
+  /** 만보기 보상: 건강증진 기금에서 전액 지급 */
+  WALK: {
+    tpPerGoal:   0.5,
+    source:      'HEALTH_FUND' as const,
+    annualLimit: 100_000,
+  },
+  /** 지불준비금(순환풀): 서비스 거래 5% 자동 환류 */
+  RESERVE_FUND: {
+    circulationRate:    0.05,   // 서비스 거래 TP의 5%
+    targetRatio:        0.05,   // 목표 지불준비율 5%
+    warningRatio:       0.03,   // 주의 구간 3%
+    criticalRatio:      0.01,   // 위험 구간 1% (민간대행 자동 차단)
+    monthlyPrivateLimit: 20,    // 회원당 월 민간대행 한도 (TP)
+  },
+  /** 사회적처방: 사회적처방 기금에서 지급 */
+  SOCIAL_PRESCRIPTION: {
+    source:      'SP_FUND' as const,
+    annualLimit: 200_000,
+  },
+  /** 가입 선물: 관리자 발행 */
+  JOIN_GIFT: {
+    tpAmount: 1.0,
+    source:   'ADMIN' as const,
+  },
+  /** 마이너스 신용 허용 한도 */
+  CREDIT: {
+    maxNegative: -3.0,
+  },
+} as const
