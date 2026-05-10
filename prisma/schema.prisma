@@ -77,6 +77,14 @@ model Member {
   postLikes PostLike[]
   walkRecords WalkRecord[]
 
+  // 재원구조 관계
+  healthFundTxs          HealthFundTransaction[]
+  spFundTxs              SocialPrescriptionFundTx[]
+  receivedPrescriptions  SocialPrescription[]  @relation("PrescriptionReceiver")
+  prescribedItems        SocialPrescription[]  @relation("Prescriber")
+  coordinatedPrescriptions SocialPrescription[] @relation("PrescriptionCoordinator")
+  adminIssuancesReceived AdminTpIssuance[]     @relation("IssuanceReceiver")
+
   @@index([dong])
   @@index([status])
 }
@@ -591,8 +599,230 @@ model WalkRecord {
   rewarded  Boolean  @default(false)
   rewardTxId String?
 
+  // 재원 분리 기록 (2단계 이후)
+  tpFromFund        Decimal?  @db.Decimal(4, 2)  // 건강증진 기금에서 지급분
+  tpFromCirculation Decimal?  @db.Decimal(4, 2)  // 공동체 순환 풀에서 지급분
+  tpAwardedAt       DateTime?
+  source            String    @default("manual")  // 'manual' | 'google_fit' | 'native_sensor'
+
   @@unique([memberId, date])
   @@index([memberId])
+}
+
+// ─────────────────────────────────────────
+// 건강증진 기금 (만보기 재원)
+// ─────────────────────────────────────────
+
+model HealthFund {
+  id               String   @id @default(uuid())
+  createdAt        DateTime @default(now())
+  lastUpdatedAt    DateTime @updatedAt
+
+  tpBalance         Decimal @default(0) @db.Decimal(10, 2)
+  cashBalance       Decimal @default(0) @db.Decimal(12, 2)
+  totalContributed  Decimal @default(0) @db.Decimal(10, 2)
+  totalDistributed  Decimal @default(0) @db.Decimal(10, 2)
+
+  transactions HealthFundTransaction[]
+}
+
+model HealthFundTransaction {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  // CONTRIBUTION | WALK_REWARD | CIRCULATION | ADJUSTMENT
+  txType     String
+  tpAmount   Decimal @db.Decimal(10, 2)
+  cashAmount Decimal @default(0) @db.Decimal(12, 2)
+
+  memberId String?
+  member   Member? @relation(fields: [memberId], references: [id])
+
+  fund   HealthFund @relation(fields: [fundId], references: [id])
+  fundId String
+
+  description     String
+  contributorName String?
+  balanceAfter    Decimal @db.Decimal(10, 2)
+
+  @@index([txType])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────
+// 공동체 순환 풀 (서비스 거래 환류)
+// ─────────────────────────────────────────
+
+model CirculationPool {
+  id               String   @id @default(uuid())
+  createdAt        DateTime @default(now())
+
+  tpBalance        Decimal @default(0) @db.Decimal(10, 2)
+  totalCirculated  Decimal @default(0) @db.Decimal(10, 2)
+  totalDistributed Decimal @default(0) @db.Decimal(10, 2)
+}
+
+// ─────────────────────────────────────────
+// 만보기 연간 발행 한도
+// ─────────────────────────────────────────
+
+model WalkRewardConfig {
+  year                Int     @id
+  annualTpLimit       Decimal @default(100000) @db.Decimal(10, 2)
+  distributedThisYear Decimal @default(0)      @db.Decimal(10, 2)
+  tpPerGoal           Decimal @default(0.5)    @db.Decimal(4, 2)
+  fundRatio           Decimal @default(0.6)    @db.Decimal(3, 2)  // 0.3 TP = 60%
+  circulationRatio    Decimal @default(0.4)    @db.Decimal(3, 2)  // 0.2 TP = 40%
+}
+
+// ─────────────────────────────────────────
+// 사회적처방 전용 기금
+// ─────────────────────────────────────────
+
+model SocialPrescriptionFund {
+  id                  String   @id @default(uuid())
+  createdAt           DateTime @default(now())
+  lastUpdatedAt       DateTime @updatedAt
+
+  tpBalance           Decimal @default(0)      @db.Decimal(10, 2)
+  cashBalance         Decimal @default(0)      @db.Decimal(12, 2)
+  totalContributed    Decimal @default(0)      @db.Decimal(10, 2)
+  totalDistributed    Decimal @default(0)      @db.Decimal(10, 2)
+  annualLimit         Decimal @default(200000) @db.Decimal(10, 2)
+  distributedThisYear Decimal @default(0)      @db.Decimal(10, 2)
+
+  transactions SocialPrescriptionFundTx[]
+}
+
+model SocialPrescriptionFundTx {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  // CONTRIBUTION | PRESCRIPTION_AWARD | RENEWAL | EXPIRY
+  txType         String
+  tpAmount       Decimal @db.Decimal(10, 2)
+  cashAmount     Decimal @default(0) @db.Decimal(12, 2)
+
+  prescriptionId String?
+  memberId       String?
+  member         Member? @relation(fields: [memberId], references: [id])
+
+  description     String
+  contributorName String?
+  balanceAfter    Decimal @db.Decimal(10, 2)
+
+  fund   SocialPrescriptionFund @relation(fields: [fundId], references: [id])
+  fundId String
+
+  @@index([txType])
+  @@index([prescriptionId])
+}
+
+// ─────────────────────────────────────────
+// 사회적처방전
+// ─────────────────────────────────────────
+
+model SocialPrescription {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  prescriptionNo String @unique  // SP-2025-0001 형식
+
+  // 대상자
+  receiverId String
+  receiver   Member @relation("PrescriptionReceiver", fields: [receiverId], references: [id])
+
+  // 처방자
+  prescriberId  String
+  prescriber    Member @relation("Prescriber", fields: [prescriberId], references: [id])
+  prescriberOrg  String  // 처방 기관명
+  prescriberRole String  // 처방자 역할
+
+  // 처방 내용
+  careLevel            Int      // 1~5
+  prescriptionReason   String[] // ['고독고립', '이동불편', ...]
+  recommendedServices  String[] // ['TRANSPORT', 'COMPANION', ...]
+
+  // TP 배분
+  totalTpGranted Decimal @db.Decimal(10, 2)
+  monthlyTpLimit Decimal @db.Decimal(6,  2)
+  tpUsed         Decimal @default(0) @db.Decimal(10, 2)
+
+  // 유효기간
+  validFrom   DateTime
+  validUntil  DateTime
+  isRenewable Boolean  @default(true)
+
+  // 처리 정보
+  coordinatorId String?
+  coordinator   Member?  @relation("PrescriptionCoordinator", fields: [coordinatorId], references: [id])
+  approvedAt    DateTime?
+
+  // PENDING | ACTIVE | EXPIRED | CANCELLED
+  status     String  @default("PENDING")
+  note       String?
+  // SP_FUND | ADMIN
+  fundSource String  @default("SP_FUND")
+
+  history      PrescriptionHistory[]
+  adminIssuances AdminTpIssuance[]
+
+  @@index([receiverId])
+  @@index([prescriberId])
+  @@index([status])
+  @@index([validUntil])
+}
+
+model PrescriptionHistory {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  prescriptionId String
+  prescription   SocialPrescription @relation(fields: [prescriptionId], references: [id])
+
+  // APPROVED | RENEWED | ADJUSTED | CANCELLED
+  action        String
+  previousValue String?
+  newValue      String?
+  performedBy   String
+  reason        String?
+
+  @@index([prescriptionId])
+}
+
+// ─────────────────────────────────────────
+// 관리자 마이너스 발행 추적
+// ─────────────────────────────────────────
+
+model AdminTpIssuance {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  // JOIN_GIFT | SOCIAL_PRESCRIPTION | EMERGENCY | MANUAL
+  issuanceType     String
+  tpAmount         Decimal @db.Decimal(10, 2)
+
+  receiverId       String?
+  receiver         Member? @relation("IssuanceReceiver", fields: [receiverId], references: [id])
+
+  prescriptionId   String?
+  prescription     SocialPrescription? @relation(fields: [prescriptionId], references: [id])
+
+  cumulativeIssued Decimal @db.Decimal(14, 2)
+  adminBalance     Decimal @db.Decimal(14, 2)  // 음수
+  description      String
+
+  @@index([issuanceType])
+  @@index([createdAt])
+}
+
+model AdminIssuanceConfig {
+  year               Int     @id
+  annualLimit        Decimal @default(200000) @db.Decimal(10, 2)
+  issuedThisYear     Decimal @default(0)      @db.Decimal(10, 2)
+  warningThreshold   Decimal @default(70.0)   @db.Decimal(5, 2)
+  criticalThreshold  Decimal @default(90.0)   @db.Decimal(5, 2)
 }
 
 // ─────────────────────────────────────────

@@ -196,6 +196,67 @@ async function main() {
     },
   })
 
+  // ── 재원구조 기금 초기 데이터 ────────────────────────────────────────────
+  // 건강증진 기금 (10,000 TP)
+  await prisma.healthFund.upsert({
+    where: { id: 'health-fund-001' },
+    update: {},
+    create: {
+      id: 'health-fund-001',
+      tpBalance: 10000,
+      totalContributed: 10000,
+      totalDistributed: 0,
+    },
+  })
+
+  // 공동체 순환 풀 (초기 0 TP, 거래 승인 시 10% 자동 적립)
+  await prisma.circulationPool.upsert({
+    where: { id: 'circulation-pool-001' },
+    update: {},
+    create: {
+      id: 'circulation-pool-001',
+      tpBalance: 0,
+      totalCirculated: 0,
+      totalDistributed: 0,
+    },
+  })
+
+  // 사회적처방 기금 (5,000 TP)
+  await prisma.socialPrescriptionFund.upsert({
+    where: { id: 'sp-fund-001' },
+    update: {},
+    create: {
+      id: 'sp-fund-001',
+      tpBalance: 5000,
+      totalContributed: 5000,
+      totalDistributed: 0,
+    },
+  })
+
+  // 만보기 연간 발행 한도
+  for (const { year, annualTpLimit } of [
+    { year: 2025, annualTpLimit: 100000 },
+    { year: 2026, annualTpLimit: 120000 },
+  ]) {
+    await prisma.walkRewardConfig.upsert({
+      where: { year },
+      update: {},
+      create: { year, annualTpLimit, distributedThisYear: 0 },
+    })
+  }
+
+  // 관리자 마이너스 발행 연간 한도
+  for (const { year, annualLimit } of [
+    { year: 2025, annualLimit: 200000 },
+    { year: 2026, annualLimit: 250000 },
+  ]) {
+    await prisma.adminIssuanceConfig.upsert({
+      where: { year },
+      update: {},
+      create: { year, annualLimit, issuedThisYear: 0 },
+    })
+  }
+
   // Fund transaction (initial contribution)
   const fundTx = await prisma.fundTransaction.upsert({
     where: { id: 'fund-seed-001' },

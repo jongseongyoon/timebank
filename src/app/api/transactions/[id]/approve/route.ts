@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { addToCirculationPool } from '@/lib/circulation'
 
 export async function PATCH(_req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth()
@@ -52,6 +53,12 @@ export async function PATCH(_req: NextRequest, { params }: { params: { id: strin
           lifetimeSpent: { increment: tx.tpAmount },
         },
       })
+    }
+
+    // 공동체 순환 풀: 서비스 거래 금액의 10 % 적립
+    // (providerId와 receiverId 모두 있는 실제 서비스 교환 거래에만 적용)
+    if (tx.providerId && tx.receiverId) {
+      await addToCirculationPool(tx.tpAmount, trx as any)
     }
 
     // 알림 생성
