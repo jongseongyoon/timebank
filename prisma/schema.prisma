@@ -80,6 +80,7 @@ model Member {
   // 재원구조 관계
   healthFundTxs          HealthFundTransaction[]
   spFundTxs              SocialPrescriptionFundTx[]
+  reserveFundTxs         ReserveFundTransaction[]
   receivedPrescriptions  SocialPrescription[]  @relation("PrescriptionReceiver")
   prescribedItems        SocialPrescription[]  @relation("Prescriber")
   coordinatedPrescriptions SocialPrescription[] @relation("PrescriptionCoordinator")
@@ -599,11 +600,12 @@ model WalkRecord {
   rewarded  Boolean  @default(false)
   rewardTxId String?
 
-  // 재원 분리 기록 (2단계 이후)
+  // 재원 분리 기록
   tpFromFund        Decimal?  @db.Decimal(4, 2)  // 건강증진 기금에서 지급분
-  tpFromCirculation Decimal?  @db.Decimal(4, 2)  // 공동체 순환 풀에서 지급분
+  tpFromCirculation Decimal?  @db.Decimal(4, 2)  // 순환 풀에서 지급분 (최종 구조: 항상 0)
   tpAwardedAt       DateTime?
   source            String    @default("manual")  // 'manual' | 'google_fit' | 'native_sensor'
+  tpSource          String    @default("HEALTH_FUND")  // 재원 출처: 항상 건강증진 기금
 
   @@unique([memberId, date])
   @@index([memberId])
@@ -660,6 +662,61 @@ model CirculationPool {
   tpBalance        Decimal @default(0) @db.Decimal(10, 2)
   totalCirculated  Decimal @default(0) @db.Decimal(10, 2)
   totalDistributed Decimal @default(0) @db.Decimal(10, 2)
+
+  // 지불준비금 통합 (최종 구조)
+  role             String  @default("RESERVE_FUND")   // 역할: 지불준비금
+  circulationRate  Decimal @default(0.05) @db.Decimal(4, 3)  // 적립률: 5%
+  cashBalance      Decimal @default(0)    @db.Decimal(12, 2) // 현금 잔액
+  totalCashOut     Decimal @default(0)    @db.Decimal(12, 2) // 현금 지출 총액
+
+  reserveTxs ReserveFundTransaction[]
+}
+
+// ─────────────────────────────────────────
+// 지불준비금 입출금 내역
+// ─────────────────────────────────────────
+
+model ReserveFundTransaction {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  // CIRCULATION_IN: 거래 환류 입금(5%)
+  // CASH_CONTRIBUTION: 현금 출연
+  // PRIVATE_MARKET_OUT: 민간대행 현금 지출
+  // EMERGENCY_OUT: 긴급 서비스 지출
+  // ADJUSTMENT: 관리자 조정
+  txType    String
+
+  tpAmount   Decimal @default(0) @db.Decimal(10, 2)
+  cashAmount Decimal @default(0) @db.Decimal(12, 2)
+
+  memberId String?
+  member   Member? @relation(fields: [memberId], references: [id])
+
+  description      String
+  tpBalanceAfter   Decimal @db.Decimal(10, 2)
+  cashBalanceAfter Decimal @default(0) @db.Decimal(12, 2)
+  externalVendor   String?  // 민간업체명
+
+  pool   CirculationPool @relation(fields: [poolId], references: [id])
+  poolId String          @default("circulation-pool-001")
+
+  @@index([txType])
+  @@index([memberId])
+  @@index([createdAt])
+}
+
+// ─────────────────────────────────────────
+// 지불준비율 설정
+// ─────────────────────────────────────────
+
+model ReserveRatioConfig {
+  id                   String   @id @default("reserve-config-001")
+  targetRatio          Decimal  @default(0.05) @db.Decimal(4, 3)  // 목표 지불준비율: 5%
+  warningRatio         Decimal  @default(0.03) @db.Decimal(4, 3)  // 경고 기준: 3%
+  criticalRatio        Decimal  @default(0.01) @db.Decimal(4, 3)  // 긴급 기준: 1%
+  currentCirculationRate Decimal @default(0.05) @db.Decimal(4, 3) // 현재 적립률: 5%
+  updatedAt            DateTime @updatedAt
 }
 
 // ─────────────────────────────────────────
@@ -671,8 +728,8 @@ model WalkRewardConfig {
   annualTpLimit       Decimal @default(100000) @db.Decimal(10, 2)
   distributedThisYear Decimal @default(0)      @db.Decimal(10, 2)
   tpPerGoal           Decimal @default(0.5)    @db.Decimal(4, 2)
-  fundRatio           Decimal @default(0.6)    @db.Decimal(3, 2)  // 0.3 TP = 60%
-  circulationRatio    Decimal @default(0.4)    @db.Decimal(3, 2)  // 0.2 TP = 40%
+  fundRatio           Decimal @default(1.0)    @db.Decimal(3, 2)  // 1.0 = 건강증진 기금 전액
+  circulationRatio    Decimal @default(0.0)    @db.Decimal(3, 2)  // 0.0 = 순환 풀 미사용
 }
 
 // ─────────────────────────────────────────

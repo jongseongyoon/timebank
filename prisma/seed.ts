@@ -245,6 +245,31 @@ async function main() {
     })
   }
 
+  // 지불준비율 설정
+  await prisma.reserveRatioConfig.upsert({
+    where: { id: 'reserve-config-001' },
+    update: {},
+    create: {
+      id: 'reserve-config-001',
+      targetRatio: 0.05,
+      warningRatio: 0.03,
+      criticalRatio: 0.01,
+      currentCirculationRate: 0.05,
+    },
+  })
+
+  // CirculationPool 역할·비율 업데이트
+  await prisma.circulationPool.updateMany({
+    where: { id: 'circulation-pool-001' },
+    data: { role: 'RESERVE_FUND', circulationRate: 0.05 },
+  })
+
+  // 만보기 설정: 기금 전액(1.0), 순환 풀 0 으로 업데이트
+  await prisma.walkRewardConfig.updateMany({
+    where: { year: { in: [2025, 2026] } },
+    data: { fundRatio: 1.0, circulationRatio: 0.0 },
+  })
+
   // 관리자 마이너스 발행 연간 한도
   for (const { year, annualLimit } of [
     { year: 2025, annualLimit: 200000 },
