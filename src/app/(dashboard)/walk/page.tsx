@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Footprints, Trophy, CircleOff, Activity, Cpu, Heart } from 'lucide-react'
+import { Footprints, Trophy, CircleOff, Activity, Cpu, Heart, Bug, ChevronDown, ChevronUp, RefreshCw, FlaskConical } from 'lucide-react'
 
 const GOAL = 10000
 const REWARD_TP = 0.5
@@ -17,8 +17,8 @@ function FundStatusCard({ status }: { status: FundStatus | null }) {
   if (!status?.healthFund) return null
   const { healthFund, walkConfig } = status
 
-  const fundBal  = healthFund.tpBalance
-  const yearDist = walkConfig?.distributedThisYear ?? 0
+  const fundBal   = healthFund.tpBalance
+  const yearDist  = walkConfig?.distributedThisYear ?? 0
   const yearLimit = walkConfig?.annualTpLimit ?? 0
   const yearPct   = yearLimit > 0 ? Math.min(yearDist / yearLimit * 100, 100) : 0
 
@@ -66,6 +66,244 @@ function FundStatusCard({ status }: { status: FundStatus | null }) {
     </div>
   )
 }
+
+// ── 디버그 패널 ──────────────────────────────────────────────────────────────
+interface DebugInfo {
+  timestamp:   string
+  today:       string
+  memberName:  string
+  tpBalance:   number
+  todayRecord: {
+    date: string; steps: number; rewarded: boolean
+    tpFromFund: number; tpSource: string | null; tpAwardedAt: string | null
+    createdAt: string
+  } | null
+  recentRecords: { date: string; steps: number; rewarded: boolean; tpFromFund: number }[]
+  system: {
+    healthFundBalance: number; healthFundOk: boolean
+    annualIssued: number; annualLimit: number; annualExceeded: boolean
+    walkConfigExists: boolean
+  }
+  diagnosis: string[]
+}
+
+function DebugPanel({
+  serverSteps, webSessionSteps, isNative, sensorMode, sensorActive,
+}: {
+  serverSteps: number; webSessionSteps: number; isNative: boolean
+  sensorMode: string; sensorActive: boolean
+}) {
+  const [open,    setOpen]    = useState(false)
+  const [info,    setInfo]    = useState<DebugInfo | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [testResult, setTestResult] = useState<string | null>(null)
+  const [testing,    setTesting]    = useState(false)
+
+  async function loadDebug() {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/walk/debug')
+      const d   = await res.json()
+      setInfo(d)
+    } catch (e: any) {
+      setInfo(null)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function runTestReward() {
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const res = await fetch('/api/walk/test-reward', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ steps: 10000 }),
+      })
+      const d = await res.json()
+      setTestResult(d.message ?? (d.success ? '✅ 성공' : `❌ ${d.reason}`))
+      // 결과 후 디버그 정보 새로고침
+      await loadDebug()
+    } catch (e: any) {
+      setTestResult(`❌ 요청 실패: ${e.message}`)
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  async function runForceReward() {
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const res = await fetch('/api/walk/test-reward', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ steps: 10000, force: true }),
+      })
+      const d = await res.json()
+      setTestResult(`[강제] ${d.message ?? (d.success ? '✅ 성공' : `❌ ${d.reason}`)}`)
+      await loadDebug()
+    } catch (e: any) {
+      setTestResult(`❌ 요청 실패: ${e.message}`)
+    } finally {
+      setTesting(false)
+    }
+  }
+
+  useEffect(() => {
+    if (open && !info) loadDebug()
+  }, [open])
+
+  return (
+    <div className="border border-gray-200 rounded-2xl overflow-hidden">
+      {/* 헤더 토글 */}
+      <button
+        onClick={() => setOpen(v => !v)}
+        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 text-sm text-gray-600 transition-colors"
+      >
+        <span className="flex items-center gap-2">
+          <Bug className="h-4 w-4" />
+          <span className="font-medium">진단 & 테스트 패널</span>
+        </span>
+        {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+      </button>
+
+      {open && (
+        <div className="p-4 space-y-4 text-xs">
+
+          {/* 현재 세션 상태 */}
+          <div className="space-y-1">
+            <p className="font-semibold text-gray-700">📊 현재 세션 상태</p>
+            <div className="bg-gray-50 rounded-xl p-3 space-y-1 font-mono text-gray-600">
+              <p>플랫폼: <span className="text-blue-600 font-bold">{isNative ? '📱 APK (Capacitor)' : '🌐 웹 브라우저'}</span></p>
+              <p>서버 저장 걸음 수: <span className="text-indigo-700 font-bold">{serverSteps.toLocaleString()}보</span></p>
+              {!isNative && <p>이번 세션 측정: <span className="text-amber-700 font-bold">{webSessionSteps.toLocaleString()}보</span></p>}
+              <p>센서 모드: <span className="text-gray-500">{sensorMode === 'none' ? '비활성' : sensorMode}</span></p>
+              <p>센서 수신: <span className={sensorActive ? 'text-green-600 font-bold' : 'text-gray-400'}>{sensorActive ? '✅ 활성' : '⏸ 대기'}</span></p>
+            </div>
+          </div>
+
+          {/* 서버 진단 정보 */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="font-semibold text-gray-700">🔍 서버 진단</p>
+              <button
+                onClick={loadDebug}
+                disabled={loading}
+                className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+              >
+                <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+                새로고침
+              </button>
+            </div>
+
+            {loading && <p className="text-gray-400 text-center py-2">불러오는 중...</p>}
+
+            {info && (
+              <div className="space-y-3">
+                {/* 진단 결론 */}
+                <div className="bg-gray-50 rounded-xl p-3 space-y-1">
+                  {info.diagnosis.map((d, i) => (
+                    <p key={i} className={`font-medium ${
+                      d.startsWith('✅') ? 'text-green-700' :
+                      d.startsWith('❌') ? 'text-red-600' :
+                      'text-amber-600'
+                    }`}>{d}</p>
+                  ))}
+                </div>
+
+                {/* 시스템 상태 */}
+                <div className="bg-blue-50 rounded-xl p-3 space-y-1 font-mono text-blue-800">
+                  <p>건강기금 잔액: <strong>{info.system.healthFundBalance} TP</strong>
+                    {info.system.healthFundOk ? ' ✅' : ' ❌ 부족'}
+                  </p>
+                  <p>연간 발행: {info.system.annualIssued} / {info.system.annualLimit} TP
+                    {info.system.annualExceeded ? ' ❌ 초과' : ' ✅'}
+                  </p>
+                  <p>WalkRewardConfig: {info.system.walkConfigExists ? '✅ 있음' : '❌ 없음'}</p>
+                  <p>내 TP 잔액: <strong>{info.tpBalance} TP</strong></p>
+                </div>
+
+                {/* 오늘 기록 */}
+                <div>
+                  <p className="font-semibold text-gray-600 mb-1">오늘 ({info.today}) WalkRecord</p>
+                  {info.todayRecord ? (
+                    <div className="bg-green-50 rounded-xl p-3 font-mono text-green-800 space-y-1">
+                      <p>걸음 수: <strong>{info.todayRecord.steps.toLocaleString()}보</strong></p>
+                      <p>TP 지급: <strong>{info.todayRecord.rewarded ? `✅ ${info.todayRecord.tpFromFund} TP` : '❌ 미지급'}</strong></p>
+                      {info.todayRecord.tpSource && <p>재원: {info.todayRecord.tpSource}</p>}
+                      {info.todayRecord.tpAwardedAt && <p>지급 시각: {new Date(info.todayRecord.tpAwardedAt).toLocaleTimeString('ko-KR')}</p>}
+                      <p className="text-green-600">생성: {new Date(info.todayRecord.createdAt).toLocaleString('ko-KR')}</p>
+                    </div>
+                  ) : (
+                    <div className="bg-red-50 rounded-xl p-3 text-red-600">
+                      ❌ 오늘 WalkRecord 없음 — 걸음 수 저장이 한 번도 실행되지 않았습니다.
+                    </div>
+                  )}
+                </div>
+
+                {/* 최근 기록 */}
+                {info.recentRecords.length > 0 && (
+                  <div>
+                    <p className="font-semibold text-gray-600 mb-1">최근 WalkRecord (최대 10개)</p>
+                    <div className="bg-gray-50 rounded-xl p-3 space-y-1 font-mono text-gray-700">
+                      {info.recentRecords.map(r => (
+                        <p key={r.date}>
+                          {r.date} — {r.steps.toLocaleString()}보
+                          {r.rewarded ? ` ✅ ${r.tpFromFund}TP` : ' ⬜'}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <p className="text-gray-400 text-right">갱신: {new Date(info.timestamp).toLocaleTimeString('ko-KR')}</p>
+              </div>
+            )}
+          </div>
+
+          {/* 테스트 버튼 */}
+          <div className="space-y-2 pt-2 border-t border-gray-100">
+            <p className="font-semibold text-gray-700 flex items-center gap-1">
+              <FlaskConical className="h-3.5 w-3.5" />
+              테스트
+            </p>
+
+            {testResult && (
+              <div className={`rounded-xl px-3 py-2 font-medium ${
+                testResult.includes('✅') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+              }`}>
+                {testResult}
+              </div>
+            )}
+
+            <button
+              onClick={runTestReward}
+              disabled={testing}
+              className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl py-2.5 font-medium transition-colors"
+            >
+              {testing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Footprints className="h-4 w-4" />}
+              테스트: 10,000보 달성으로 강제 저장 및 TP 지급
+            </button>
+
+            <button
+              onClick={runForceReward}
+              disabled={testing}
+              className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-xl py-2 font-medium transition-colors"
+            >
+              {testing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />}
+              강제 재지급 (이미 지급된 경우도 재실행)
+            </button>
+
+            <p className="text-gray-400 text-center">⚠️ 테스트 버튼은 진단 목적입니다. 실제 TP가 지급됩니다.</p>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 const COOLDOWN_MS = 280
 const STEP_DELTA_PURE = 1.2
 const STEP_DELTA_GRAVITY = 2.0
@@ -119,13 +357,12 @@ function useNativeStepSync(serverSteps: number, onSynced: (info: SyncedInfo) => 
         const { pending, steps, date } = await plugin.getPendingSave()
         if (!pending || steps <= 0) return
         const today = new Date().toISOString().slice(0, 10)
-        // 오늘 또는 어제 기록까지 소급 처리 (자정 이후 앱 열어도 전날 TP 적립)
         const diffDays = Math.floor((new Date(today).getTime() - new Date(date).getTime()) / 86400000)
         if (diffDays < 0 || diffDays > 1) return
         const res = await fetch('/api/walk/steps', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ steps, date }), // date 전달로 소급 가능
+          body: JSON.stringify({ steps, date }),
         })
         if (res.ok) {
           const d = await res.json()
@@ -149,7 +386,6 @@ function useNativeStepSync(serverSteps: number, onSynced: (info: SyncedInfo) => 
     return () => clearInterval(timer)
   }, [])
 
-  // 최댓값: 서버 저장 값 vs 네이티브 실시간 값
   const displaySteps = Math.max(serverSteps, nativeSteps)
   return { displaySteps, inWindow }
 }
@@ -281,12 +517,10 @@ function useWebSensorTracking(enabled: boolean, onStep: () => void) {
     trackingRef.current = true
     setTracking(true)
 
-    // 우선순위: Generic Sensor → DeviceMotion
     const genericOk = await tryGenericSensor()
     if (!genericOk) tryDeviceMotion()
   }, [])
 
-  // 시각 기반 자동 시작/중지
   useEffect(() => {
     if (!enabled) return
     function checkTime() {
@@ -319,13 +553,11 @@ export default function WalkPage() {
   const [webSessionSteps, setWebSessionSteps] = useState(0)
   const webSessionRef = useRef(0)
   const serverStepsRef = useRef(0)
-  // 재원 출처
   const [rewardSource, setRewardSource] = useState<{ fromFund: number; fromCirc: number } | null>(null)
   const [fundStatus, setFundStatus] = useState<FundStatus | null>(null)
 
   const isNative = isCapacitorNative()
 
-  // 서버에서 오늘 걸음 수 + 재원 현황 로드
   useEffect(() => {
     Promise.all([
       fetch('/api/walk/today').then(r => r.json()),
@@ -343,7 +575,6 @@ export default function WalkPage() {
     }).catch(() => setLoading(false))
   }, [])
 
-  // APK: 네이티브 서비스 걸음 수 폴링
   const { displaySteps: nativeDisplaySteps, inWindow } = useNativeStepSync(
     serverSteps,
     ({ steps, rewarded: rew, rewardedNow: rewNow, tpFromFund, tpFromCirc }) => {
@@ -357,7 +588,6 @@ export default function WalkPage() {
     }
   )
 
-  // 웹: 센서 기반 자동 측정 (APK가 아닐 때만)
   const onWebStep = useCallback(() => {
     webSessionRef.current += 1
     setWebSessionSteps(webSessionRef.current)
@@ -366,11 +596,9 @@ export default function WalkPage() {
   const { tracking: webTracking, sensorMode, sensorActive, debugMag, eventCount, permError } =
     useWebSensorTracking(!isNative && !loading, onWebStep)
 
-  // 웹: 측정 중지 시 서버 저장
   const prevWebTracking = useRef(webTracking)
   useEffect(() => {
     if (prevWebTracking.current && !webTracking) {
-      // 중지됨 → 저장
       const total = serverStepsRef.current + webSessionRef.current
       if (total > serverStepsRef.current && webSessionRef.current > 0) {
         setSaving(true)
@@ -399,7 +627,6 @@ export default function WalkPage() {
     prevWebTracking.current = webTracking
   }, [webTracking])
 
-  // 자정 리셋
   useEffect(() => {
     if (loading) return
     const now = new Date()
@@ -416,7 +643,6 @@ export default function WalkPage() {
     return () => clearTimeout(timer)
   }, [loading])
 
-  // 표시용 계산
   const totalSteps = isNative ? nativeDisplaySteps : serverSteps + webSessionSteps
   const progress = Math.min(totalSteps / GOAL, 1)
   const circumference = 2 * Math.PI * 90
@@ -552,6 +778,15 @@ export default function WalkPage() {
           <span>{permError}</span>
         </div>
       )}
+
+      {/* 디버그 & 테스트 패널 */}
+      <DebugPanel
+        serverSteps={serverSteps}
+        webSessionSteps={webSessionSteps}
+        isNative={isNative}
+        sensorMode={sensorMode}
+        sensorActive={sensorActive}
+      />
 
       {/* 이용 안내 */}
       <div className="bg-blue-50 rounded-xl p-4 space-y-2">
