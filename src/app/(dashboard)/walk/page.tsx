@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Footprints, Trophy, CircleOff, Activity, Cpu, Heart, Bug, ChevronDown, ChevronUp, RefreshCw, FlaskConical } from 'lucide-react'
+import { Footprints, Trophy, CircleOff, Activity, Cpu, Heart, Bug, ChevronDown, ChevronUp, RefreshCw, FlaskConical, Clock } from 'lucide-react'
 
 const GOAL = 10000
 const REWARD_TP = 0.5
@@ -555,6 +555,8 @@ export default function WalkPage() {
   const serverStepsRef = useRef(0)
   const [rewardSource, setRewardSource] = useState<{ fromFund: number; fromCirc: number } | null>(null)
   const [fundStatus, setFundStatus] = useState<FundStatus | null>(null)
+  const [checking, setChecking] = useState(false)
+  const [checkMsg, setCheckMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   const isNative = isCapacitorNative()
 
@@ -627,21 +629,8 @@ export default function WalkPage() {
     prevWebTracking.current = webTracking
   }, [webTracking])
 
-  useEffect(() => {
-    if (loading) return
-    const now = new Date()
-    const midnight = new Date(now)
-    midnight.setHours(24, 0, 0, 0)
-    const timer = setTimeout(() => {
-      setServerSteps(0)
-      serverStepsRef.current = 0
-      webSessionRef.current = 0
-      setWebSessionSteps(0)
-      setRewarded(false)
-      setJustRewarded(false)
-    }, midnight.getTime() - now.getTime())
-    return () => clearTimeout(timer)
-  }, [loading])
+  // 자정 타이머 제거 — Vercel Cron Job (매일 23:59)이 서버에서 일괄 처리
+  // 화면 리셋은 다음날 페이지를 다시 열 때 /api/walk/today 재조회로 자동 반영됨
 
   const totalSteps = isNative ? nativeDisplaySteps : serverSteps + webSessionSteps
   const progress = Math.min(totalSteps / GOAL, 1)
@@ -653,6 +642,41 @@ export default function WalkPage() {
     generic: '🔬 Generic Sensor',
     devicemotion: '📡 DeviceMotion',
     none: '',
+  }
+
+  // 지금 바로 TP 지급 확인 (현재 걸음 수를 서버에 전송)
+  async function handleCheckNow() {
+    setChecking(true)
+    setCheckMsg(null)
+    try {
+      const res = await fetch('/api/walk/steps', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ steps: totalSteps }),
+      })
+      const d = await res.json()
+      setServerSteps(d.steps ?? totalSteps)
+      serverStepsRef.current = d.steps ?? totalSteps
+      if (d.rewardedNow) {
+        setRewarded(true)
+        setJustRewarded(true)
+        if (d.tpFromFund != null) setRewardSource({ fromFund: d.tpFromFund, fromCirc: d.tpFromCirculation ?? 0 })
+        setCheckMsg({ ok: true, text: `✅ ${d.tpTotal ?? REWARD_TP} TP 지급 완료!` })
+      } else if (d.rewarded) {
+        setRewarded(true)
+        setCheckMsg({ ok: true, text: '✅ 이미 오늘 TP가 지급되었습니다.' })
+      } else if (d.fundReason) {
+        setCheckMsg({ ok: false, text: `❌ ${d.fundReason}` })
+      } else if ((d.steps ?? 0) < 10000) {
+        setCheckMsg({ ok: false, text: `⚠️ 현재 ${(d.steps ?? 0).toLocaleString()}보 — 1만보 달성 시 지급됩니다.` })
+      } else {
+        setCheckMsg({ ok: true, text: '서버 저장 완료' })
+      }
+    } catch {
+      setCheckMsg({ ok: false, text: '❌ 서버 연결에 실패했습니다. 다시 시도해 주세요.' })
+    } finally {
+      setChecking(false)
+    }
   }
 
   if (loading) {
@@ -788,12 +812,48 @@ export default function WalkPage() {
         sensorActive={sensorActive}
       />
 
+      {/* TP 자동 지급 안내 + 지금 확인 버튼 */}
+      <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 space-y-3">
+        <div className="flex items-start gap-2">
+          <Clock className="h-4 w-4 text-indigo-500 mt-0.5 shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-indigo-800">TP 자동 지급 안내</p>
+            <p className="text-xs text-indigo-600 mt-1 leading-relaxed">
+              매일 <strong>오후 11시 59분</strong>에 오늘 걸음수가 자동으로 확인되어
+              1만보 달성 회원에게 <strong>0.5 TP</strong>가 지급됩니다.<br />
+              지금 바로 확인하려면 아래 버튼을 누르세요.
+            </p>
+          </div>
+        </div>
+
+        {checkMsg && (
+          <div className={`rounded-xl px-3 py-2 text-sm font-medium ${
+            checkMsg.ok ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'
+          }`}>
+            {checkMsg.text}
+          </div>
+        )}
+
+        <button
+          onClick={handleCheckNow}
+          disabled={checking || rewarded}
+          className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white rounded-xl py-3 text-sm font-semibold transition-colors"
+        >
+          {checking
+            ? <><RefreshCw className="h-4 w-4 animate-spin" /> 확인 중...</>
+            : rewarded
+              ? <>✅ 오늘 이미 적립 완료</>
+              : <><Footprints className="h-4 w-4" /> 지금 바로 걸음수 확인 및 TP 지급</>
+          }
+        </button>
+      </div>
+
       {/* 이용 안내 */}
       <div className="bg-blue-50 rounded-xl p-4 space-y-2">
         <p className="text-sm font-semibold text-blue-800">📱 이용 안내</p>
         <ul className="space-y-1 text-xs text-blue-700 list-disc list-inside">
           <li>매일 <strong>00시 01분</strong>에 자동으로 측정 시작</li>
-          <li>매일 <strong>23시 59분</strong>에 자동으로 측정 종료 및 저장</li>
+          <li>매일 <strong>23시 59분</strong>에 서버에서 자동으로 TP 일괄 지급</li>
           <li><strong>APK 설치 시</strong>: 앱을 닫아도 백그라운드에서 계속 측정</li>
           <li><strong>웹 브라우저</strong>: 화면이 열려 있어야 측정됨</li>
           <li>10,000보 달성 시 하루 1회 <strong>{REWARD_TP} TP</strong> 자동 적립</li>
