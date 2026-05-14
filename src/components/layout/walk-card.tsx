@@ -15,15 +15,17 @@ function isCapacitorNative() {
   return typeof window !== 'undefined' && !!window.Capacitor?.isNativePlatform?.()
 }
 
+const GOAL = 10000
+
 interface Props {
   serverSteps: number
   rewarded: boolean
 }
 
 export function WalkCard({ serverSteps, rewarded: serverRewarded }: Props) {
-  const [steps, setSteps] = useState(serverSteps)
+  const [steps,    setSteps]    = useState(serverSteps)
   const [rewarded, setRewarded] = useState(serverRewarded)
-  const syncedRef = useRef(false)
+  const savedOnceRef = useRef(false)
 
   useEffect(() => {
     if (!isCapacitorNative()) return
@@ -32,34 +34,48 @@ export function WalkCard({ serverSteps, rewarded: serverRewarded }: Props) {
 
     async function load() {
       try {
-        // 네이티브 SharedPreferences에서 오늘 걸음 수 읽기
+        // ① 네이티브에서 오늘 걸음수 읽기
         const { steps: nativeSteps } = await plugin.getTodaySteps()
-        if (typeof nativeSteps === 'number' && nativeSteps > 0) {
-          setSteps(Math.max(serverSteps, nativeSteps))
+        const ns = typeof nativeSteps === 'number' ? nativeSteps : 0
+
+        if (ns > 0) {
+          // 화면에 즉시 표시 (서버 저장값보다 크면 네이티브값 우선)
+          const display = Math.max(serverSteps, ns)
+          setSteps(display)
+
+          // ② 서버에 저장 (최초 1회 — WalkRecord가 없을 때 채워주는 용도)
+          if (!savedOnceRef.current) {
+            savedOnceRef.current = true
+            const res = await fetch('/api/walk/record', {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify({ steps: ns }),
+            })
+            if (res.ok) {
+              const d = await res.json()
+              // 서버에 최종 저장된 값(최댓값)으로 화면 갱신
+              setSteps(d.steps ?? display)
+              setRewarded(d.rewarded ?? serverRewarded)
+            }
+          }
         }
 
-        // pending_save 동기화 (한 번만)
-        if (!syncedRef.current) {
-          syncedRef.current = true
-          const { pending, steps: pendingSteps, date } = await plugin.getPendingSave()
-          if (pending && pendingSteps > 0) {
-            const today = new Date().toISOString().slice(0, 10)
-            // 오늘 또는 어제 기록만 소급 처리 (자정 이후 앱 열어도 전날 TP 적립 가능)
-            const clientDate = new Date(date)
-            const todayDate = new Date(today)
-            const diffDays = Math.floor((todayDate.getTime() - clientDate.getTime()) / 86400000)
-            if (diffDays >= 0 && diffDays <= 1) {
-              const res = await fetch('/api/walk/steps', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ steps: pendingSteps, date }), // date 전달로 소급 가능
-              })
-              if (res.ok) {
-                const d = await res.json()
-                setSteps(d.steps)
-                setRewarded(d.rewarded)
-                await plugin.markSaved()
-              }
+        // ③ pending_save 동기화 (백그라운드 서비스가 저장한 값)
+        const { pending, steps: pendingSteps, date } = await plugin.getPendingSave()
+        if (pending && pendingSteps > 0) {
+          const today    = new Date().toISOString().slice(0, 10)
+          const diffDays = Math.floor((new Date(today).getTime() - new Date(date).getTime()) / 86400000)
+          if (diffDays >= 0 && diffDays <= 1) {
+            const res = await fetch('/api/walk/steps', {
+              method:  'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body:    JSON.stringify({ steps: pendingSteps, date }),
+            })
+            if (res.ok) {
+              const d = await res.json()
+              setSteps(d.steps)
+              setRewarded(d.rewarded)
+              await plugin.markSaved()
             }
           }
         }
@@ -67,17 +83,29 @@ export function WalkCard({ serverSteps, rewarded: serverRewarded }: Props) {
     }
 
     load()
-    // 30초마다 갱신
+
+    // 30초마다 갱신 (화면 표시 + 저장)
     const timer = setInterval(async () => {
       try {
-        const { steps: nativeSteps } = await plugin.getTodaySteps()
-        if (typeof nativeSteps === 'number') setSteps(Math.max(serverSteps, nativeSteps))
+        const { steps: ns } = await plugin.getTodaySteps()
+        const nSteps = typeof ns === 'number' ? ns : 0
+        if (nSteps > 0) {
+          setSteps(prev => Math.max(prev, nSteps))
+          // 서버에도 저장 (변화 없으면 API가 DB 쓰기 생략)
+          await fetch('/api/walk/record', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ steps: nSteps }),
+          })
+        }
       } catch {}
     }, 30_000)
-    return () => clearInterval(timer)
-  }, [serverSteps])
 
-  const progress = Math.min(steps / 10000, 1)
+    return () => clearInterval(timer)
+  }, [serverSteps, serverRewarded])
+
+  const progress = Math.min(steps / GOAL, 1)
+  const achieved = steps >= GOAL
 
   return (
     <Link href="/walk">
@@ -88,13 +116,20 @@ export function WalkCard({ serverSteps, rewarded: serverRewarded }: Props) {
               <Footprints className="h-8 w-8 text-green-100" />
               <div>
                 <p className="text-green-100 text-xs">오늘의 만보기</p>
-                <p className="text-2xl font-bold">
+                <p className="text-2xl font-bold tabular-nums">
                   {steps.toLocaleString()}
-                  <span className="text-sm font-normal text-green-200 ml-1">/ 10,000보</span>
+                  {/* 목표 달성 시: "보 ✅" / 미달성 시: "/ 10,000보" */}
+                  {achieved
+                    ? <span className="text-sm font-normal text-green-200 ml-1">보 ✅</span>
+                    : <span className="text-sm font-normal text-green-200 ml-1">/ {GOAL.toLocaleString()}보</span>
+                  }
                 </p>
-                {rewarded && (
-                  <p className="text-xs text-green-200 mt-0.5">✅ 0.5 TP 적립 완료</p>
-                )}
+                {rewarded
+                  ? <p className="text-xs text-green-200 mt-0.5">0.5 TP 적립 완료</p>
+                  : achieved
+                    ? <p className="text-xs text-yellow-200 mt-0.5">🎯 목표 달성! TP 지급 대기</p>
+                    : null
+                }
               </div>
             </div>
             <ChevronRight className="h-5 w-5 text-green-200" />
@@ -105,6 +140,9 @@ export function WalkCard({ serverSteps, rewarded: serverRewarded }: Props) {
               style={{ width: `${Math.round(progress * 100)}%` }}
             />
           </div>
+          <p className="text-right text-xs text-green-200 mt-1">
+            {achieved ? '🏆 목표 달성!' : `${Math.round(progress * 100)}%`}
+          </p>
         </CardContent>
       </Card>
     </Link>

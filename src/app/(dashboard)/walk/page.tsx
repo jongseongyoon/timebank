@@ -342,7 +342,9 @@ type SyncedInfo = { steps: number; rewarded: boolean; rewardedNow: boolean; tpFr
 function useNativeStepSync(serverSteps: number, onSynced: (info: SyncedInfo) => void) {
   const [nativeSteps, setNativeSteps] = useState(serverSteps)
   const [inWindow, setInWindow] = useState(isTrackingHour())
-  const serverStepsRef = useRef(serverSteps)
+  const serverStepsRef  = useRef(serverSteps)
+  const lastSavedRef    = useRef(-1)  // 마지막으로 서버에 저장한 걸음수
+  const pollCountRef    = useRef(0)   // 폴링 횟수 (주기적 저장 판단용)
 
   useEffect(() => { serverStepsRef.current = serverSteps }, [serverSteps])
 
@@ -351,7 +353,7 @@ function useNativeStepSync(serverSteps: number, onSynced: (info: SyncedInfo) => 
     const plugin = getStepPlugin()
     if (!plugin) return
 
-    // pending_save 서버 동기화 (앱 열릴 때 1회)
+    // ── pending_save 서버 동기화 (앱 열릴 때 1회) ─────────────────────────
     async function syncPending() {
       try {
         const { pending, steps, date } = await plugin.getPendingSave()
@@ -366,6 +368,7 @@ function useNativeStepSync(serverSteps: number, onSynced: (info: SyncedInfo) => 
         })
         if (res.ok) {
           const d = await res.json()
+          lastSavedRef.current = d.steps
           onSynced({ steps: d.steps, rewarded: d.rewarded, rewardedNow: !!d.rewardedNow, tpFromFund: d.tpFromFund, tpFromCirc: d.tpFromCirculation })
           await plugin.markSaved()
         }
@@ -373,11 +376,35 @@ function useNativeStepSync(serverSteps: number, onSynced: (info: SyncedInfo) => 
     }
     syncPending()
 
-    // SharedPreferences에서 걸음 수 폴링 (5초마다)
+    // ── 걸음수 서버 저장 (저장 전용 — TP 지급 없음) ─────────────────────
+    async function saveStepsToServer(steps: number) {
+      try {
+        const res = await fetch('/api/walk/record', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ steps }),
+        })
+        if (!res.ok) return
+        const d = await res.json()
+        if (d.saved) lastSavedRef.current = d.steps
+      } catch {}
+    }
+
+    // ── 걸음수 폴링 (5초마다) + 주기적 서버 저장 ────────────────────────
     async function poll() {
       try {
-        const { steps } = await plugin.getTodaySteps()
-        setNativeSteps(steps ?? 0)
+        const { steps: rawSteps } = await plugin.getTodaySteps()
+        const nSteps = rawSteps ?? 0
+        setNativeSteps(nSteps)
+
+        if (nSteps > 0) {
+          pollCountRef.current += 1
+          const prevSaved  = lastSavedRef.current
+          const justCrossedGoal = nSteps >= 10000 && prevSaved < 10000
+          // 저장 조건: ① 첫 번째 폴링 ② 12회마다(=60초) ③ 목표 돌파 직후
+          const shouldSave = prevSaved < 0 || pollCountRef.current % 12 === 0 || justCrossedGoal
+          if (shouldSave) await saveStepsToServer(nSteps)
+        }
       } catch {}
       setInWindow(isTrackingHour())
     }
@@ -644,33 +671,53 @@ export default function WalkPage() {
     none: '',
   }
 
-  // 지금 바로 TP 지급 확인 (현재 걸음 수를 서버에 전송)
+  // 지금 바로 걸음수 확인 & TP 지급
+  // APK: 최신 걸음수를 네이티브에서 직접 읽어 저장 → TP 지급 시도
   async function handleCheckNow() {
     setChecking(true)
     setCheckMsg(null)
     try {
+      // ① APK: 네이티브에서 최신 걸음수 읽기
+      let stepsToSave = totalSteps
+      if (isNative) {
+        const plugin = getStepPlugin()
+        if (plugin) {
+          try {
+            const { steps: freshSteps } = await plugin.getTodaySteps()
+            if (typeof freshSteps === 'number' && freshSteps > 0) {
+              stepsToSave = Math.max(totalSteps, freshSteps)
+            }
+          } catch {}
+        }
+      }
+
+      // ② 걸음수 저장 + TP 지급 시도 (POST /api/walk/steps)
       const res = await fetch('/api/walk/steps', {
         method:  'POST',
         headers: { 'Content-Type': 'application/json' },
-        body:    JSON.stringify({ steps: totalSteps }),
+        body:    JSON.stringify({ steps: stepsToSave }),
       })
       const d = await res.json()
-      setServerSteps(d.steps ?? totalSteps)
-      serverStepsRef.current = d.steps ?? totalSteps
+
+      // 화면 상태 업데이트
+      const saved = d.steps ?? stepsToSave
+      setServerSteps(saved)
+      serverStepsRef.current = saved
+
       if (d.rewardedNow) {
         setRewarded(true)
         setJustRewarded(true)
         if (d.tpFromFund != null) setRewardSource({ fromFund: d.tpFromFund, fromCirc: d.tpFromCirculation ?? 0 })
-        setCheckMsg({ ok: true, text: `✅ ${d.tpTotal ?? REWARD_TP} TP 지급 완료!` })
+        setCheckMsg({ ok: true, text: `✅ ${d.tpTotal ?? REWARD_TP} TP 지급 완료! (${saved.toLocaleString()}보)` })
       } else if (d.rewarded) {
         setRewarded(true)
         setCheckMsg({ ok: true, text: '✅ 이미 오늘 TP가 지급되었습니다.' })
       } else if (d.fundReason) {
         setCheckMsg({ ok: false, text: `❌ ${d.fundReason}` })
-      } else if ((d.steps ?? 0) < 10000) {
-        setCheckMsg({ ok: false, text: `⚠️ 현재 ${(d.steps ?? 0).toLocaleString()}보 — 1만보 달성 시 지급됩니다.` })
+      } else if (saved < 10000) {
+        setCheckMsg({ ok: false, text: `⚠️ ${saved.toLocaleString()}보 저장됨 — ${(10000 - saved).toLocaleString()}보 더 걸으면 TP 지급!` })
       } else {
-        setCheckMsg({ ok: true, text: '서버 저장 완료' })
+        setCheckMsg({ ok: true, text: `✅ ${saved.toLocaleString()}보 저장 완료` })
       }
     } catch {
       setCheckMsg({ ok: false, text: '❌ 서버 연결에 실패했습니다. 다시 시도해 주세요.' })
