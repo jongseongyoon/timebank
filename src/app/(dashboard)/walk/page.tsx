@@ -393,14 +393,20 @@ function isTrackingHour(): boolean {
 // APK 전용: 네이티브 서비스 걸음 수 폴링 + 서버 동기화
 // ═══════════════════════════════════════════════════════
 type SyncedInfo = { steps: number; rewarded: boolean; rewardedNow: boolean; tpFromFund?: number; tpFromCirc?: number }
-function useNativeStepSync(serverSteps: number, onSynced: (info: SyncedInfo) => void) {
+function useNativeStepSync(
+  serverSteps: number,
+  serverRewarded: boolean,           // DB의 실제 rewarded 상태 (steps 수로 대체 불가)
+  onSynced: (info: SyncedInfo) => void,
+) {
   const [nativeSteps, setNativeSteps] = useState(serverSteps)
   const [inWindow, setInWindow] = useState(isTrackingHour())
-  const serverStepsRef  = useRef(serverSteps)
-  const lastSavedRef    = useRef(-1)  // 마지막으로 서버에 저장한 걸음수
-  const pollCountRef    = useRef(0)   // 폴링 횟수 (주기적 저장 판단용)
+  const serverStepsRef   = useRef(serverSteps)
+  const serverRewardedRef = useRef(serverRewarded)   // ← rewarded 상태 전용 ref
+  const lastSavedRef     = useRef(-1)  // 마지막으로 서버에 저장한 걸음수
+  const pollCountRef     = useRef(0)   // 폴링 횟수 (주기적 저장 판단용)
 
   useEffect(() => { serverStepsRef.current = serverSteps }, [serverSteps])
+  useEffect(() => { serverRewardedRef.current = serverRewarded }, [serverRewarded])
 
   useEffect(() => {
     if (!isCapacitorNative()) return
@@ -412,7 +418,8 @@ function useNativeStepSync(serverSteps: number, onSynced: (info: SyncedInfo) => 
       try {
         const { pending, steps, date } = await plugin.getPendingSave()
         if (!pending || steps <= 0) return
-        const today = new Date().toISOString().slice(0, 10)
+        // KST 기준 오늘 날짜 (UTC+9)
+        const today = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
         const diffDays = Math.floor((new Date(today).getTime() - new Date(date).getTime()) / 86400000)
         if (diffDays < 0 || diffDays > 1) return
         const res = await fetch('/api/walk/steps', {
@@ -474,18 +481,17 @@ function useNativeStepSync(serverSteps: number, onSynced: (info: SyncedInfo) => 
 
         if (nSteps > 0) {
           pollCountRef.current += 1
-          const prevSaved       = lastSavedRef.current
-          const justCrossedGoal = nSteps >= 10000 && prevSaved < 10000
-          const alreadyRewarded = serverStepsRef.current >= 10000  // 서버가 이미 보상한 경우
+          const prevSaved        = lastSavedRef.current
+          const alreadyRewarded  = serverRewardedRef.current  // DB의 실제 rewarded 상태
+          const justCrossedGoal  = nSteps >= 10000 && prevSaved >= 0 && prevSaved < 10000
+          const openedAfterGoal  = nSteps >= 10000 && prevSaved < 0   // 앱 첫 폴링에서 이미 1만보 이상
 
-          if (justCrossedGoal && !alreadyRewarded) {
-            // 목표 돌파 직후 → 저장 + TP 즉시 지급
-            await saveStepsAndAward(nSteps)
-          } else if (nSteps >= 10000 && prevSaved < 0 && !alreadyRewarded) {
-            // 앱 첫 열기 시 이미 10,000보 이상이고 미지급 → 즉시 지급 시도
+          if (!alreadyRewarded && (justCrossedGoal || openedAfterGoal)) {
+            // ① 목표 돌파 직후, ② 앱 열었을 때 이미 1만보 이상 & 미지급
+            //    → 저장 + TP 즉시 지급 (서버가 rewarded 체크로 중복 방지)
             await saveStepsAndAward(nSteps)
           } else {
-            // 일반 저장 조건: 최초 폴링 또는 60초마다
+            // 일반 저장: 최초 폴링 또는 60초마다
             const shouldSave = prevSaved < 0 || pollCountRef.current % 12 === 0
             if (shouldSave) await saveStepsOnly(nSteps)
           }
@@ -691,6 +697,7 @@ export default function WalkPage() {
 
   const { displaySteps: nativeDisplaySteps, inWindow } = useNativeStepSync(
     serverSteps,
+    rewarded,          // DB rewarded 상태를 hook에 전달 (alreadyRewarded 판단에 사용)
     ({ steps, rewarded: rew, rewardedNow: rewNow, tpFromFund, tpFromCirc }) => {
       setServerSteps(steps)
       serverStepsRef.current = steps
