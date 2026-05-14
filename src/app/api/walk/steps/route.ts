@@ -3,30 +3,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { awardWalkReward, GOAL_STEPS, type WalkRewardResult } from '@/lib/walk-service'
+import { kstToday, validateWalkDate } from '@/lib/kst'
 
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: '인증 필요' }, { status: 401 })
 
-  const body = await req.json()
+  const body = await req.json().catch(() => ({}))
   const steps: number =
     typeof body.steps === 'number' ? Math.max(0, Math.round(body.steps)) : 0
 
-  // 클라이언트가 date를 보내면 사용 (pending_save 소급 처리용)
-  // 허용 범위: 오늘 또는 어제까지 (최대 1일 소급)
-  const serverToday = new Date().toISOString().slice(0, 10)
-  let date = serverToday
+  // KST 기준 날짜 (클라이언트 지정 허용: 오늘·어제만)
+  const date = validateWalkDate(body.date)
+  const today = kstToday()
 
-  if (body.date && typeof body.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
-    const clientDate = new Date(body.date)
-    const todayDate  = new Date(serverToday)
-    const diffDays   = Math.floor(
-      (todayDate.getTime() - clientDate.getTime()) / (1000 * 60 * 60 * 24)
-    )
-    // 오늘(0) 또는 어제(1)까지만 허용
-    if (diffDays >= 0 && diffDays <= 1) {
-      date = body.date
-    }
+  // 미래 날짜 거부
+  if (date > today) {
+    return NextResponse.json({ error: '미래 날짜는 허용되지 않습니다' }, { status: 400 })
   }
 
   const memberId = session.user.id

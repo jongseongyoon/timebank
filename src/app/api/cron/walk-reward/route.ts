@@ -24,7 +24,9 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const today = new Date().toISOString().slice(0, 10)
+  // KST 기준 날짜 (UTC 14:59 = KST 23:59이므로 이 시점에서 KST 날짜가 올바름)
+  const { kstToday } = await import('@/lib/kst')
+  const today = kstToday()
   const startedAt = Date.now()
 
   // ── 1. 오늘 미지급 달성자 조회 ──────────────────────────────────────────────

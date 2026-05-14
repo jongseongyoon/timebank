@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { kstToday, validateWalkDate } from '@/lib/kst'
 
 export async function POST(req: NextRequest) {
   const session = await auth()
@@ -19,26 +20,25 @@ export async function POST(req: NextRequest) {
     typeof body.steps === 'number' ? Math.max(0, Math.round(body.steps)) : 0
   const memberId = session.user.id
 
-  // 날짜: 클라이언트 지정 허용 (오늘·어제만)
-  const serverToday = new Date().toISOString().slice(0, 10)
-  let date = serverToday
-  if (body.date && typeof body.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(body.date)) {
-    const diffDays = Math.floor(
-      (new Date(serverToday).getTime() - new Date(body.date).getTime()) / 86400000
-    )
-    if (diffDays >= 0 && diffDays <= 1) date = body.date
+  // KST 기준 날짜 (클라이언트 지정 허용: 오늘·어제만)
+  const date  = validateWalkDate(body.date)
+  const today = kstToday()
+
+  // 미래 날짜 거부
+  if (date > today) {
+    return NextResponse.json({ error: '미래 날짜는 허용되지 않습니다' }, { status: 400 })
   }
 
   if (steps === 0) {
-    // 걸음수 0이면 조회만
     const existing = await prisma.walkRecord.findUnique({
       where: { memberId_date: { memberId, date } },
     })
     return NextResponse.json({
-      steps:    existing?.steps ?? 0,
-      rewarded: existing?.rewarded ?? false,
+      steps:      existing?.steps     ?? 0,
+      rewarded:   existing?.rewarded  ?? false,
+      goalReached: (existing?.steps ?? 0) >= 10000,
       date,
-      saved:    false,
+      saved: false,
     })
   }
 
@@ -51,10 +51,11 @@ export async function POST(req: NextRequest) {
   // 변화가 없으면 DB 쓰기 생략
   if (existing && existing.steps === newSteps) {
     return NextResponse.json({
-      steps:    newSteps,
-      rewarded: existing.rewarded,
+      steps:      newSteps,
+      rewarded:   existing.rewarded,
+      goalReached: newSteps >= 10000,
       date,
-      saved:    false,   // 변화 없음
+      saved: false,
     })
   }
 
@@ -65,10 +66,10 @@ export async function POST(req: NextRequest) {
   })
 
   return NextResponse.json({
-    steps:    record.steps,
-    rewarded: record.rewarded,
-    date,
-    saved:    true,
+    steps:      record.steps,
+    rewarded:   record.rewarded,
     goalReached: record.steps >= 10000,
+    date,
+    saved: true,
   })
 }

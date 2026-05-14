@@ -93,11 +93,13 @@ function DebugPanel({
   serverSteps: number; webSessionSteps: number; isNative: boolean
   sensorMode: string; sensorActive: boolean
 }) {
-  const [open,    setOpen]    = useState(false)
-  const [info,    setInfo]    = useState<DebugInfo | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [open,       setOpen]       = useState(false)
+  const [info,       setInfo]       = useState<DebugInfo | null>(null)
+  const [loading,    setLoading]    = useState(false)
   const [testResult, setTestResult] = useState<string | null>(null)
   const [testing,    setTesting]    = useState(false)
+  const [batching,   setBatching]   = useState(false)
+  const [batchResult, setBatchResult] = useState<string | null>(null)
 
   async function loadDebug() {
     setLoading(true)
@@ -148,6 +150,31 @@ function DebugPanel({
       setTestResult(`❌ 요청 실패: ${e.message}`)
     } finally {
       setTesting(false)
+    }
+  }
+
+  async function runBatchAward() {
+    setBatching(true)
+    setBatchResult(null)
+    try {
+      const res = await fetch('/api/admin/walk/batch-award', { method: 'POST' })
+      const d   = await res.json()
+      if (!res.ok) {
+        setBatchResult(`❌ ${d.error ?? '오류'}`)
+        return
+      }
+      if (d.total === 0) {
+        setBatchResult('ℹ️ 미지급 건 없음')
+      } else {
+        setBatchResult(
+          `✅ 처리 완료: 성공 ${d.success}건 / 건너뜀 ${d.skipped}건 / 오류 ${d.failed}건 (${d.elapsed})`
+        )
+      }
+      await loadDebug()
+    } catch (e: any) {
+      setBatchResult(`❌ 요청 실패: ${e.message}`)
+    } finally {
+      setBatching(false)
     }
   }
 
@@ -297,6 +324,33 @@ function DebugPanel({
             </button>
 
             <p className="text-gray-400 text-center">⚠️ 테스트 버튼은 진단 목적입니다. 실제 TP가 지급됩니다.</p>
+
+            {/* 미지급 일괄 처리 (관리자 전용) */}
+            <div className="border-t border-dashed border-red-200 pt-2 space-y-2">
+              <p className="text-xs font-semibold text-red-700">🔧 관리자 전용: 미지급 일괄 처리</p>
+              {batchResult && (
+                <div className={`rounded-xl px-3 py-2 text-sm font-medium ${
+                  batchResult.includes('✅') || batchResult.includes('ℹ️')
+                    ? 'bg-green-50 text-green-700'
+                    : 'bg-red-50 text-red-700'
+                }`}>
+                  {batchResult}
+                </div>
+              )}
+              <button
+                onClick={runBatchAward}
+                disabled={batching}
+                className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl py-2.5 font-medium transition-colors"
+              >
+                {batching
+                  ? <><RefreshCw className="h-4 w-4 animate-spin" /> 처리 중...</>
+                  : '🚨 미지급 TP 전체 일괄 처리'
+                }
+              </button>
+              <p className="text-xs text-gray-400 text-center">
+                steps≥10,000이고 rewarded=false인 모든 기록에 TP 지급
+              </p>
+            </div>
           </div>
         </div>
       )}
@@ -376,8 +430,8 @@ function useNativeStepSync(serverSteps: number, onSynced: (info: SyncedInfo) => 
     }
     syncPending()
 
-    // ── 걸음수 서버 저장 (저장 전용 — TP 지급 없음) ─────────────────────
-    async function saveStepsToServer(steps: number) {
+    // ── 걸음수 저장 전용 (TP 지급 없음) ─────────────────────────────────
+    async function saveStepsOnly(steps: number) {
       try {
         const res = await fetch('/api/walk/record', {
           method:  'POST',
@@ -386,7 +440,28 @@ function useNativeStepSync(serverSteps: number, onSynced: (info: SyncedInfo) => 
         })
         if (!res.ok) return
         const d = await res.json()
-        if (d.saved) lastSavedRef.current = d.steps
+        if (d.saved || d.steps > 0) lastSavedRef.current = d.steps
+      } catch {}
+    }
+
+    // ── 걸음수 저장 + TP 지급 (목표 돌파·미지급 시 자동 호출) ──────────
+    async function saveStepsAndAward(steps: number) {
+      try {
+        const res = await fetch('/api/walk/steps', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ steps }),
+        })
+        if (!res.ok) return
+        const d = await res.json()
+        lastSavedRef.current = d.steps ?? steps
+        onSynced({
+          steps:       d.steps ?? steps,
+          rewarded:    d.rewarded,
+          rewardedNow: !!d.rewardedNow,
+          tpFromFund:  d.tpFromFund,
+          tpFromCirc:  d.tpFromCirculation,
+        })
       } catch {}
     }
 
@@ -399,11 +474,21 @@ function useNativeStepSync(serverSteps: number, onSynced: (info: SyncedInfo) => 
 
         if (nSteps > 0) {
           pollCountRef.current += 1
-          const prevSaved  = lastSavedRef.current
+          const prevSaved       = lastSavedRef.current
           const justCrossedGoal = nSteps >= 10000 && prevSaved < 10000
-          // 저장 조건: ① 첫 번째 폴링 ② 12회마다(=60초) ③ 목표 돌파 직후
-          const shouldSave = prevSaved < 0 || pollCountRef.current % 12 === 0 || justCrossedGoal
-          if (shouldSave) await saveStepsToServer(nSteps)
+          const alreadyRewarded = serverStepsRef.current >= 10000  // 서버가 이미 보상한 경우
+
+          if (justCrossedGoal && !alreadyRewarded) {
+            // 목표 돌파 직후 → 저장 + TP 즉시 지급
+            await saveStepsAndAward(nSteps)
+          } else if (nSteps >= 10000 && prevSaved < 0 && !alreadyRewarded) {
+            // 앱 첫 열기 시 이미 10,000보 이상이고 미지급 → 즉시 지급 시도
+            await saveStepsAndAward(nSteps)
+          } else {
+            // 일반 저장 조건: 최초 폴링 또는 60초마다
+            const shouldSave = prevSaved < 0 || pollCountRef.current % 12 === 0
+            if (shouldSave) await saveStepsOnly(nSteps)
+          }
         }
       } catch {}
       setInWindow(isTrackingHour())
