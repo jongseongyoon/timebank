@@ -88,10 +88,11 @@ interface DebugInfo {
 }
 
 function DebugPanel({
-  serverSteps, webSessionSteps, isNative, sensorMode, sensorActive,
+  serverSteps, webSessionSteps, isNative, sensorMode, sensorActive, saveStatus,
 }: {
   serverSteps: number; webSessionSteps: number; isNative: boolean
   sensorMode: string; sensorActive: boolean
+  saveStatus: SaveStatus | null
 }) {
   const [open,       setOpen]       = useState(false)
   const [info,       setInfo]       = useState<DebugInfo | null>(null)
@@ -210,6 +211,33 @@ function DebugPanel({
               <p>센서 수신: <span className={sensorActive ? 'text-green-600 font-bold' : 'text-gray-400'}>{sensorActive ? '✅ 활성' : '⏸ 대기'}</span></p>
             </div>
           </div>
+
+          {/* 서버 저장 상태 (APK 전용) */}
+          {isNative && (
+            <div className="space-y-1">
+              <p className="font-semibold text-gray-700">💾 서버 저장 상태</p>
+              {saveStatus ? (
+                <div className={`rounded-xl p-3 font-mono space-y-0.5 ${
+                  saveStatus.ok ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+                }`}>
+                  <p>
+                    {saveStatus.ok ? '🟢 저장 성공' : '🔴 저장 실패'}
+                    {' '}
+                    <span className="font-bold">{saveStatus.steps.toLocaleString()}보</span>
+                    {' '}
+                    <span className="text-xs opacity-70">{saveStatus.at}</span>
+                  </p>
+                  {saveStatus.error && (
+                    <p className="text-xs break-all opacity-80">오류: {saveStatus.error}</p>
+                  )}
+                </div>
+              ) : (
+                <div className="bg-gray-50 rounded-xl p-3 font-mono text-gray-400">
+                  <p>⏳ 아직 저장 시도 없음 (페이지 진입 후 5초 이내 자동 저장)</p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* 서버 진단 정보 */}
           <div className="space-y-2">
@@ -393,17 +421,20 @@ function isTrackingHour(): boolean {
 // APK 전용: 네이티브 서비스 걸음 수 폴링 + 서버 동기화
 // ═══════════════════════════════════════════════════════
 type SyncedInfo = { steps: number; rewarded: boolean; rewardedNow: boolean; tpFromFund?: number; tpFromCirc?: number }
+export type SaveStatus = { steps: number; ok: boolean; at: string; error?: string }
+
 function useNativeStepSync(
   serverSteps: number,
   serverRewarded: boolean,           // DB의 실제 rewarded 상태 (steps 수로 대체 불가)
-  onSynced: (info: SyncedInfo) => void,
+  onSynced:     (info: SyncedInfo) => void,
+  onSaveStatus: (s: SaveStatus) => void,
 ) {
   const [nativeSteps, setNativeSteps] = useState(serverSteps)
   const [inWindow, setInWindow] = useState(isTrackingHour())
-  const serverStepsRef   = useRef(serverSteps)
-  const serverRewardedRef = useRef(serverRewarded)   // ← rewarded 상태 전용 ref
-  const lastSavedRef     = useRef(-1)  // 마지막으로 서버에 저장한 걸음수
-  const pollCountRef     = useRef(0)   // 폴링 횟수 (주기적 저장 판단용)
+  const serverStepsRef    = useRef(serverSteps)
+  const serverRewardedRef = useRef(serverRewarded)
+  const lastSavedRef      = useRef(-1)   // 서버에 마지막으로 저장한 걸음수
+  const pollCountRef      = useRef(0)    // 폴링 횟수 카운터
 
   useEffect(() => { serverStepsRef.current = serverSteps }, [serverSteps])
   useEffect(() => { serverRewardedRef.current = serverRewarded }, [serverRewarded])
@@ -413,12 +444,21 @@ function useNativeStepSync(
     const plugin = getStepPlugin()
     if (!plugin) return
 
+    // ── 저장 결과 보고 헬퍼 ───────────────────────────────────────────────
+    function reportSave(steps: number, ok: boolean, error?: string) {
+      onSaveStatus({
+        steps,
+        ok,
+        at: new Date().toLocaleTimeString('ko-KR'),
+        error,
+      })
+    }
+
     // ── pending_save 서버 동기화 (앱 열릴 때 1회) ─────────────────────────
     async function syncPending() {
       try {
         const { pending, steps, date } = await plugin.getPendingSave()
         if (!pending || steps <= 0) return
-        // KST 기준 오늘 날짜 (UTC+9)
         const today = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
         const diffDays = Math.floor((new Date(today).getTime() - new Date(date).getTime()) / 86400000)
         if (diffDays < 0 || diffDays > 1) return
@@ -427,13 +467,18 @@ function useNativeStepSync(
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ steps, date }),
         })
+        const d = await res.json()
         if (res.ok) {
-          const d = await res.json()
           lastSavedRef.current = d.steps
+          reportSave(d.steps, true)
           onSynced({ steps: d.steps, rewarded: d.rewarded, rewardedNow: !!d.rewardedNow, tpFromFund: d.tpFromFund, tpFromCirc: d.tpFromCirculation })
           await plugin.markSaved()
+        } else {
+          reportSave(steps, false, `pending sync ${res.status}: ${d.error ?? ''}`)
         }
-      } catch {}
+      } catch (e: any) {
+        reportSave(0, false, `pending sync 예외: ${e.message ?? e}`)
+      }
     }
     syncPending()
 
@@ -445,13 +490,19 @@ function useNativeStepSync(
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ steps }),
         })
-        if (!res.ok) return
         const d = await res.json()
-        if (d.saved || d.steps > 0) lastSavedRef.current = d.steps
-      } catch {}
+        if (res.ok) {
+          lastSavedRef.current = d.steps ?? steps
+          reportSave(d.steps ?? steps, true)
+        } else {
+          reportSave(steps, false, `record ${res.status}: ${d.error ?? ''}`)
+        }
+      } catch (e: any) {
+        reportSave(steps, false, `record 예외: ${e.message ?? e}`)
+      }
     }
 
-    // ── 걸음수 저장 + TP 지급 (목표 돌파·미지급 시 자동 호출) ──────────
+    // ── 걸음수 저장 + TP 지급 ────────────────────────────────────────────
     async function saveStepsAndAward(steps: number) {
       try {
         const res = await fetch('/api/walk/steps', {
@@ -459,44 +510,56 @@ function useNativeStepSync(
           headers: { 'Content-Type': 'application/json' },
           body:    JSON.stringify({ steps }),
         })
-        if (!res.ok) return
         const d = await res.json()
-        lastSavedRef.current = d.steps ?? steps
-        onSynced({
-          steps:       d.steps ?? steps,
-          rewarded:    d.rewarded,
-          rewardedNow: !!d.rewardedNow,
-          tpFromFund:  d.tpFromFund,
-          tpFromCirc:  d.tpFromCirculation,
-        })
-      } catch {}
+        if (res.ok) {
+          lastSavedRef.current = d.steps ?? steps
+          reportSave(d.steps ?? steps, true)
+          onSynced({
+            steps:       d.steps ?? steps,
+            rewarded:    d.rewarded,
+            rewardedNow: !!d.rewardedNow,
+            tpFromFund:  d.tpFromFund,
+            tpFromCirc:  d.tpFromCirculation,
+          })
+        } else {
+          reportSave(steps, false, `steps ${res.status}: ${d.error ?? ''}`)
+        }
+      } catch (e: any) {
+        reportSave(steps, false, `steps 예외: ${e.message ?? e}`)
+      }
     }
 
-    // ── 걸음수 폴링 (5초마다) + 주기적 서버 저장 ────────────────────────
+    // ── 걸음수 폴링 (5초) + 저장 판단 ───────────────────────────────────
     async function poll() {
       try {
         const { steps: rawSteps } = await plugin.getTodaySteps()
-        const nSteps = rawSteps ?? 0
+        const nSteps = typeof rawSteps === 'number' ? rawSteps : 0
         setNativeSteps(nSteps)
 
         if (nSteps > 0) {
           pollCountRef.current += 1
-          const prevSaved        = lastSavedRef.current
-          const alreadyRewarded  = serverRewardedRef.current  // DB의 실제 rewarded 상태
-          const justCrossedGoal  = nSteps >= 10000 && prevSaved >= 0 && prevSaved < 10000
-          const openedAfterGoal  = nSteps >= 10000 && prevSaved < 0   // 앱 첫 폴링에서 이미 1만보 이상
+          const prevSaved       = lastSavedRef.current
+          const alreadyRewarded = serverRewardedRef.current
+          const justCrossedGoal = nSteps >= 10000 && prevSaved >= 0 && prevSaved < 10000
+          const openedAfterGoal = nSteps >= 10000 && prevSaved < 0
 
           if (!alreadyRewarded && (justCrossedGoal || openedAfterGoal)) {
-            // ① 목표 돌파 직후, ② 앱 열었을 때 이미 1만보 이상 & 미지급
-            //    → 저장 + TP 즉시 지급 (서버가 rewarded 체크로 중복 방지)
+            // 목표 돌파 / 앱 열었을 때 이미 1만보 이상 + 미지급 → 저장 + TP 즉시 지급
             await saveStepsAndAward(nSteps)
           } else {
-            // 일반 저장: 최초 폴링 또는 60초마다
-            const shouldSave = prevSaved < 0 || pollCountRef.current % 12 === 0
+            // 일반 저장:
+            //   ① 첫 폴링 (prevSaved < 0)
+            //   ② 5분마다 (60 polls × 5s)
+            //   ③ 500보 이상 변화 (걷는 중 실시간 반영)
+            const bigChange   = prevSaved >= 0 && nSteps - prevSaved >= 500
+            const periodicSave = pollCountRef.current % 60 === 0  // 5분마다
+            const shouldSave  = prevSaved < 0 || bigChange || periodicSave
             if (shouldSave) await saveStepsOnly(nSteps)
           }
         }
-      } catch {}
+      } catch (e: any) {
+        reportSave(0, false, `getTodaySteps 예외: ${(e as any).message ?? e}`)
+      }
       setInWindow(isTrackingHour())
     }
     poll()
@@ -675,6 +738,7 @@ export default function WalkPage() {
   const [fundStatus, setFundStatus] = useState<FundStatus | null>(null)
   const [checking, setChecking] = useState(false)
   const [checkMsg, setCheckMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [saveStatus, setSaveStatus] = useState<SaveStatus | null>(null)
 
   const isNative = isCapacitorNative()
 
@@ -697,7 +761,7 @@ export default function WalkPage() {
 
   const { displaySteps: nativeDisplaySteps, inWindow } = useNativeStepSync(
     serverSteps,
-    rewarded,          // DB rewarded 상태를 hook에 전달 (alreadyRewarded 판단에 사용)
+    rewarded,
     ({ steps, rewarded: rew, rewardedNow: rewNow, tpFromFund, tpFromCirc }) => {
       setServerSteps(steps)
       serverStepsRef.current = steps
@@ -706,7 +770,8 @@ export default function WalkPage() {
         setJustRewarded(true)
         if (tpFromFund != null) setRewardSource({ fromFund: tpFromFund, fromCirc: tpFromCirc ?? 0 })
       }
-    }
+    },
+    setSaveStatus,   // 저장 상태 콜백 — 디버그 패널에 표시
   )
 
   const onWebStep = useCallback(() => {
@@ -949,6 +1014,7 @@ export default function WalkPage() {
         isNative={isNative}
         sensorMode={sensorMode}
         sensorActive={sensorActive}
+        saveStatus={saveStatus}
       />
 
       {/* TP 자동 지급 안내 + 지금 확인 버튼 */}

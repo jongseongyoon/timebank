@@ -30,6 +30,9 @@ export function RatingModal({ memberId }: { memberId: string }) {
       .then(d => {
         const txs = d.transactions ?? []
         const unrated = txs.find((tx: any) => {
+          // 개인 간 서비스 거래(PEER_TO_PEER)만 평가 요청
+          // 만보기·사회적처방·가입증여 등 시스템 자동 지급 건은 팝업 없음
+          if (tx.txType !== 'PEER_TO_PEER') return false
           if (tx.status !== 'APPROVED') return false
           const isProvider = tx.providerId === memberId
           const isReceiver = tx.receiverId === memberId
