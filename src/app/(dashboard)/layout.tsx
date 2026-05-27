@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 import lazyImport from 'next/dynamic'
+import Link from 'next/link'
 import { SessionProvider } from 'next-auth/react'
 import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
@@ -37,6 +38,13 @@ export default async function DashboardLayout({ children }: { children: React.Re
           <Header />
           {/* 하단 네비 공간 확보: 모바일에서 pb-20 */}
           <main className="flex-1 p-4 pb-20 md:p-6 md:pb-6">{children}</main>
+          {/* 데스크톱 전용 푸터 */}
+          <footer className="hidden md:flex items-center justify-center gap-4 py-3 border-t text-xs text-gray-400">
+            <span>© 착한도시사회적협동조합 TimePay</span>
+            <Link href="/privacy" className="hover:text-gray-600 hover:underline transition-colors">
+              개인정보 처리방침
+            </Link>
+          </footer>
         </div>
       </div>
       <BottomNav />

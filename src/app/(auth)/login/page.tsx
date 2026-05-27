@@ -111,6 +111,11 @@ export default function LoginPage() {
               회원가입
             </Link>
           </div>
+          <div className="mt-3 text-center">
+            <Link href="/privacy" className="text-xs text-gray-400 hover:text-gray-600 hover:underline transition-colors">
+              개인정보 처리방침
+            </Link>
+          </div>
         </CardContent>
       </Card>
     </div>

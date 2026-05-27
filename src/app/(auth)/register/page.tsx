@@ -8,12 +8,13 @@ import { registerAction, type RegisterState } from './actions'
 import { DONGS } from '@/lib/constants'
 
 /* ── 제출 버튼 (useFormStatus는 반드시 별도 컴포넌트) ── */
-function SubmitButton() {
+function SubmitButton({ disabled: extraDisabled }: { disabled?: boolean }) {
   const { pending } = useFormStatus()
+  const isDisabled  = pending || extraDisabled
   return (
     <button
       type="submit"
-      disabled={pending}
+      disabled={isDisabled}
       className="w-full h-11 rounded-md bg-blue-600 text-white font-medium text-sm hover:bg-blue-700 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
     >
       {pending ? '가입 중…' : '가입하기'}
@@ -75,6 +76,8 @@ export default function RegisterPage() {
   const [state, action] = useFormState(registerAction, initial)
   const [phone, setPhone] = useState('')
   const [birthDate, setBirthDate] = useState('')
+  const [agreePrivacy, setAgreePrivacy] = useState(false)
+  const [agreeHealth,  setAgreeHealth]  = useState(false)
 
   function handlePhoneChange(e: React.ChangeEvent<HTMLInputElement>) {
     const formatted = formatPhone(e.target.value)
@@ -214,6 +217,50 @@ export default function RegisterPage() {
             </div>
           </div>
 
+          {/* 개인정보 동의 */}
+          <div className="space-y-2 border-t pt-4">
+            <p className="text-sm font-medium text-gray-700">개인정보 동의 *</p>
+
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={agreePrivacy}
+                onChange={e => setAgreePrivacy(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 shrink-0"
+              />
+              <span className="text-sm text-gray-700 leading-relaxed">
+                <strong>(필수)</strong> 개인정보 수집·이용에 동의합니다.{' '}
+                <Link href="/privacy" target="_blank"
+                  className="text-blue-600 hover:underline text-xs"
+                  onClick={e => e.stopPropagation()}>
+                  처리방침 보기
+                </Link>
+              </span>
+            </label>
+
+            <label className="flex items-start gap-3 cursor-pointer group">
+              <input
+                type="checkbox"
+                checked={agreeHealth}
+                onChange={e => setAgreeHealth(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 shrink-0"
+              />
+              <span className="text-sm text-gray-700 leading-relaxed">
+                <strong>(필수)</strong> 건강 관련 정보(돌봄 필요도)
+                수집·이용에 동의합니다.
+                <span className="block text-xs text-gray-400 mt-0.5">
+                  서비스 제공자가 서비스 이용 중 관찰한 돌봄 필요 수준을 기록하는 데 사용됩니다.
+                </span>
+              </span>
+            </label>
+
+            {(!agreePrivacy || !agreeHealth) && (
+              <p className="text-xs text-orange-600">
+                ⚠️ 두 항목 모두 동의해야 가입이 가능합니다.
+              </p>
+            )}
+          </div>
+
           {/* 오류 메시지 */}
           {state.error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-md px-4 py-3">
@@ -221,13 +268,19 @@ export default function RegisterPage() {
             </div>
           )}
 
-          <SubmitButton />
+          <SubmitButton disabled={!agreePrivacy || !agreeHealth} />
         </form>
 
         <p className="text-center text-sm text-gray-500">
           이미 계정이 있으신가요?{' '}
           <Link href="/login" className="text-blue-600 hover:underline font-medium">
             로그인
+          </Link>
+        </p>
+
+        <p className="text-center text-xs text-gray-400">
+          <Link href="/privacy" className="hover:underline hover:text-gray-600 transition-colors">
+            개인정보 처리방침
           </Link>
         </p>
       </div>

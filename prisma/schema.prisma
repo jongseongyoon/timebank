@@ -43,6 +43,11 @@ model Member {
 
   tpExpiresAt DateTime?
 
+  // 구글 시트 동기화
+  sheetRowId   String?   // 구글 시트 행 식별자 (동_rowIndex)
+  lastSyncedAt DateTime? // 마지막 동기화 시간
+  syncSource   String    @default("MANUAL")  // 'MANUAL': 직접 가입 | 'SHEET': 구글 시트 가져오기
+
   // QR 코드 및 별점
   qrCode      String?
   avgRating   Decimal @default(0) @db.Decimal(3, 2)
@@ -85,6 +90,7 @@ model Member {
   prescribedItems        SocialPrescription[]  @relation("Prescriber")
   coordinatedPrescriptions SocialPrescription[] @relation("PrescriptionCoordinator")
   adminIssuancesReceived AdminTpIssuance[]     @relation("IssuanceReceiver")
+  sheetSyncs             GoogleSheetSync[]     @relation("SyncedBy")
 
   @@index([dong])
   @@index([status])
@@ -900,4 +906,30 @@ model PushSubscription {
   userAgent String?
 
   @@index([memberId])
+}
+
+// ─────────────────────────────────────────
+// 구글 시트 동기화 이력
+// ─────────────────────────────────────────
+
+model GoogleSheetSync {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  syncedBy  String
+  syncer    Member   @relation("SyncedBy", fields: [syncedBy], references: [id])
+
+  dong        String
+  sheetUrl    String
+  totalRows   Int     @default(0)
+  newCount    Int     @default(0)    // 신규 등록 건수
+  updateCount Int     @default(0)    // 수정 건수
+  deleteCount Int     @default(0)    // 비활성화 건수
+  errorCount  Int     @default(0)    // 오류 건수
+  errorDetails Json?                 // 오류 상세 목록
+  status      String  @default("SUCCESS")  // 'SUCCESS' | 'PARTIAL' | 'FAILED'
+
+  @@index([syncedBy])
+  @@index([dong])
+  @@index([createdAt])
 }

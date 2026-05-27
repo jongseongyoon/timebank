@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Landmark, BarChart3, Settings, Coins, Building2,
-  Gift, FileSpreadsheet, Bell, Vault,
+  Gift, FileSpreadsheet, Bell, Vault, Sheet,
 } from 'lucide-react'
 
 const navItems = [
@@ -13,6 +13,7 @@ const navItems = [
   { href: '/admin/tc', label: 'TP 관리', icon: Coins },
   { href: '/admin/allocate', label: 'TP 배분', icon: Gift },
   { href: '/admin/bulk-allocate', label: '엑셀 일괄 배분', icon: FileSpreadsheet },
+  { href: '/admin/sheet-import', label: '구글 시트 가져오기', icon: Sheet },
   { href: '/admin/organizations', label: '단체 관리', icon: Building2 },
   { href: '/admin/fund', label: '기금 관리', icon: Landmark },
   { href: '/admin/funds', label: '재원 통합 현황', icon: Vault },
