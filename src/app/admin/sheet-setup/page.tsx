@@ -9,10 +9,9 @@ import {
 
 // ── 타입 ──────────────────────────────────────────────────────────────────────
 interface ApiStatus {
-  hasServiceEmail: boolean
-  hasPrivateKey:   boolean
-  hasFolderId:     boolean
-  hasShareEmail:   boolean
+  hasServiceEmail:  boolean
+  hasPrivateKey:    boolean
+  hasMasterSheetId: boolean
 }
 interface DongStatus {
   dong:      string
@@ -21,11 +20,11 @@ interface DongStatus {
   lastSync:  { syncedAt: string; newCount: number; totalRows: number } | null
 }
 interface CreateResult {
-  dong:          string
-  ok:            boolean
-  url?:          string
-  spreadsheetId?: string
-  error?:        string
+  dong:    string
+  ok:      boolean
+  url?:    string
+  sheetId?: number
+  error?:  string
 }
 
 // ── 상태 아이콘 ───────────────────────────────────────────────────────────────
@@ -68,17 +67,27 @@ function SetupGuide() {
       desc: <span>API 및 서비스 → 라이브러리 → Google Sheets API → <strong>사용</strong></span>,
     },
     {
-      no: 4, title: 'Google Drive API 활성화',
-      desc: <span>API 및 서비스 → 라이브러리 → Google Drive API → <strong>사용</strong></span>,
-    },
-    {
-      no: 5, title: '서비스 계정 생성',
+      no: 4, title: '서비스 계정 생성',
       desc: <span>API 및 서비스 → 사용자 인증 정보 → 사용자 인증 정보 만들기 → 서비스 계정<br />
         계정명: <code className="bg-gray-100 px-1 rounded">timepay-sheet-manager</code></span>,
     },
     {
-      no: 6, title: 'JSON 키 다운로드',
+      no: 5, title: 'JSON 키 다운로드',
       desc: <span>생성된 서비스 계정 클릭 → 키 → 키 추가 → JSON → 다운로드</span>,
+    },
+    {
+      no: 6, title: '마스터 스프레드시트 준비',
+      desc: (
+        <div className="space-y-1 text-sm text-gray-600">
+          <p>① 개인 구글 계정으로 구글 시트 파일을 하나 생성</p>
+          <p>② 시트 우측 상단 [공유] → 서비스 계정 이메일 입력 → <strong>편집자</strong> 권한 부여</p>
+          <p>③ URL에서 시트 ID 복사: <code className="bg-gray-100 px-1 rounded">https://docs.google.com/spreadsheets/d/<strong>여기가ID</strong>/edit</code></p>
+          <div className="bg-amber-50 border border-amber-200 rounded p-2 mt-1 text-amber-800 text-xs">
+            서비스 계정(로봇)은 구글 정책상 저장 용량 0바이트로 직접 파일 생성이 불가합니다.
+            반드시 개인 계정이 마스터 시트를 만들고 서비스 계정을 편집자로 초대해야 합니다.
+          </div>
+        </div>
+      ),
     },
     {
       no: 7, title: 'Vercel 환경변수 추가',
@@ -87,8 +96,7 @@ function SetupGuide() {
           {[
             { key: 'GOOGLE_SERVICE_ACCOUNT_EMAIL', val: 'JSON의 client_email 값' },
             { key: 'GOOGLE_PRIVATE_KEY',            val: 'JSON의 private_key 값 (\\n 포함)' },
-            { key: 'GOOGLE_SHARE_EMAIL',            val: '관리자 Gmail 주소 — 시트 편집자 권한 자동 부여' },
-            { key: 'GOOGLE_DRIVE_FOLDER_ID',        val: '드라이브 폴더 URL 끝 ID (선택)' },
+            { key: 'GOOGLE_MASTER_SHEET_ID',        val: '마스터 스프레드시트 ID (URL 중간 값)' },
           ].map(({ key, val }) => (
             <div key={key} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
               <code className="text-xs text-indigo-700 flex-1">{key}</code>
@@ -260,7 +268,7 @@ export default function SheetSetupPage() {
     }
   }
 
-  const apiOk = apiStatus?.hasServiceEmail && apiStatus?.hasPrivateKey
+  const apiOk = apiStatus?.hasServiceEmail && apiStatus?.hasPrivateKey && apiStatus?.hasMasterSheetId
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -269,10 +277,10 @@ export default function SheetSetupPage() {
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Sheet className="h-6 w-6 text-green-600" />
-          구글 시트 템플릿 생성
+          구글 시트 탭 설정
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          동별 대상자 관리 구글 시트를 자동으로 생성합니다.
+          마스터 스프레드시트에 동별 탭(워크시트)을 추가하고 헤더·서식을 세팅합니다.
         </p>
       </div>
 
@@ -284,23 +292,13 @@ export default function SheetSetupPage() {
           : apiStatus
             ? (
               <div className="space-y-2">
-                <StatusIcon ok={apiStatus.hasServiceEmail} label="서비스 계정 이메일 (GOOGLE_SERVICE_ACCOUNT_EMAIL)" />
+                <StatusIcon ok={apiStatus.hasServiceEmail}  label="서비스 계정 이메일 (GOOGLE_SERVICE_ACCOUNT_EMAIL)" />
                 <StatusIcon ok={apiStatus.hasPrivateKey}   label="서비스 계정 키 (GOOGLE_PRIVATE_KEY)" />
-                <StatusIcon ok={apiStatus.hasShareEmail}   label="관리자 Gmail (GOOGLE_SHARE_EMAIL) — 시트 편집자(writer) 권한 자동 부여" />
-                <StatusIcon ok={apiStatus.hasFolderId}     label="드라이브 폴더 ID (GOOGLE_DRIVE_FOLDER_ID) — 선택사항" />
-                {!apiStatus.hasShareEmail && (
-                  <div className="mt-1 bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800 flex items-start gap-2">
-                    <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                    <span>
-                      <strong>GOOGLE_SHARE_EMAIL 미설정:</strong> 시트는 생성되지만 서비스 계정 My Drive에만 존재합니다.
-                      관리자 Gmail에서 시트를 보려면 이 값을 추가하거나, 생성 후 시트 URL을 열어 직접 공유하세요.
-                    </span>
-                  </div>
-                )}
+                <StatusIcon ok={apiStatus.hasMasterSheetId} label="마스터 시트 ID (GOOGLE_MASTER_SHEET_ID)" />
                 {!apiOk && (
-                  <div className="mt-1 bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700 flex items-start gap-2">
+                  <div className="mt-2 bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700 flex items-start gap-2">
                     <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                    서비스 계정 이메일 · 키가 없으면 시트를 생성할 수 없습니다.
+                    위 항목 중 미설정 값이 있으면 탭을 생성할 수 없습니다.
                     아래 설정 안내를 펼쳐 확인하세요.
                   </div>
                 )}
@@ -315,7 +313,7 @@ export default function SheetSetupPage() {
 
       {/* 2. 시트 생성 */}
       <div className="bg-white border rounded-xl p-5 space-y-4">
-        <h2 className="font-semibold text-base">2. 시트 생성</h2>
+        <h2 className="font-semibold text-base">2. 동 탭 추가</h2>
 
         {/* 탭 */}
         <div className="flex border-b">
