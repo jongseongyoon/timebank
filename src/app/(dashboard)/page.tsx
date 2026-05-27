@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic'
+import { unstable_cache } from 'next/cache'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import Link from 'next/link'
@@ -28,11 +29,30 @@ const TX_STATUS_LABEL: Record<string, string> = {
   PENDING: '승인 대기', APPROVED: '완료', CANCELLED: '취소', DISPUTED: '분쟁', RESOLVED: '해결',
 }
 
+// 주변 서비스 목록: 동(dong) 기준으로 캐시 (2분 TTL)
+// 서비스 등록/변경 시 revalidateTag('listings') 호출로 즉시 무효화 가능
+const getNearbyListings = unstable_cache(
+  async (dong: string) =>
+    prisma.serviceListing.findMany({
+      where: { isActive: true, availableDong: { has: dong } },
+      take: 3,
+      include: {
+        provider:     { select: { name: true } },
+        organization: { select: { name: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    }),
+  ['nearby-listings'],
+  { revalidate: 120, tags: ['listings'] },
+)
+
 export default async function DashboardPage() {
   const session = await auth()
   const memberId = session!.user.id
 
   const today = new Date().toISOString().slice(0, 10)
+
+  // 사용자별 실시간 데이터와 캐시 가능한 목록 쿼리를 병렬로 실행
   const [member, recentTxs, nearbyListings, walkRecord] = await Promise.all([
     prisma.member.findUnique({
       where: { id: memberId },
@@ -48,15 +68,7 @@ export default async function DashboardPage() {
         serviceListing: { select: { category: true } },
       },
     }),
-    prisma.serviceListing.findMany({
-      where: { isActive: true, availableDong: { has: session!.user.dong } },
-      take: 3,
-      include: {
-        provider: { select: { name: true } },
-        organization: { select: { name: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    }),
+    getNearbyListings(session!.user.dong ?? ''),
     prisma.walkRecord.findUnique({
       where: { memberId_date: { memberId, date: today } },
     }),

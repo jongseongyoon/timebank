@@ -1,5 +1,6 @@
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
@@ -71,6 +72,7 @@ export async function POST(req: NextRequest) {
     const listing = await prisma.serviceListing.create({
       data: { ...data, organizationId, providerId: session.user.id },
     })
+    revalidateTag('listings')   // 대시보드 주변 서비스 캐시 즉시 무효화
     return NextResponse.json({ listing }, { status: 201 })
   }
 
@@ -81,5 +83,6 @@ export async function POST(req: NextRequest) {
   const listing = await prisma.serviceListing.create({
     data: { ...data, providerId: session.user.id },
   })
+  revalidateTag('listings')     // 대시보드 주변 서비스 캐시 즉시 무효화
   return NextResponse.json({ listing }, { status: 201 })
 }

@@ -5,6 +5,7 @@
  * ─ 순환 풀은 만보기 재원으로 사용하지 않음 (지불준비금 전담)
  */
 
+import { revalidateTag } from 'next/cache'
 import { prisma } from '@/lib/prisma'
 
 const DAILY_GOAL       = 10000
@@ -113,6 +114,9 @@ export async function awardWalkReward(
       },
     })
   })
+
+  // 기금 잔액이 바뀌었으므로 fund-status 캐시 즉시 무효화
+  revalidateTag('fund-status')
 
   return {
     rewarded:          true,
