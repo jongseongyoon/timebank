@@ -12,6 +12,7 @@ interface ApiStatus {
   hasServiceEmail: boolean
   hasPrivateKey:   boolean
   hasFolderId:     boolean
+  hasShareEmail:   boolean
 }
 interface DongStatus {
   dong:      string
@@ -86,6 +87,7 @@ function SetupGuide() {
           {[
             { key: 'GOOGLE_SERVICE_ACCOUNT_EMAIL', val: 'JSON의 client_email 값' },
             { key: 'GOOGLE_PRIVATE_KEY',            val: 'JSON의 private_key 값 (\\n 포함)' },
+            { key: 'GOOGLE_SHARE_EMAIL',            val: '관리자 Gmail 주소 — 시트 편집자 권한 자동 부여' },
             { key: 'GOOGLE_DRIVE_FOLDER_ID',        val: '드라이브 폴더 URL 끝 ID (선택)' },
           ].map(({ key, val }) => (
             <div key={key} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2">
@@ -284,11 +286,21 @@ export default function SheetSetupPage() {
               <div className="space-y-2">
                 <StatusIcon ok={apiStatus.hasServiceEmail} label="서비스 계정 이메일 (GOOGLE_SERVICE_ACCOUNT_EMAIL)" />
                 <StatusIcon ok={apiStatus.hasPrivateKey}   label="서비스 계정 키 (GOOGLE_PRIVATE_KEY)" />
+                <StatusIcon ok={apiStatus.hasShareEmail}   label="관리자 Gmail (GOOGLE_SHARE_EMAIL) — 시트 편집자(writer) 권한 자동 부여" />
                 <StatusIcon ok={apiStatus.hasFolderId}     label="드라이브 폴더 ID (GOOGLE_DRIVE_FOLDER_ID) — 선택사항" />
-                {!apiOk && (
-                  <div className="mt-2 bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800 flex items-start gap-2">
+                {!apiStatus.hasShareEmail && (
+                  <div className="mt-1 bg-amber-50 border border-amber-200 rounded-xl p-3 text-sm text-amber-800 flex items-start gap-2">
                     <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
-                    환경변수를 설정하지 않으면 시트를 생성할 수 없습니다.
+                    <span>
+                      <strong>GOOGLE_SHARE_EMAIL 미설정:</strong> 시트는 생성되지만 서비스 계정 My Drive에만 존재합니다.
+                      관리자 Gmail에서 시트를 보려면 이 값을 추가하거나, 생성 후 시트 URL을 열어 직접 공유하세요.
+                    </span>
+                  </div>
+                )}
+                {!apiOk && (
+                  <div className="mt-1 bg-red-50 border border-red-200 rounded-xl p-3 text-sm text-red-700 flex items-start gap-2">
+                    <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+                    서비스 계정 이메일 · 키가 없으면 시트를 생성할 수 없습니다.
                     아래 설정 안내를 펼쳐 확인하세요.
                   </div>
                 )}

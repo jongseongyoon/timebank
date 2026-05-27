@@ -5,6 +5,11 @@
  *   GOOGLE_SERVICE_ACCOUNT_EMAIL  서비스 계정 이메일
  *   GOOGLE_PRIVATE_KEY            PEM 형식 개인키 (\\n → \n 자동 변환)
  *   GOOGLE_DRIVE_FOLDER_ID        생성된 시트를 넣을 드라이브 폴더 ID (선택)
+ *   GOOGLE_SHARE_EMAIL            시트에 편집자(writer) 권한을 줄 Gmail 주소 (선택)
+ *                                  ※ 서비스 계정이 만든 시트는 서비스 계정 My Drive에만 생성되므로
+ *                                     이 값을 설정해야 관리자 Gmail에서 시트를 볼 수 있습니다.
+ *                                  ※ 절대 'owner' 가 아닌 'writer' 로 부여합니다.
+ *                                    (구글 정책상 서비스 계정 → 일반 사용자 소유권 이전 불가 → 403)
  */
 
 import { google } from 'googleapis'
@@ -67,6 +72,7 @@ export function getApiStatus() {
     hasServiceEmail: !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
     hasPrivateKey:   !!process.env.GOOGLE_PRIVATE_KEY,
     hasFolderId:     !!process.env.GOOGLE_DRIVE_FOLDER_ID,
+    hasShareEmail:   !!process.env.GOOGLE_SHARE_EMAIL,
   }
 }
 
@@ -337,6 +343,42 @@ export async function createDongSheet(dong: string): Promise<string> {
         message: gErr?.message,
       })
     }
+  }
+
+  // 6. 관리자 Gmail에 편집자(writer) 권한 부여 (설정된 경우)
+  //    ※ 서비스 계정이 만든 파일은 서비스 계정 My Drive에만 존재하므로
+  //      GOOGLE_SHARE_EMAIL 을 설정하지 않으면 관리자가 시트를 볼 수 없습니다.
+  //    ※ 'owner' 는 서비스 계정 → 일반 계정 이전 시 구글 정책상 403 발생.
+  //       반드시 'writer' 를 사용합니다.
+  const shareEmail = process.env.GOOGLE_SHARE_EMAIL
+  if (shareEmail) {
+    try {
+      await drive.permissions.create({
+        fileId:   spreadsheetId,
+        // sendNotificationEmail: false 로 설정해 알림 이메일 생략
+        sendNotificationEmail: false,
+        requestBody: {
+          type:         'user',
+          role:         'writer',   // ← 반드시 'writer'. 'owner' 는 403
+          emailAddress: shareEmail,
+        },
+      })
+      console.log(`[createDongSheet] writer 권한 부여 완료 — ${shareEmail}`)
+    } catch (err: unknown) {
+      const gErr = err as { code?: number; message?: string }
+      // 권한 부여 실패도 시트 생성 자체를 막지 않음 (경고만)
+      console.warn('[createDongSheet] writer 권한 부여 실패 (시트는 생성됨):', {
+        spreadsheetId,
+        shareEmail,
+        code:    gErr?.code,
+        message: gErr?.message,
+      })
+    }
+  } else {
+    console.warn(
+      '[createDongSheet] GOOGLE_SHARE_EMAIL 미설정 — 관리자 Gmail에서 시트를 직접 볼 수 없습니다. ' +
+      'Vercel 환경변수에 GOOGLE_SHARE_EMAIL 을 추가하세요.'
+    )
   }
 
   console.log(`[createDongSheet] 완료 — dong: ${dong}, spreadsheetId: ${spreadsheetId}`)
