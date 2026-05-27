@@ -16,6 +16,9 @@ import { google } from 'googleapis'
 import { DONGS } from '@/lib/constants'
 
 // ── 구글 API 인증 ─────────────────────────────────────────────────────────────
+// google.auth.GoogleAuth({ credentials }) 방식은 내부 JWT 생성 시 scopes가
+// assertion 에 포함되지 않는 케이스가 있어 403 이 발생할 수 있음.
+// 서비스 계정에는 google.auth.JWT 를 직접 사용하는 것이 명세에 부합하는 방법.
 function getGoogleAuth() {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
   const rawKey = process.env.GOOGLE_PRIVATE_KEY
@@ -31,37 +34,33 @@ function getGoogleAuth() {
     )
   }
 
-  // Vercel 환경변수는 \n 이스케이프가 실제 줄바꿈으로 변환되지 않을 수 있으므로
-  // 1) 리터럴 \\n → \n  (JSON stringify 후 저장된 경우)
-  // 2) 그래도 헤더/푸터 사이에 줄바꿈이 없으면 PEM 파싱 실패 → 명시적으로 보정
+  // \n 정규화: Vercel 환경변수는 리터럴 \n 으로 저장되는 경우가 있음
   let privateKey = rawKey
-    .replace(/\\n/g, '\n')   // 이스케이프된 \n → 실제 줄바꿈
-    .replace(/\\r/g, '')     // 혹시 섞인 \r 제거
+    .replace(/\\n/g, '\n')   // 리터럴 \\n → 실제 줄바꿈
+    .replace(/\\r/g, '')     // 혼입된 \r 제거
 
-  // PEM 헤더·푸터가 줄바꿈 없이 붙어 있으면 강제 삽입
+  // PEM 헤더·푸터 직후 줄바꿈 보정
   privateKey = privateKey
     .replace(/(-----BEGIN [^-]+-----)([^\n])/g, '$1\n$2')
     .replace(/([^\n])(-----END [^-]+-----)/g,   '$1\n$2')
 
-  // 디버그: 키 앞 60자와 개행 수를 로그에 출력 (실제 키 값은 노출 안 함)
   const newlineCount = (privateKey.match(/\n/g) ?? []).length
-  const keyPreview   = privateKey.slice(0, 60).replace(/\n/g, '↵')
-  console.log('[google-auth] private_key 정규화 완료 —', {
+  console.log('[google-auth] JWT 클라이언트 생성 —', {
     email,
-    keyPreview,
+    keyPreview:       privateKey.slice(0, 60).replace(/\n/g, '↵'),
     newlineCount,
     startsWithHeader: privateKey.startsWith('-----BEGIN'),
     endsWithFooter:   privateKey.trimEnd().endsWith('-----'),
   })
 
-  return new google.auth.GoogleAuth({
-    credentials: {
-      client_email: email,
-      private_key:  privateKey,
-    },
+  // google.auth.JWT: 서비스 계정 전용 인증 클라이언트
+  // scopes 배열이 JWT assertion 에 직접 포함되므로 403 스코프 문제가 없음
+  return new google.auth.JWT({
+    email,
+    key:    privateKey,
     scopes: [
-      'https://www.googleapis.com/auth/spreadsheets',
-      'https://www.googleapis.com/auth/drive',
+      'https://www.googleapis.com/auth/spreadsheets',  // 시트 읽기/쓰기
+      'https://www.googleapis.com/auth/drive',          // 파일 이동·권한 부여
     ],
   })
 }
@@ -80,9 +79,24 @@ export function getApiStatus() {
 export async function createDongSheet(dong: string): Promise<string> {
   if (!DONGS.includes(dong)) throw new Error(`유효하지 않은 동: ${dong}`)
 
-  const auth   = getGoogleAuth()
-  const sheets = google.sheets({ version: 'v4', auth })
-  const drive  = google.drive({ version: 'v3', auth })
+  const jwtClient = getGoogleAuth()
+
+  // authorize() 를 명시적으로 호출해 액세스 토큰을 미리 발급받는다.
+  // 이 단계에서 인증 오류(잘못된 키, 스코프 등)가 즉시 표면화된다.
+  try {
+    await jwtClient.authorize()
+    console.log('[createDongSheet] JWT authorize 완료 — 토큰 발급 성공')
+  } catch (err: unknown) {
+    const gErr = err as { code?: number; message?: string }
+    console.error('[createDongSheet] JWT authorize 실패 — 인증 오류:', {
+      code:    gErr?.code,
+      message: gErr?.message,
+    })
+    throw new Error(`구글 인증 실패: [${gErr?.code ?? '?'}] ${gErr?.message ?? String(err)}`)
+  }
+
+  const sheets = google.sheets({ version: 'v4', auth: jwtClient })
+  const drive  = google.drive({ version: 'v3', auth: jwtClient })
 
   console.log(`[createDongSheet] 시트 생성 시작 — dong: ${dong}`)
 
@@ -138,7 +152,7 @@ export async function createDongSheet(dong: string): Promise<string> {
 
   // 3. 서식 · 유효성 검사 · 조건부 서식 일괄 설정
   try {
-  await sheets.spreadsheets.batchUpdate({
+    await sheets.spreadsheets.batchUpdate({
     spreadsheetId,
     requestBody: {
       requests: [
@@ -297,7 +311,7 @@ export async function createDongSheet(dong: string): Promise<string> {
 
       ],
     },
-  })
+    })
   } catch (err: unknown) {
     const gErr = err as { code?: number; message?: string }
     console.error('[createDongSheet] 서식 일괄 설정 실패:', { spreadsheetId, code: gErr?.code, message: gErr?.message })
