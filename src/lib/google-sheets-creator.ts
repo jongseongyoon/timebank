@@ -100,62 +100,67 @@ export async function createDongSheet(dong: string): Promise<string> {
 
   console.log(`[createDongSheet] 시트 생성 시작 — dong: ${dong}`)
 
-  // 1. 스프레드시트 생성
-  let spreadsheet
+  // 1-A. Drive API 로 스프레드시트 파일 생성
+  //   sheets.spreadsheets.create 는 내부적으로 Drive 파일 생성 + Sheets 초기화를
+  //   묶어서 호출하는데, 일부 Google Cloud 프로젝트 설정에서 이 결합 엔드포인트에
+  //   403 이 발생하는 케이스가 있음.
+  //   drive.files.create 로 직접 Sheets MIME 타입 파일을 만들면 같은 결과를 얻으며
+  //   API 경로가 달라 해당 제한을 우회할 수 있음.
+  let spreadsheetId: string
   try {
-    spreadsheet = await sheets.spreadsheets.create({
+    const driveFile = await drive.files.create({
       requestBody: {
-        properties: {
-          title:  `TimePay_${dong}_명단`,
-          locale: 'ko_KR',
-        },
-        sheets: [{
-          properties: {
-            title:           '대상자 명단',
-            gridProperties: { rowCount: 1000, columnCount: 8 },
-          },
-        }],
+        name:     `TimePay_${dong}_명단`,
+        mimeType: 'application/vnd.google-apps.spreadsheet',
       },
+      fields: 'id',
     })
+    if (!driveFile.data.id) throw new Error('Drive 응답에 id 가 없습니다.')
+    spreadsheetId = driveFile.data.id
+    console.log(`[createDongSheet] drive.files.create 완료 — id: ${spreadsheetId}`)
   } catch (err: unknown) {
     const gErr = err as { code?: number; message?: string; errors?: unknown[] }
-    console.error('[createDongSheet] 스프레드시트 생성 실패:', {
-      dong,
-      code:    gErr?.code,
-      message: gErr?.message,
-      errors:  gErr?.errors,
+    console.error('[createDongSheet] drive.files.create 실패:', {
+      dong, code: gErr?.code, message: gErr?.message, errors: gErr?.errors,
     })
     throw new Error(
       `시트 생성 실패 (${dong}): [${gErr?.code ?? '?'}] ${gErr?.message ?? String(err)}`
     )
   }
 
-  const spreadsheetId = spreadsheet.data.spreadsheetId!
-  const sheetId       = spreadsheet.data.sheets![0].properties!.sheetId!
-  console.log(`[createDongSheet] 스프레드시트 생성 완료 — id: ${spreadsheetId}`)
-
-  // 2. 헤더 입력
+  // 1-B. 생성된 스프레드시트의 기본 sheetId 조회
+  let sheetId: number
   try {
-    await sheets.spreadsheets.values.update({
-      spreadsheetId,
-      range:            '대상자 명단!A1:H1',
-      valueInputOption: 'RAW',
-      requestBody: {
-        values: [['이름', '전화번호', '생년월일', '동', '대상구분', '비고', '등록상태', 'TimePay ID']],
-      },
-    })
+    const info = await sheets.spreadsheets.get({ spreadsheetId })
+    sheetId = info.data.sheets![0].properties!.sheetId!
+    console.log(`[createDongSheet] spreadsheets.get 완료 — sheetId: ${sheetId}`)
   } catch (err: unknown) {
     const gErr = err as { code?: number; message?: string }
-    console.error('[createDongSheet] 헤더 입력 실패:', { spreadsheetId, code: gErr?.code, message: gErr?.message })
+    console.error('[createDongSheet] spreadsheets.get 실패:', { spreadsheetId, code: gErr?.code, message: gErr?.message })
     throw err
   }
 
-  // 3. 서식 · 유효성 검사 · 조건부 서식 일괄 설정
+  // 2. 서식 · 유효성 검사 · 조건부 서식 일괄 설정
+  //    ※ 시트 이름 변경(updateSheetProperties)이 맨 앞에 있으므로
+  //      이후 값 입력 단계에서 '대상자 명단!...' 범위를 올바르게 사용 가능
+  // (구 step 3 → step 2 로 이동)
   try {
     await sheets.spreadsheets.batchUpdate({
     spreadsheetId,
     requestBody: {
       requests: [
+
+        // ── 시트 이름 + 행/열 크기 (drive.files.create 기본값 덮어쓰기) ───────
+        {
+          updateSheetProperties: {
+            properties: {
+              sheetId,
+              title:          '대상자 명단',
+              gridProperties: { rowCount: 1000, columnCount: 8 },
+            },
+            fields: 'title,gridProperties.rowCount,gridProperties.columnCount',
+          },
+        },
 
         // ── 헤더 행 배경색(진한 파랑) + 흰 굵은 글씨 ───────────────────────
         {
@@ -315,6 +320,23 @@ export async function createDongSheet(dong: string): Promise<string> {
   } catch (err: unknown) {
     const gErr = err as { code?: number; message?: string }
     console.error('[createDongSheet] 서식 일괄 설정 실패:', { spreadsheetId, code: gErr?.code, message: gErr?.message })
+    throw err
+  }
+
+  // 3. 헤더 입력 (batchUpdate 에서 시트 이름 변경 완료 후 실행)
+  try {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range:            '대상자 명단!A1:H1',
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [['이름', '전화번호', '생년월일', '동', '대상구분', '비고', '등록상태', 'TimePay ID']],
+      },
+    })
+    console.log('[createDongSheet] 헤더 입력 완료')
+  } catch (err: unknown) {
+    const gErr = err as { code?: number; message?: string }
+    console.error('[createDongSheet] 헤더 입력 실패:', { spreadsheetId, code: gErr?.code, message: gErr?.message })
     throw err
   }
 
