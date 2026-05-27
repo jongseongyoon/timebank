@@ -16,16 +16,43 @@ function getGoogleAuth() {
   const rawKey = process.env.GOOGLE_PRIVATE_KEY
 
   if (!email || !rawKey) {
+    console.error('[google-auth] 환경변수 누락:', {
+      hasEmail: !!email,
+      hasKey:   !!rawKey,
+    })
     throw new Error(
       '구글 서비스 계정 환경변수가 설정되지 않았습니다.\n' +
       'GOOGLE_SERVICE_ACCOUNT_EMAIL 과 GOOGLE_PRIVATE_KEY 를 Vercel에 추가하세요.'
     )
   }
 
+  // Vercel 환경변수는 \n 이스케이프가 실제 줄바꿈으로 변환되지 않을 수 있으므로
+  // 1) 리터럴 \\n → \n  (JSON stringify 후 저장된 경우)
+  // 2) 그래도 헤더/푸터 사이에 줄바꿈이 없으면 PEM 파싱 실패 → 명시적으로 보정
+  let privateKey = rawKey
+    .replace(/\\n/g, '\n')   // 이스케이프된 \n → 실제 줄바꿈
+    .replace(/\\r/g, '')     // 혹시 섞인 \r 제거
+
+  // PEM 헤더·푸터가 줄바꿈 없이 붙어 있으면 강제 삽입
+  privateKey = privateKey
+    .replace(/(-----BEGIN [^-]+-----)([^\n])/g, '$1\n$2')
+    .replace(/([^\n])(-----END [^-]+-----)/g,   '$1\n$2')
+
+  // 디버그: 키 앞 60자와 개행 수를 로그에 출력 (실제 키 값은 노출 안 함)
+  const newlineCount = (privateKey.match(/\n/g) ?? []).length
+  const keyPreview   = privateKey.slice(0, 60).replace(/\n/g, '↵')
+  console.log('[google-auth] private_key 정규화 완료 —', {
+    email,
+    keyPreview,
+    newlineCount,
+    startsWithHeader: privateKey.startsWith('-----BEGIN'),
+    endsWithFooter:   privateKey.trimEnd().endsWith('-----'),
+  })
+
   return new google.auth.GoogleAuth({
     credentials: {
       client_email: email,
-      private_key: rawKey.replace(/\\n/g, '\n'),
+      private_key:  privateKey,
     },
     scopes: [
       'https://www.googleapis.com/auth/spreadsheets',
@@ -51,36 +78,60 @@ export async function createDongSheet(dong: string): Promise<string> {
   const sheets = google.sheets({ version: 'v4', auth })
   const drive  = google.drive({ version: 'v3', auth })
 
+  console.log(`[createDongSheet] 시트 생성 시작 — dong: ${dong}`)
+
   // 1. 스프레드시트 생성
-  const spreadsheet = await sheets.spreadsheets.create({
-    requestBody: {
-      properties: {
-        title:  `TimePay_${dong}_명단`,
-        locale: 'ko_KR',
-      },
-      sheets: [{
+  let spreadsheet
+  try {
+    spreadsheet = await sheets.spreadsheets.create({
+      requestBody: {
         properties: {
-          title:           '대상자 명단',
-          gridProperties: { rowCount: 1000, columnCount: 8 },
+          title:  `TimePay_${dong}_명단`,
+          locale: 'ko_KR',
         },
-      }],
-    },
-  })
+        sheets: [{
+          properties: {
+            title:           '대상자 명단',
+            gridProperties: { rowCount: 1000, columnCount: 8 },
+          },
+        }],
+      },
+    })
+  } catch (err: unknown) {
+    const gErr = err as { code?: number; message?: string; errors?: unknown[] }
+    console.error('[createDongSheet] 스프레드시트 생성 실패:', {
+      dong,
+      code:    gErr?.code,
+      message: gErr?.message,
+      errors:  gErr?.errors,
+    })
+    throw new Error(
+      `시트 생성 실패 (${dong}): [${gErr?.code ?? '?'}] ${gErr?.message ?? String(err)}`
+    )
+  }
 
   const spreadsheetId = spreadsheet.data.spreadsheetId!
   const sheetId       = spreadsheet.data.sheets![0].properties!.sheetId!
+  console.log(`[createDongSheet] 스프레드시트 생성 완료 — id: ${spreadsheetId}`)
 
   // 2. 헤더 입력
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range:            '대상자 명단!A1:H1',
-    valueInputOption: 'RAW',
-    requestBody: {
-      values: [['이름', '전화번호', '생년월일', '동', '대상구분', '비고', '등록상태', 'TimePay ID']],
-    },
-  })
+  try {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range:            '대상자 명단!A1:H1',
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [['이름', '전화번호', '생년월일', '동', '대상구분', '비고', '등록상태', 'TimePay ID']],
+      },
+    })
+  } catch (err: unknown) {
+    const gErr = err as { code?: number; message?: string }
+    console.error('[createDongSheet] 헤더 입력 실패:', { spreadsheetId, code: gErr?.code, message: gErr?.message })
+    throw err
+  }
 
   // 3. 서식 · 유효성 검사 · 조건부 서식 일괄 설정
+  try {
   await sheets.spreadsheets.batchUpdate({
     spreadsheetId,
     requestBody: {
@@ -241,31 +292,54 @@ export async function createDongSheet(dong: string): Promise<string> {
       ],
     },
   })
+  } catch (err: unknown) {
+    const gErr = err as { code?: number; message?: string }
+    console.error('[createDongSheet] 서식 일괄 설정 실패:', { spreadsheetId, code: gErr?.code, message: gErr?.message })
+    throw err
+  }
 
   // 4. 예시 데이터 1행 (2행)
-  await sheets.spreadsheets.values.update({
-    spreadsheetId,
-    range:            '대상자 명단!A2:F2',
-    valueInputOption: 'RAW',
-    requestBody: {
-      values: [['홍길동', '010-0000-0000', '1945-01-01', dong, '수요자', '(예시행 — 삭제 후 사용하세요)']],
-    },
-  })
+  try {
+    await sheets.spreadsheets.values.update({
+      spreadsheetId,
+      range:            '대상자 명단!A2:F2',
+      valueInputOption: 'RAW',
+      requestBody: {
+        values: [['홍길동', '010-0000-0000', '1945-01-01', dong, '수요자', '(예시행 — 삭제 후 사용하세요)']],
+      },
+    })
+  } catch (err: unknown) {
+    const gErr = err as { code?: number; message?: string }
+    console.error('[createDongSheet] 예시 데이터 입력 실패:', { spreadsheetId, code: gErr?.code, message: gErr?.message })
+    throw err
+  }
 
   // 5. 구글 드라이브 폴더로 이동 (설정된 경우)
   const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID
   if (folderId) {
-    // 파일의 현재 부모 조회 후 폴더 이동
-    const file = await drive.files.get({ fileId: spreadsheetId, fields: 'parents' })
-    const prevParents = (file.data.parents ?? []).join(',')
-    await drive.files.update({
-      fileId:       spreadsheetId,
-      addParents:   folderId,
-      removeParents: prevParents || undefined,
-      requestBody:  {},
-    })
+    try {
+      const file = await drive.files.get({ fileId: spreadsheetId, fields: 'parents' })
+      const prevParents = (file.data.parents ?? []).join(',')
+      await drive.files.update({
+        fileId:        spreadsheetId,
+        addParents:    folderId,
+        removeParents: prevParents || undefined,
+        requestBody:   {},
+      })
+      console.log(`[createDongSheet] 드라이브 폴더 이동 완료 — folderId: ${folderId}`)
+    } catch (err: unknown) {
+      const gErr = err as { code?: number; message?: string }
+      // 폴더 이동 실패는 시트 생성 자체를 실패시키지 않고 경고만 출력
+      console.warn('[createDongSheet] 드라이브 폴더 이동 실패 (시트는 생성됨):', {
+        spreadsheetId,
+        folderId,
+        code:    gErr?.code,
+        message: gErr?.message,
+      })
+    }
   }
 
+  console.log(`[createDongSheet] 완료 — dong: ${dong}, spreadsheetId: ${spreadsheetId}`)
   return spreadsheetId
 }
 
