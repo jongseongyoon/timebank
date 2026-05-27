@@ -13,6 +13,8 @@ export async function GET() {
     where: { memberId_date: { memberId: session.user.id, date: today } },
   })
 
+  const isAdmin = session.user.roles.some((r: string) => ['ADMIN', 'COORDINATOR'].includes(r))
+
   return NextResponse.json({
     steps:             record?.steps     ?? 0,
     rewarded:          record?.rewarded  ?? false,
@@ -20,5 +22,6 @@ export async function GET() {
     tpFromCirculation: record?.tpFromCirculation ? Number(record.tpFromCirculation) : null,
     goal: 10000,
     date: today,
+    isAdmin,   // 클라이언트에서 관리자 전용 UI 표시 여부 판단
   })
 }

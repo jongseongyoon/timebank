@@ -184,70 +184,61 @@ function DebugPanel({
   }, [open])
 
   return (
-    <div className="border border-gray-200 rounded-2xl overflow-hidden">
+    <div className="border border-gray-200 rounded-2xl overflow-hidden text-xs">
       {/* 헤더 토글 */}
       <button
         onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 text-sm text-gray-600 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 text-sm text-gray-500 transition-colors"
       >
         <span className="flex items-center gap-2">
-          <Bug className="h-4 w-4" />
-          <span className="font-medium">진단 & 테스트 패널</span>
+          <Bug className="h-3.5 w-3.5" />
+          <span className="font-medium text-gray-600">관리자 진단 패널</span>
         </span>
         {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
       </button>
 
       {open && (
-        <div className="p-4 space-y-4 text-xs">
+        <div className="p-4 space-y-3">
 
-          {/* 현재 세션 상태 */}
-          <div className="space-y-1">
-            <p className="font-semibold text-gray-700">📊 현재 세션 상태</p>
-            <div className="bg-gray-50 rounded-xl p-3 space-y-1 font-mono text-gray-600">
-              <p>플랫폼: <span className="text-blue-600 font-bold">{isNative ? '📱 APK (Capacitor)' : '🌐 웹 브라우저'}</span></p>
-              <p>서버 저장 걸음 수: <span className="text-indigo-700 font-bold">{serverSteps.toLocaleString()}보</span></p>
-              {!isNative && <p>이번 세션 측정: <span className="text-amber-700 font-bold">{webSessionSteps.toLocaleString()}보</span></p>}
-              <p>센서 모드: <span className="text-gray-500">{sensorMode === 'none' ? '비활성' : sensorMode}</span></p>
-              <p>센서 수신: <span className={sensorActive ? 'text-green-600 font-bold' : 'text-gray-400'}>{sensorActive ? '✅ 활성' : '⏸ 대기'}</span></p>
+          {/* ── 상태 요약 ──────────────────────────────────── */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-gray-50 rounded-xl p-3 space-y-1">
+              <p className="text-gray-500 font-medium">플랫폼</p>
+              <p className="font-bold text-blue-600">{isNative ? '📱 APK' : '🌐 웹'}</p>
+            </div>
+            <div className="bg-gray-50 rounded-xl p-3 space-y-1">
+              <p className="text-gray-500 font-medium">서버 저장 걸음</p>
+              <p className="font-bold text-indigo-700">{serverSteps.toLocaleString()}보</p>
             </div>
           </div>
 
-          {/* 서버 저장 상태 (APK 전용) */}
+          {/* ── APK 저장 상태 ────────────────────────────── */}
           {isNative && (
-            <div className="space-y-1">
-              <p className="font-semibold text-gray-700">💾 서버 저장 상태</p>
-              {saveStatus ? (
-                <div className={`rounded-xl p-3 font-mono space-y-0.5 ${
-                  saveStatus.ok ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
-                }`}>
-                  <p>
-                    {saveStatus.ok ? '🟢 저장 성공' : '🔴 저장 실패'}
-                    {' '}
-                    <span className="font-bold">{saveStatus.steps.toLocaleString()}보</span>
-                    {' '}
-                    <span className="text-xs opacity-70">{saveStatus.at}</span>
-                  </p>
-                  {saveStatus.error && (
-                    <p className="text-xs break-all opacity-80">오류: {saveStatus.error}</p>
-                  )}
-                </div>
-              ) : (
-                <div className="bg-gray-50 rounded-xl p-3 font-mono text-gray-400">
-                  <p>⏳ 아직 저장 시도 없음 (페이지 진입 후 5초 이내 자동 저장)</p>
-                </div>
+            <div className={`rounded-xl p-3 ${
+              !saveStatus       ? 'bg-gray-50 text-gray-400' :
+              saveStatus.ok     ? 'bg-green-50 text-green-800' :
+                                  'bg-red-50 text-red-800'
+            }`}>
+              <p className="font-medium">
+                {!saveStatus
+                  ? '⏳ 저장 대기 중...'
+                  : saveStatus.ok
+                    ? `🟢 저장 성공  ${saveStatus.steps.toLocaleString()}보  ${saveStatus.at}`
+                    : `🔴 저장 실패  ${saveStatus.at}`
+                }
+              </p>
+              {saveStatus?.error && (
+                <p className="mt-1 break-all opacity-80">오류: {saveStatus.error}</p>
               )}
             </div>
           )}
 
-          {/* 서버 진단 정보 */}
+          {/* ── 서버 진단 ────────────────────────────────── */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="font-semibold text-gray-700">🔍 서버 진단</p>
-              <button
-                onClick={loadDebug}
-                disabled={loading}
-                className="flex items-center gap-1 text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
-              >
+              <p className="font-semibold text-gray-600">서버 진단</p>
+              <button onClick={loadDebug} disabled={loading}
+                className="flex items-center gap-1 text-indigo-500 hover:text-indigo-700 disabled:opacity-40">
                 <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
                 새로고침
               </button>
@@ -256,129 +247,84 @@ function DebugPanel({
             {loading && <p className="text-gray-400 text-center py-2">불러오는 중...</p>}
 
             {info && (
-              <div className="space-y-3">
-                {/* 진단 결론 */}
-                <div className="bg-gray-50 rounded-xl p-3 space-y-1">
+              <div className="space-y-2">
+                {/* 진단 메시지 */}
+                <div className="bg-gray-50 rounded-xl p-3 space-y-0.5">
                   {info.diagnosis.map((d, i) => (
-                    <p key={i} className={`font-medium ${
+                    <p key={i} className={
                       d.startsWith('✅') ? 'text-green-700' :
-                      d.startsWith('❌') ? 'text-red-600' :
-                      'text-amber-600'
-                    }`}>{d}</p>
+                      d.startsWith('❌') ? 'text-red-600' : 'text-amber-600'
+                    }>{d}</p>
                   ))}
                 </div>
 
-                {/* 시스템 상태 */}
-                <div className="bg-blue-50 rounded-xl p-3 space-y-1 font-mono text-blue-800">
-                  <p>건강기금 잔액: <strong>{info.system.healthFundBalance} TP</strong>
-                    {info.system.healthFundOk ? ' ✅' : ' ❌ 부족'}
-                  </p>
-                  <p>연간 발행: {info.system.annualIssued} / {info.system.annualLimit} TP
-                    {info.system.annualExceeded ? ' ❌ 초과' : ' ✅'}
-                  </p>
-                  <p>WalkRewardConfig: {info.system.walkConfigExists ? '✅ 있음' : '❌ 없음'}</p>
+                {/* 시스템 수치 */}
+                <div className="bg-blue-50 rounded-xl p-3 font-mono text-blue-800 space-y-0.5">
+                  <p>건강기금: <strong>{info.system.healthFundBalance} TP</strong>{info.system.healthFundOk ? ' ✅' : ' ❌'}</p>
+                  <p>연간 발행: {info.system.annualIssued}/{info.system.annualLimit} TP{info.system.annualExceeded ? ' ❌' : ' ✅'}</p>
                   <p>내 TP 잔액: <strong>{info.tpBalance} TP</strong></p>
                 </div>
 
                 {/* 오늘 기록 */}
-                <div>
-                  <p className="font-semibold text-gray-600 mb-1">오늘 ({info.today}) WalkRecord</p>
-                  {info.todayRecord ? (
-                    <div className="bg-green-50 rounded-xl p-3 font-mono text-green-800 space-y-1">
-                      <p>걸음 수: <strong>{info.todayRecord.steps.toLocaleString()}보</strong></p>
-                      <p>TP 지급: <strong>{info.todayRecord.rewarded ? `✅ ${info.todayRecord.tpFromFund} TP` : '❌ 미지급'}</strong></p>
-                      {info.todayRecord.tpSource && <p>재원: {info.todayRecord.tpSource}</p>}
-                      {info.todayRecord.tpAwardedAt && <p>지급 시각: {new Date(info.todayRecord.tpAwardedAt).toLocaleTimeString('ko-KR')}</p>}
-                      <p className="text-green-600">생성: {new Date(info.todayRecord.createdAt).toLocaleString('ko-KR')}</p>
-                    </div>
-                  ) : (
-                    <div className="bg-red-50 rounded-xl p-3 text-red-600">
-                      ❌ 오늘 WalkRecord 없음 — 걸음 수 저장이 한 번도 실행되지 않았습니다.
-                    </div>
-                  )}
-                </div>
-
-                {/* 최근 기록 */}
-                {info.recentRecords.length > 0 && (
-                  <div>
-                    <p className="font-semibold text-gray-600 mb-1">최근 WalkRecord (최대 10개)</p>
-                    <div className="bg-gray-50 rounded-xl p-3 space-y-1 font-mono text-gray-700">
-                      {info.recentRecords.map(r => (
-                        <p key={r.date}>
-                          {r.date} — {r.steps.toLocaleString()}보
-                          {r.rewarded ? ` ✅ ${r.tpFromFund}TP` : ' ⬜'}
-                        </p>
-                      ))}
-                    </div>
+                {info.todayRecord ? (
+                  <div className="bg-green-50 rounded-xl p-3 font-mono text-green-800 space-y-0.5">
+                    <p>오늘 ({info.today}): <strong>{info.todayRecord.steps.toLocaleString()}보</strong>
+                      {info.todayRecord.rewarded ? ` ✅ ${info.todayRecord.tpFromFund}TP 지급` : ' ⏳ 미지급'}
+                    </p>
+                    {info.todayRecord.tpAwardedAt && (
+                      <p className="text-green-600">지급: {new Date(info.todayRecord.tpAwardedAt).toLocaleTimeString('ko-KR')}</p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="bg-amber-50 rounded-xl p-3 text-amber-700">
+                    오늘 WalkRecord 없음 — 만보기 페이지를 열면 자동 생성됩니다.
                   </div>
                 )}
 
-                <p className="text-gray-400 text-right">갱신: {new Date(info.timestamp).toLocaleTimeString('ko-KR')}</p>
+                {/* 최근 기록 (간략) */}
+                {info.recentRecords.length > 0 && (
+                  <div className="bg-gray-50 rounded-xl p-3 font-mono text-gray-600 space-y-0.5">
+                    {info.recentRecords.slice(0, 7).map(r => (
+                      <p key={r.date}>
+                        {r.date.slice(5)} — {r.steps.toLocaleString()}보
+                        {r.rewarded ? ` ✅` : r.steps >= 10000 ? ' ⚠️ 미지급' : ''}
+                      </p>
+                    ))}
+                  </div>
+                )}
+
+                <p className="text-right text-gray-400">갱신: {new Date(info.timestamp).toLocaleTimeString('ko-KR')}</p>
               </div>
             )}
           </div>
 
-          {/* 테스트 버튼 */}
+          {/* ── 액션 버튼 ────────────────────────────────── */}
           <div className="space-y-2 pt-2 border-t border-gray-100">
-            <p className="font-semibold text-gray-700 flex items-center gap-1">
-              <FlaskConical className="h-3.5 w-3.5" />
-              테스트
-            </p>
-
-            {testResult && (
+            {(testResult || batchResult) && (
               <div className={`rounded-xl px-3 py-2 font-medium ${
-                testResult.includes('✅') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
+                (testResult ?? batchResult ?? '').includes('✅') || (testResult ?? batchResult ?? '').includes('ℹ️')
+                  ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
               }`}>
-                {testResult}
+                {testResult ?? batchResult}
               </div>
             )}
 
-            <button
-              onClick={runTestReward}
-              disabled={testing}
-              className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl py-2.5 font-medium transition-colors"
-            >
-              {testing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Footprints className="h-4 w-4" />}
-              테스트: 10,000보 달성으로 강제 저장 및 TP 지급
+            {/* 미지급 일괄 처리 */}
+            <button onClick={runBatchAward} disabled={batching}
+              className="w-full flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-xl py-2.5 font-semibold transition-colors">
+              {batching
+                ? <><RefreshCw className="h-4 w-4 animate-spin" /> 처리 중...</>
+                : <><Footprints className="h-4 w-4" /> 미지급 TP 일괄 처리</>
+              }
             </button>
+            <p className="text-gray-400 text-center">10,000보 이상 & 미지급 전체 건 즉시 지급</p>
 
-            <button
-              onClick={runForceReward}
-              disabled={testing}
-              className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-xl py-2 font-medium transition-colors"
-            >
+            {/* 강제 재지급 */}
+            <button onClick={runForceReward} disabled={testing}
+              className="w-full flex items-center justify-center gap-2 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white rounded-xl py-2 font-medium transition-colors">
               {testing ? <RefreshCw className="h-4 w-4 animate-spin" /> : <FlaskConical className="h-4 w-4" />}
-              강제 재지급 (이미 지급된 경우도 재실행)
+              오늘 TP 강제 재지급
             </button>
-
-            <p className="text-gray-400 text-center">⚠️ 테스트 버튼은 진단 목적입니다. 실제 TP가 지급됩니다.</p>
-
-            {/* 미지급 일괄 처리 (관리자 전용) */}
-            <div className="border-t border-dashed border-red-200 pt-2 space-y-2">
-              <p className="text-xs font-semibold text-red-700">🔧 관리자 전용: 미지급 일괄 처리</p>
-              {batchResult && (
-                <div className={`rounded-xl px-3 py-2 text-sm font-medium ${
-                  batchResult.includes('✅') || batchResult.includes('ℹ️')
-                    ? 'bg-green-50 text-green-700'
-                    : 'bg-red-50 text-red-700'
-                }`}>
-                  {batchResult}
-                </div>
-              )}
-              <button
-                onClick={runBatchAward}
-                disabled={batching}
-                className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded-xl py-2.5 font-medium transition-colors"
-              >
-                {batching
-                  ? <><RefreshCw className="h-4 w-4 animate-spin" /> 처리 중...</>
-                  : '🚨 미지급 TP 전체 일괄 처리'
-                }
-              </button>
-              <p className="text-xs text-gray-400 text-center">
-                steps≥10,000이고 rewarded=false인 모든 기록에 TP 지급
-              </p>
-            </div>
           </div>
         </div>
       )}
@@ -736,9 +682,10 @@ export default function WalkPage() {
   const serverStepsRef = useRef(0)
   const [rewardSource, setRewardSource] = useState<{ fromFund: number; fromCirc: number } | null>(null)
   const [fundStatus, setFundStatus] = useState<FundStatus | null>(null)
-  const [checking, setChecking] = useState(false)
-  const [checkMsg, setCheckMsg] = useState<{ ok: boolean; text: string } | null>(null)
+  const [checking,   setChecking]   = useState(false)
+  const [checkMsg,   setCheckMsg]   = useState<{ ok: boolean; text: string } | null>(null)
   const [saveStatus, setSaveStatus] = useState<SaveStatus | null>(null)
+  const [isAdmin,    setIsAdmin]    = useState(false)
 
   const isNative = isCapacitorNative()
 
@@ -751,11 +698,30 @@ export default function WalkPage() {
       setServerSteps(s)
       serverStepsRef.current = s
       setRewarded(d.rewarded ?? false)
+      setIsAdmin(!!d.isAdmin)
       if (d.rewarded && d.tpFromFund != null) {
         setRewardSource({ fromFund: d.tpFromFund, fromCirc: d.tpFromCirculation ?? 0 })
       }
       if (fs && !fs.error) setFundStatus(fs)
       setLoading(false)
+
+      // 오늘 기록이 10,000보 이상이고 미지급이면 자동으로 TP 지급 시도
+      // (앱을 열었을 때 서버 기록이 이미 있는 경우 처리)
+      if (s >= 10000 && !d.rewarded) {
+        fetch('/api/walk/steps', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ steps: s }),
+        }).then(r => r.json()).then(result => {
+          if (result.rewardedNow) {
+            setRewarded(true)
+            setJustRewarded(true)
+            if (result.tpFromFund != null) {
+              setRewardSource({ fromFund: result.tpFromFund, fromCirc: result.tpFromCirculation ?? 0 })
+            }
+          }
+        }).catch(() => {})
+      }
     }).catch(() => setLoading(false))
   }, [])
 
@@ -1007,15 +973,17 @@ export default function WalkPage() {
         </div>
       )}
 
-      {/* 디버그 & 테스트 패널 */}
-      <DebugPanel
-        serverSteps={serverSteps}
-        webSessionSteps={webSessionSteps}
-        isNative={isNative}
-        sensorMode={sensorMode}
-        sensorActive={sensorActive}
-        saveStatus={saveStatus}
-      />
+      {/* 진단 패널 — 관리자·코디네이터 전용 */}
+      {isAdmin && (
+        <DebugPanel
+          serverSteps={serverSteps}
+          webSessionSteps={webSessionSteps}
+          isNative={isNative}
+          sensorMode={sensorMode}
+          sensorActive={sensorActive}
+          saveStatus={saveStatus}
+        />
+      )}
 
       {/* TP 자동 지급 안내 + 지금 확인 버튼 */}
       <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-5 space-y-3">
