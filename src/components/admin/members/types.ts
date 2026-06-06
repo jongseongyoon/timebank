@@ -9,10 +9,10 @@ export interface MemberRow {
   tpBalance:  string
   createdAt:  string
   syncSource: string
-  birthDate:  string | null
 }
 
 export interface MemberDetail extends MemberRow {
+  birthDate:      string | null
   email:          string | null
   address:        string | null
   isVulnerable:   boolean

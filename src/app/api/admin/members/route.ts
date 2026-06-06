@@ -47,7 +47,6 @@ export async function GET(req: NextRequest) {
         id: true, name: true, phone: true, dong: true,
         roles: true, status: true, memberType: true,
         tpBalance: true, createdAt: true, syncSource: true,
-        birthDate: true,
       },
     }),
     prisma.member.count({ where }),

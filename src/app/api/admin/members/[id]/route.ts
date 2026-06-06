@@ -35,6 +35,17 @@ export async function GET(
   })
 
   if (!member) return NextResponse.json({ error: '회원 없음' }, { status: 404 })
+
+  // 개인정보 열람 감사 로그
+  await prisma.auditLog.create({
+    data: {
+      adminId:  session.user.id,
+      action:   'MEMBER_VIEW',
+      targetId: params.id,
+      details:  JSON.stringify({ memberName: member.name, viewerRole: session.user.roles }),
+    },
+  }).catch(() => {})  // 감사 로그 실패가 조회를 막으면 안 됨
+
   return NextResponse.json(member)
 }
 

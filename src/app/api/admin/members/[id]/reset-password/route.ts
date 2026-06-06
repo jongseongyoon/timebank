@@ -50,5 +50,5 @@ export async function POST(
     },
   })
 
-  return NextResponse.json({ success: true, tempPw })
+  return NextResponse.json({ success: true })
 }

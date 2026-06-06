@@ -12,6 +12,15 @@ export async function GET() {
 
 // 최초 관리자 설정
 export async function POST(req: NextRequest) {
+  // SETUP_SECRET 환경변수가 설정된 경우 반드시 헤더로 검증
+  const expectedSecret = process.env.SETUP_SECRET
+  if (expectedSecret) {
+    const providedSecret = req.headers.get('x-setup-secret')
+    if (providedSecret !== expectedSecret) {
+      return NextResponse.json({ error: '접근 거부' }, { status: 403 })
+    }
+  }
+
   // 이미 완료됐으면 차단
   const config = await prisma.systemConfig.findUnique({ where: { key: SETUP_KEY } })
   if (config?.value === 'true') {

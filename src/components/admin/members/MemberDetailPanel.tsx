@@ -78,7 +78,7 @@ export function MemberDetailPanel({ selectedId, onClose, onMemberUpdated }: Prop
     try {
       const res  = await fetch(`/api/admin/members/${selectedId}/reset-password`, { method: 'POST' })
       const data = await res.json()
-      setResetResult(res.ok ? `초기화 완료 — 임시 비밀번호: ${data.tempPw}` : `오류: ${data.error}`)
+      setResetResult(res.ok ? '초기화 완료 — 생년월일 6자리(YYMMDD)가 임시 비밀번호입니다.' : `오류: ${data.error}`)
     } finally { setResetLoading(false) }
   }
 

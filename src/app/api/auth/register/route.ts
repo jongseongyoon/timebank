@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ member }, { status: 201 })
   } catch (e) {
-    console.error(e)
+    console.error('[register] 회원가입 오류:', e instanceof Error ? e.message : String(e))
     return NextResponse.json({ error: '서버 오류' }, { status: 500 })
   }
 }
