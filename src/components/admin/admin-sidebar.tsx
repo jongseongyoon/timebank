@@ -5,11 +5,12 @@ import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Landmark, BarChart3, Settings, Coins, Building2,
-  Gift, FileSpreadsheet, Bell, Vault, Sheet, TableProperties,
+  Gift, FileSpreadsheet, Bell, Vault, Sheet, TableProperties, Users,
 } from 'lucide-react'
 
 const navItems = [
   { href: '/admin', label: '대시보드', icon: LayoutDashboard },
+  { href: '/admin/members', label: '회원 관리', icon: Users },
   { href: '/admin/tc', label: 'TP 관리', icon: Coins },
   { href: '/admin/allocate', label: 'TP 배분', icon: Gift },
   { href: '/admin/bulk-allocate', label: '엑셀 일괄 배분', icon: FileSpreadsheet },
