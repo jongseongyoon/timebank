@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { User, Phone, Mail, MapPin, Coins, Calendar, Shield, Pencil, Check, X, Loader2, Star } from 'lucide-react'
+import { User, Phone, Mail, MapPin, Coins, Calendar, Shield, Pencil, Check, X, Loader2, Star, Lock, Eye, EyeOff } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 import { CareLevelBadge } from '@/components/care/CareLevelBadge'
 import { DONGS } from '@/lib/constants'
@@ -56,6 +56,13 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState('')
   const [form, setForm] = useState({ email: '', dong: '', address: '', birthDate: '' })
+
+  // 비밀번호 변경 상태
+  const [pwForm, setPwForm] = useState({ current: '', next: '', confirm: '' })
+  const [pwShow, setPwShow] = useState({ current: false, next: false, confirm: false })
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwError, setPwError] = useState('')
+  const [pwSuccess, setPwSuccess] = useState(false)
 
   useEffect(() => {
     fetch('/api/members/me')
@@ -109,6 +116,37 @@ export default function ProfilePage() {
       setEditing(false)
     }
     setSaving(false)
+  }
+
+  async function handleChangePassword() {
+    setPwError('')
+    setPwSuccess(false)
+    if (!pwForm.current || !pwForm.next || !pwForm.confirm) {
+      setPwError('모든 항목을 입력해주세요.')
+      return
+    }
+    if (pwForm.next.length < 6) {
+      setPwError('새 비밀번호는 6자 이상이어야 합니다.')
+      return
+    }
+    if (pwForm.next !== pwForm.confirm) {
+      setPwError('새 비밀번호와 확인 비밀번호가 일치하지 않습니다.')
+      return
+    }
+    setPwSaving(true)
+    const res = await fetch('/api/members/me/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword: pwForm.current, newPassword: pwForm.next }),
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      setPwError(data.error ?? '비밀번호 변경에 실패했습니다.')
+    } else {
+      setPwSuccess(true)
+      setPwForm({ current: '', next: '', confirm: '' })
+    }
+    setPwSaving(false)
   }
 
   function handleCancel() {
@@ -365,6 +403,109 @@ export default function ProfilePage() {
               <span>TP 만료 없음 (취약계층/장애인 혜택 적용)</span>
             </div>
           )}
+        </CardContent>
+      </Card>
+
+      {/* 비밀번호 변경 */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Lock className="h-4 w-4" />
+            비밀번호 변경
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {/* 현재 비밀번호 */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">현재 비밀번호</label>
+            <div className="relative">
+              <Input
+                type={pwShow.current ? 'text' : 'password'}
+                value={pwForm.current}
+                onChange={(e) => { setPwForm((f) => ({ ...f, current: e.target.value })); setPwError(''); setPwSuccess(false) }}
+                placeholder="현재 비밀번호 입력"
+                className="h-9 pr-10 text-sm"
+                autoComplete="current-password"
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setPwShow((s) => ({ ...s, current: !s.current }))}
+                tabIndex={-1}
+              >
+                {pwShow.current ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* 새 비밀번호 */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">새 비밀번호 <span className="text-gray-400">(6자 이상)</span></label>
+            <div className="relative">
+              <Input
+                type={pwShow.next ? 'text' : 'password'}
+                value={pwForm.next}
+                onChange={(e) => { setPwForm((f) => ({ ...f, next: e.target.value })); setPwError(''); setPwSuccess(false) }}
+                placeholder="새 비밀번호 입력"
+                className="h-9 pr-10 text-sm"
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setPwShow((s) => ({ ...s, next: !s.next }))}
+                tabIndex={-1}
+              >
+                {pwShow.next ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* 새 비밀번호 확인 */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">새 비밀번호 확인</label>
+            <div className="relative">
+              <Input
+                type={pwShow.confirm ? 'text' : 'password'}
+                value={pwForm.confirm}
+                onChange={(e) => { setPwForm((f) => ({ ...f, confirm: e.target.value })); setPwError(''); setPwSuccess(false) }}
+                placeholder="새 비밀번호 재입력"
+                className="h-9 pr-10 text-sm"
+                autoComplete="new-password"
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setPwShow((s) => ({ ...s, confirm: !s.confirm }))}
+                tabIndex={-1}
+              >
+                {pwShow.confirm ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          {/* 피드백 메시지 */}
+          {pwError && (
+            <p className="text-xs text-destructive">{pwError}</p>
+          )}
+          {pwSuccess && (
+            <div className="flex items-center gap-2 rounded-md px-3 py-2 text-sm bg-green-50 border border-green-200 text-green-700">
+              <Check className="h-4 w-4 shrink-0" />
+              <span>비밀번호가 성공적으로 변경되었습니다.</span>
+            </div>
+          )}
+
+          <Button
+            className="w-full"
+            onClick={handleChangePassword}
+            disabled={pwSaving}
+          >
+            {pwSaving ? (
+              <><Loader2 className="h-4 w-4 animate-spin mr-2" />변경 중…</>
+            ) : (
+              <><Lock className="h-4 w-4 mr-2" />비밀번호 변경</>
+            )}
+          </Button>
         </CardContent>
       </Card>
     </div>
