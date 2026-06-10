@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { isCapacitorNative, getStepPlugin, isTrackingHour } from './walkUtils'
+import { kstToday } from '@/lib/kst'
 
 export interface SyncedInfo {
   steps: number; rewarded: boolean; rewardedNow: boolean
@@ -7,6 +8,12 @@ export interface SyncedInfo {
 }
 export interface SaveStatus {
   steps: number; ok: boolean; at: string; error?: string
+}
+
+// 서버가 500 등으로 빈 본문을 반환해도 예외 없이 처리
+async function safeJson(res: Response): Promise<any> {
+  const text = await res.text()
+  try { return JSON.parse(text) } catch { return { error: text.slice(0, 120) || `HTTP ${res.status}` } }
 }
 
 export function useNativeStepSync(
@@ -38,14 +45,14 @@ export function useNativeStepSync(
       try {
         const { pending, steps, date } = await plugin.getPendingSave()
         if (!pending || steps <= 0) return
-        const today    = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
+        const today    = kstToday()
         const diffDays = Math.floor((new Date(today).getTime() - new Date(date).getTime()) / 86400000)
         if (diffDays < 0 || diffDays > 1) return
         const res = await fetch('/api/walk/steps', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ steps, date }),
         })
-        const d = await res.json()
+        const d = await safeJson(res)
         if (res.ok) {
           lastSavedRef.current = d.steps
           reportSave(d.steps, true)
@@ -64,8 +71,13 @@ export function useNativeStepSync(
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ steps }),
         })
-        const d = await res.json()
-        if (res.ok) { lastSavedRef.current = d.steps ?? steps; reportSave(d.steps ?? steps, true) }
+        const d = await safeJson(res)
+        if (res.ok) {
+          lastSavedRef.current = d.steps ?? steps
+          reportSave(d.steps ?? steps, true)
+          // /api/walk/record도 1만보 도달 시 즉시 지급하므로 결과 반영
+          if (d.rewardedNow) onSynced({ steps: d.steps ?? steps, rewarded: true, rewardedNow: true, tpFromFund: d.tpFromFund, tpFromCirc: d.tpFromCirculation })
+        }
         else reportSave(steps, false, `record ${res.status}: ${d.error ?? ''}`)
       } catch (e: any) { reportSave(steps, false, `record 예외: ${e.message ?? e}`) }
     }
@@ -76,7 +88,7 @@ export function useNativeStepSync(
           method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ steps }),
         })
-        const d = await res.json()
+        const d = await safeJson(res)
         if (res.ok) {
           lastSavedRef.current = d.steps ?? steps
           reportSave(d.steps ?? steps, true)

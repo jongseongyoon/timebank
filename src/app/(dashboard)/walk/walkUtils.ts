@@ -24,9 +24,11 @@ export function getStepPlugin(): any | null {
 }
 
 export function isTrackingHour(): boolean {
-  const h = new Date().getHours()
-  const m = new Date().getMinutes()
-  const afterStart = h > 0 || (h === 0 && m >= 1)
-  const beforeStop  = h < 23 || (h === 23 && m < 59)
+  // 기기 로컬 시간이 아닌 KST(UTC+9) 기준 — 해외 로밍·시간대 오설정 방어
+  const kst = new Date(Date.now() + 9 * 3600_000)
+  const h   = kst.getUTCHours()
+  const m   = kst.getUTCMinutes()
+  const afterStart = h > 0 || (h === 0 && m >= 1)   // KST 00:01 이후
+  const beforeStop  = h < 23 || (h === 23 && m < 59) // KST 23:59 이전
   return afterStart && beforeStop
 }

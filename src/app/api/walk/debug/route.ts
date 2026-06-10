@@ -6,14 +6,15 @@ export const dynamic = 'force-dynamic'
 import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { kstToday, kstYear } from '@/lib/kst'
 
 export async function GET() {
   const session = await auth()
   if (!session) return NextResponse.json({ error: '인증 필요' }, { status: 401 })
 
   const memberId = session.user.id
-  const today    = new Date().toISOString().slice(0, 10)
-  const year     = new Date().getFullYear()
+  const today    = kstToday()   // KST 기준 (UTC 사용 시 자정~09시 날짜 어긋남)
+  const year     = kstYear()
 
   const [recentRecords, todayRecord, healthFund, walkConfig, member] = await Promise.all([
     // 최근 10개 WalkRecord

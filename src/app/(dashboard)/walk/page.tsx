@@ -42,7 +42,8 @@ export default function WalkPage() {
       if (d.rewarded && d.tpFromFund != null) setRewardSource({ fromFund: d.tpFromFund, fromCirc: d.tpFromCirculation ?? 0 })
       if (fs && !fs.error) setFundStatus(fs)
       setLoading(false)
-      if (s >= 10000 && !d.rewarded) {
+      // 네이티브 앱은 useNativeStepSync가 즉시 poll()로 처리 → 여기서 중복 호출 방지
+      if (s >= 10000 && !d.rewarded && !isCapacitorNative()) {
         fetch('/api/walk/steps', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ steps: s }) })
           .then(r => r.json()).then(result => {
             if (result.rewardedNow) {
@@ -66,6 +67,23 @@ export default function WalkPage() {
   const onWebStep = useCallback(() => { webSessionRef.current += 1; setWebSessionSteps(webSessionRef.current) }, [])
   const { tracking: webTracking, sensorMode, sensorActive, debugMag, eventCount, permError } =
     useWebSensorTracking(!isNative && !loading, onWebStep)
+
+  // 탭 닫기·페이지 이동 시 웹 세션 걸음 수 손실 방지
+  // sendBeacon은 비동기·비차단으로 동작하며 세션 쿠키를 자동으로 전송함
+  useEffect(() => {
+    if (isNative) return   // 네이티브는 useNativeStepSync가 저장을 전담
+    function handleBeforeUnload() {
+      const sessionSteps = webSessionRef.current
+      if (sessionSteps <= 0) return
+      const total = serverStepsRef.current + sessionSteps
+      navigator.sendBeacon(
+        '/api/walk/record',
+        new Blob([JSON.stringify({ steps: total })], { type: 'application/json' }),
+      )
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isNative])
 
   const prevWebTracking = useRef(webTracking)
   useEffect(() => {
@@ -191,7 +209,7 @@ export default function WalkPage() {
         <p className="text-sm font-semibold text-blue-800">📱 이용 안내</p>
         <ul className="space-y-1 text-xs text-blue-700 list-disc list-inside">
           <li>매일 <strong>00시 01분</strong>에 자동으로 측정 시작</li>
-          <li>매일 <strong>23시 59분</strong>에 서버에서 자동으로 TP 일괄 지급</li>
+          <li><strong>10,000보 도달 즉시</strong> TP 자동 지급</li>
           <li><strong>APK 설치 시</strong>: 앱을 닫아도 백그라운드에서 계속 측정</li>
           <li><strong>웹 브라우저</strong>: 화면이 열려 있어야 측정됨</li>
           <li>10,000보 달성 시 하루 1회 <strong>{REWARD_TP} TP</strong> 자동 적립</li>

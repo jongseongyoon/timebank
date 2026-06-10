@@ -63,7 +63,7 @@ export function WalkCard({ serverSteps, rewarded: serverRewarded }: Props) {
         // ③ pending_save 동기화 (백그라운드 서비스가 저장한 값)
         const { pending, steps: pendingSteps, date } = await plugin.getPendingSave()
         if (pending && pendingSteps > 0) {
-          const today    = new Date().toISOString().slice(0, 10)
+          const today    = new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10) // KST
           const diffDays = Math.floor((new Date(today).getTime() - new Date(date).getTime()) / 86400000)
           if (diffDays >= 0 && diffDays <= 1) {
             const res = await fetch('/api/walk/steps', {

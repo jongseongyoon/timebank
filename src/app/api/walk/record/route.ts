@@ -1,23 +1,28 @@
 /**
  * POST /api/walk/record
- * 걸음수 서버 저장 전용 — TP 지급 없음
+ * 걸음수 서버 저장 + 1만보 도달 시 즉시 TP 지급
  *
- * 목적: APK/웹에서 걸음수를 주기적으로 서버에 기록하기 위해
- *       TP 지급 로직과 분리된 순수 저장 엔드포인트
+ * 백그라운드 주기 저장에서도 목표 도달 즉시 지급되도록
+ * awardWalkReward를 호출합니다 (원자적 클레임이라 중복 지급 불가).
  */
 export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { kstToday, validateWalkDate } from '@/lib/kst'
+import { awardWalkReward, GOAL_STEPS } from '@/lib/walk-service'
 
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: '인증 필요' }, { status: 401 })
 
   const body = await req.json().catch(() => ({}))
+  // 하루 최대 100,000보 상한 — 비정상 데이터·공격 방어
+  const MAX_DAILY_STEPS = 100_000
   const steps: number =
-    typeof body.steps === 'number' ? Math.max(0, Math.round(body.steps)) : 0
+    typeof body.steps === 'number'
+      ? Math.min(Math.max(0, Math.round(body.steps)), MAX_DAILY_STEPS)
+      : 0
   const memberId = session.user.id
 
   // KST 기준 날짜 (클라이언트 지정 허용: 오늘·어제만)
@@ -42,34 +47,40 @@ export async function POST(req: NextRequest) {
     })
   }
 
-  // 기존 기록 조회 (걸음수는 감소하지 않음 — 항상 최댓값 유지)
-  const existing = await prisma.walkRecord.findUnique({
+  // ── 원자적 걸음 수 업데이트 (EC-13: stale read 해소) ────────────────────────
+  // ① 없으면 생성, 있으면 건드리지 않음
+  await prisma.walkRecord.upsert({
+    where:  { memberId_date: { memberId, date } },
+    create: { memberId, date, steps },
+    update: {},
+  })
+  // ② DB 값보다 클 때만 업데이트 — 동시 요청도 행 잠금으로 직렬화됨
+  const updated = await prisma.walkRecord.updateMany({
+    where: { memberId, date, steps: { lt: steps } },
+    data:  { steps },
+  })
+  // ③ 최신 상태 읽기
+  const record = await prisma.walkRecord.findUniqueOrThrow({
     where: { memberId_date: { memberId, date } },
   })
-  const newSteps = Math.max(existing?.steps ?? 0, steps)
 
-  // 변화가 없으면 DB 쓰기 생략
-  if (existing && existing.steps === newSteps) {
-    return NextResponse.json({
-      steps:      newSteps,
-      rewarded:   existing.rewarded,
-      goalReached: newSteps >= 10000,
-      date,
-      saved: false,
+  // ── 1만보 도달 즉시 TP 지급 (오늘 날짜만) ──────────────────────────────────
+  let rewardedNow = false
+  if (!record.rewarded && record.steps >= GOAL_STEPS && date === today) {
+    const admin = await prisma.member.findFirst({
+      where:  { roles: { has: 'ADMIN' } },
+      select: { id: true },
     })
+    const result = await awardWalkReward(memberId, date, record.steps, admin?.id ?? memberId)
+    rewardedNow = result.rewarded
   }
 
-  const record = await prisma.walkRecord.upsert({
-    where:  { memberId_date: { memberId, date } },
-    update: { steps: newSteps },
-    create: { memberId, date, steps: newSteps },
-  })
-
   return NextResponse.json({
-    steps:      record.steps,
-    rewarded:   record.rewarded,
-    goalReached: record.steps >= 10000,
+    steps:       record.steps,
+    rewarded:    record.rewarded || rewardedNow,
+    rewardedNow,
+    goalReached: record.steps >= GOAL_STEPS,
     date,
-    saved: true,
+    saved: updated.count > 0,  // 실제로 변경된 경우만 true
   })
 }

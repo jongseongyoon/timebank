@@ -9,17 +9,23 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { awardWalkReward } from '@/lib/walk-service'
+import { kstToday } from '@/lib/kst'
 
 export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session) return NextResponse.json({ error: '인증 필요' }, { status: 401 })
+
+  // 관리자만 사용 가능한 진단 엔드포인트
+  if (!session.user.roles?.includes('ADMIN')) {
+    return NextResponse.json({ error: '관리자 전용 기능입니다.' }, { status: 403 })
+  }
 
   const body  = await req.json().catch(() => ({}))
   const force = body.force === true   // 이미 지급된 경우 재지급 여부
   const steps = typeof body.steps === 'number' ? body.steps : 10000
 
   const memberId = session.user.id
-  const today    = new Date().toISOString().slice(0, 10)
+  const today    = kstToday()   // UTC → KST 기준 날짜
 
   // 기존 레코드 확인
   const existing = await prisma.walkRecord.findUnique({

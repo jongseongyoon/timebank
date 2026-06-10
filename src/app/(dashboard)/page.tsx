@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { formatTP, formatDate, maskName } from '@/lib/utils'
+import { kstToday } from '@/lib/kst'
 import {
   Wallet, TrendingUp, TrendingDown, ClipboardList, PlusCircle,
   ArrowRight, ChevronRight, QrCode, ScanLine, Footprints,
@@ -50,7 +51,7 @@ export default async function DashboardPage() {
   const session = await auth()
   const memberId = session!.user.id
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = kstToday()
 
   // 사용자별 실시간 데이터와 캐시 가능한 목록 쿼리를 병렬로 실행
   const [member, recentTxs, nearbyListings, walkRecord] = await Promise.all([

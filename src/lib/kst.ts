@@ -11,6 +11,11 @@ export function kstToday(): string {
   return new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 10)
 }
 
+/** 현재 KST 연도 반환 (예: 2026) — new Date().getFullYear()은 UTC 기준이므로 사용 금지 */
+export function kstYear(): number {
+  return parseInt(new Date(Date.now() + 9 * 3600_000).toISOString().slice(0, 4), 10)
+}
+
 /**
  * 클라이언트가 보낸 날짜가 KST 오늘/어제 범위인지 검증 후 반환
  * 범위 밖이면 KST 오늘 반환
