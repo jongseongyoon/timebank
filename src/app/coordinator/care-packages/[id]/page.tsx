@@ -14,7 +14,7 @@ import {
 
 const CAT_LABEL: Record<string, string> = {
   HOUSEKEEPING:'🏠 가사지원', COMPANION:'💬 말벗', MEAL:'🍱 식사지원',
-  MEDICAL_ESCORT:'🏥 의료동행', TRANSPORT:'🚗 이동지원', CHILDCARE:'👶 아이돌봄',
+  MEDICAL_ESCORT:'🏥 의료동행', TRANSPORT:'🚗 이동지원', CHILDCARE:'💪 몸활동지원',
   DIGITAL_HELP:'📱 디지털지원', EDUCATION:'📚 교육', OTHER:'✨ 기타',
 }
 const SESSION_COLOR: Record<string, string> = {

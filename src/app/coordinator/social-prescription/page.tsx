@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Loader2, CheckCircle2, XCircle, RefreshCw, ChevronDown, ChevronUp, AlertTriangle } from 'lucide-react'
+import { SERVICE_CATEGORY_MAP as SERVICE_LABELS } from '@/lib/constants'
 
 // ── 타입 ──────────────────────────────────────────────────────────────────────
 interface Prescription {
@@ -44,11 +45,6 @@ const STATUS_COLOR: Record<string, string> = {
 const REASON_LABELS: Record<string, string> = {
   고독고립: '고독·고립', 이동불편: '이동불편', 경제취약: '경제취약',
   건강악화: '건강악화', 인지저하: '인지저하', 기타: '기타',
-}
-const SERVICE_LABELS: Record<string, string> = {
-  TRANSPORT: '이동지원', SHOPPING: '장보기', COMPANION: '말벗',
-  MEAL: '식사지원', HOUSEKEEPING: '가사지원', MEDICAL_ESCORT: '의료동행',
-  EDUCATION: '교육', DIGITAL_HELP: '디지털지원', OTHER: '기타',
 }
 
 function fmtDate(d: string) {

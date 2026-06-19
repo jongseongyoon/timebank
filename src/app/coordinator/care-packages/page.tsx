@@ -15,7 +15,7 @@ const CATEGORIES = [
   { value: 'MEAL', label: '🍱 식사지원' },
   { value: 'MEDICAL_ESCORT', label: '🏥 의료동행' },
   { value: 'TRANSPORT', label: '🚗 이동지원' },
-  { value: 'CHILDCARE', label: '👶 아이돌봄' },
+  { value: 'CHILDCARE', label: '💪 몸활동지원' },
   { value: 'DIGITAL_HELP', label: '📱 디지털지원' },
   { value: 'EDUCATION', label: '📚 교육' },
   { value: 'OTHER', label: '✨ 기타' },

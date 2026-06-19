@@ -24,7 +24,7 @@ const CATEGORIES = [
   { value: 'EDUCATION', label: '📚 교육' },
   { value: 'DIGITAL_HELP', label: '📱 디지털지원' },
   { value: 'REPAIR', label: '🔧 수리' },
-  { value: 'CHILDCARE', label: '👶 아이돌봄' },
+  { value: 'CHILDCARE', label: '💪 몸활동지원' },
   { value: 'LEGAL_CONSULT', label: '⚖️ 법률상담' },
   { value: 'HEALTH_CONSULT', label: '💊 건강상담' },
   { value: 'ADMINISTRATIVE', label: '📋 행정보조' },
@@ -46,7 +46,7 @@ const CAT_LABEL: Record<string, string> = {
   TRANSPORT: '🚗 이동지원', SHOPPING: '🛒 장보기', COMPANION: '💬 말벗',
   MEAL: '🍱 식사지원', HOUSEKEEPING: '🏠 가사지원', MEDICAL_ESCORT: '🏥 의료동행',
   EDUCATION: '📚 교육', DIGITAL_HELP: '📱 디지털지원', REPAIR: '🔧 수리',
-  CHILDCARE: '👶 아이돌봄', LEGAL_CONSULT: '⚖️ 법률상담', HEALTH_CONSULT: '💊 건강상담',
+  CHILDCARE: '💪 몸활동지원', LEGAL_CONSULT: '⚖️ 법률상담', HEALTH_CONSULT: '💊 건강상담',
   ADMINISTRATIVE: '📋 행정보조', COMMUNITY_EVENT: '🎉 공동체행사', OTHER: '✨ 기타',
 }
 

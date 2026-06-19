@@ -12,7 +12,7 @@ export const SERVICE_CATEGORY_MAP: Record<string, string> = {
   EDUCATION:       '교육',
   DIGITAL_HELP:    '디지털지원',
   REPAIR:          '수리',
-  CHILDCARE:       '아이돌봄',
+  CHILDCARE:       '몸활동지원',
   LEGAL_CONSULT:   '법률상담',
   HEALTH_CONSULT:  '건강상담',
   ADMINISTRATIVE:  '행정보조',

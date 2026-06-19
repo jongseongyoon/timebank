@@ -20,7 +20,7 @@ const CATEGORIES = [
   { value: 'EDUCATION', label: '교육', emoji: '📚' },
   { value: 'DIGITAL_HELP', label: '디지털지원', emoji: '📱' },
   { value: 'REPAIR', label: '수리', emoji: '🔧' },
-  { value: 'CHILDCARE', label: '아이돌봄', emoji: '👶' },
+  { value: 'CHILDCARE', label: '몸활동지원', emoji: '💪' },
   { value: 'LEGAL_CONSULT', label: '법률상담', emoji: '⚖️' },
   { value: 'HEALTH_CONSULT', label: '건강상담', emoji: '💊' },
   { value: 'ADMINISTRATIVE', label: '행정보조', emoji: '📋' },

@@ -17,7 +17,7 @@ const CATEGORIES = [
   { value: 'EDUCATION', label: '📚 교육' },
   { value: 'DIGITAL_HELP', label: '📱 디지털지원' },
   { value: 'REPAIR', label: '🔧 수리' },
-  { value: 'CHILDCARE', label: '👶 아이돌봄' },
+  { value: 'CHILDCARE', label: '💪 몸활동지원' },
   { value: 'LEGAL_CONSULT', label: '⚖️ 법률상담' },
   { value: 'HEALTH_CONSULT', label: '💊 건강상담' },
   { value: 'ADMINISTRATIVE', label: '📋 행정보조' },
