@@ -9,6 +9,9 @@
  */
 
 import { prisma } from '@/lib/prisma'
+import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
+import { calculateTcExpiry } from '@/lib/tc-calculator'
 
 const SP_FUND_ID = 'sp-fund-001'
 
@@ -57,6 +60,124 @@ export interface CancelPrescriptionInput {
   prescriptionId: string
   performedBy:    string
   reason:         string
+}
+
+// ── 처방 + 신규 회원 동시 발급 ─────────────────────────────────────────────────
+
+export interface NewReceiverInput {
+  name:          string
+  phone:         string   // 010-0000-0000
+  birthDate?:    string   // YYYYMMDD 8자리
+  dong:          string
+  address?:      string
+  isVulnerable?: boolean
+  isDisabled?:   boolean
+}
+
+export interface IssuePrescriptionInput extends Omit<CreatePrescriptionInput, 'receiverId'> {
+  receiverId?:  string            // 기존 회원
+  newReceiver?: NewReceiverInput  // 신규 회원 동시 등록
+}
+
+export interface IssueResult {
+  prescription:  { id: string; prescriptionNo: string; status: string }
+  createdMember?: { id: string; name: string; phone: string }
+  tempPassword?:  string          // 신규 등록 시에만
+}
+
+/**
+ * 처방전 발급 — 대상자가 기존 회원이면 receiverId, 신규면 newReceiver로 동시 등록.
+ * 신규 회원 임시 비밀번호 = 생년월일 6자리(YYMMDD), 없으면 전화번호 뒤 8자리.
+ * 회원 생성 + 처방전 생성을 단일 트랜잭션으로 처리해 원자성 보장.
+ */
+export async function issuePrescription(input: IssuePrescriptionInput): Promise<IssueResult> {
+  if (!input.receiverId && !input.newReceiver) {
+    throw new Error('대상자 정보가 없습니다. 기존 회원을 선택하거나 신규 회원을 입력하세요.')
+  }
+
+  return prisma.$transaction(async (trx) => {
+    let receiverId = input.receiverId
+    let createdMember: IssueResult['createdMember']
+    let tempPassword: string | undefined
+
+    // ── 신규 회원 등록 ──────────────────────────────────────────────────────
+    if (!receiverId && input.newReceiver) {
+      const nr = input.newReceiver
+
+      const dup = await trx.member.findUnique({ where: { phone: nr.phone } })
+      if (dup) throw new Error(`이미 등록된 전화번호입니다: ${nr.phone}`)
+
+      // 임시 비밀번호: 생년월일 6자리(YYMMDD) 우선, 없으면 전화번호 숫자 뒤 8자리
+      const phoneDigits = nr.phone.replace(/\D/g, '')
+      tempPassword = nr.birthDate && /^\d{8}$/.test(nr.birthDate)
+        ? nr.birthDate.slice(2, 8)
+        : phoneDigits.slice(-8)
+
+      const birthYear = nr.birthDate ? parseInt(nr.birthDate.slice(0, 4), 10) : 1970
+      const isSenior  = new Date().getFullYear() - birthYear >= 65
+      const tpExpiresAt = calculateTcExpiry({
+        registrationDate: new Date(),
+        isSenior,
+        isDisabled:   nr.isDisabled ?? false,
+        isVulnerable: nr.isVulnerable ?? false,
+      })
+
+      const id = crypto.randomUUID()
+      const member = await trx.member.create({
+        data: {
+          id,
+          phone:        nr.phone,
+          passwordHash: await bcrypt.hash(tempPassword, 12),
+          name:         nr.name,
+          birthDate:    nr.birthDate,
+          dong:         nr.dong,
+          address:      nr.address,
+          isVulnerable: nr.isVulnerable ?? false,
+          isDisabled:   nr.isDisabled ?? false,
+          roles:        ['RECEIVER'],
+          careLevel:    input.careLevel,
+          careLevelUpdatedAt: new Date(),
+          tpExpiresAt,
+          qrCode:       `timepay:member:${id}`,
+          syncSource:   'PRESCRIPTION',
+        },
+        select: { id: true, name: true, phone: true },
+      })
+      receiverId   = member.id
+      createdMember = member
+    }
+
+    // ── 처방전 생성 (PENDING) ───────────────────────────────────────────────
+    const year  = new Date().getFullYear()
+    const count = await trx.socialPrescription.count({
+      where: { prescriptionNo: { startsWith: `SP-${year}-` } },
+    })
+    const prescriptionNo = `SP-${year}-${String(count + 1).padStart(4, '0')}`
+
+    const prescription = await trx.socialPrescription.create({
+      data: {
+        prescriptionNo,
+        receiverId:          receiverId!,
+        prescriberId:        input.prescriberId,
+        prescriberOrg:       input.prescriberOrg,
+        prescriberRole:      input.prescriberRole,
+        careLevel:           input.careLevel,
+        prescriptionReason:  input.prescriptionReason,
+        recommendedServices: input.recommendedServices,
+        totalTpGranted:      input.totalTpGranted,
+        monthlyTpLimit:      input.monthlyTpLimit,
+        tpUsed:              0,
+        validFrom:           input.validFrom,
+        validUntil:          input.validUntil,
+        isRenewable:         input.isRenewable ?? true,
+        note:                input.note,
+        status:              'PENDING',
+      },
+      select: { id: true, prescriptionNo: true, status: true },
+    })
+
+    return { prescription, createdMember, tempPassword }
+  })
 }
 
 // ── 처방전 생성 ───────────────────────────────────────────────────────────────

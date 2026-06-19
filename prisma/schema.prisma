@@ -107,6 +107,7 @@ enum Role {
   PROVIDER
   COORDINATOR
   ADMIN
+  PRESCRIBER
 }
 
 enum MemberStatus {

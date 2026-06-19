@@ -27,7 +27,7 @@ export interface MemberDetail extends MemberRow {
   organization:   { id: string; name: string } | null
 }
 
-export const ROLE_LABELS: Record<string, string>   = { RECEIVER: '수요자', PROVIDER: '제공자', COORDINATOR: '코디', ADMIN: '관리자' }
+export const ROLE_LABELS: Record<string, string>   = { RECEIVER: '수요자', PROVIDER: '제공자', COORDINATOR: '코디', ADMIN: '관리자', PRESCRIBER: '처방자' }
 export const STATUS_LABELS: Record<string, string> = { ACTIVE: '활성', DORMANT: '휴면', SUSPENDED: '정지', WITHDRAWN: '탈퇴' }
 export const STATUS_COLORS: Record<string, string> = {
   ACTIVE:    'bg-green-100 text-green-800',
@@ -40,8 +40,9 @@ export const ROLE_COLORS: Record<string, string> = {
   PROVIDER:    'bg-indigo-100 text-indigo-700',
   COORDINATOR: 'bg-purple-100 text-purple-700',
   ADMIN:       'bg-rose-100 text-rose-700',
+  PRESCRIBER:  'bg-teal-100 text-teal-700',
 }
-export const ALL_ROLES     = ['RECEIVER', 'PROVIDER', 'COORDINATOR', 'ADMIN']
+export const ALL_ROLES     = ['RECEIVER', 'PROVIDER', 'COORDINATOR', 'ADMIN', 'PRESCRIBER']
 export const ALL_STATUSES  = ['ACTIVE', 'DORMANT', 'SUSPENDED', 'WITHDRAWN']
 
 export function fmtDate(iso: string) {

@@ -11,7 +11,7 @@ import { kstToday } from '@/lib/kst'
 import {
   Wallet, TrendingUp, TrendingDown, ClipboardList, PlusCircle,
   ArrowRight, ChevronRight, QrCode, ScanLine, Footprints,
-  MessageSquare, Search, ArrowLeftRight,
+  MessageSquare, Search, ArrowLeftRight, Stethoscope,
 } from 'lucide-react'
 import { WalkCard } from '@/components/layout/walk-card'
 
@@ -83,6 +83,21 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-bold">안녕하세요, {member.name}님 👋</h1>
         <p className="text-muted-foreground text-sm mt-1">{member.dong} TimePay</p>
       </div>
+
+      {/* 처방자 전용 바로가기 */}
+      {session!.user.roles?.includes('PRESCRIBER') && (
+        <Link href="/prescriber"
+          className="flex items-center gap-3 rounded-2xl bg-teal-50 border border-teal-200 px-4 py-3 hover:bg-teal-100 transition-colors">
+          <div className="w-10 h-10 rounded-xl bg-teal-600 flex items-center justify-center shrink-0">
+            <Stethoscope className="h-5 w-5 text-white" aria-hidden="true" />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-teal-800 text-sm">사회적처방 발급</p>
+            <p className="text-xs text-teal-600">처방전 발급 · 회원 동시 등록</p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-teal-600" aria-hidden="true" />
+        </Link>
+      )}
 
       {/* TP 지갑 카드 */}
       <Card className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-0">
