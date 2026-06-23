@@ -11,7 +11,7 @@ import { kstToday } from '@/lib/kst'
 import {
   Wallet, TrendingUp, TrendingDown, ClipboardList, PlusCircle,
   ArrowRight, ChevronRight, QrCode, ScanLine, Footprints,
-  MessageSquare, Search, ArrowLeftRight, Stethoscope,
+  MessageSquare, Search, ArrowLeftRight, Stethoscope, Gift,
 } from 'lucide-react'
 import { WalkCard } from '@/components/layout/walk-card'
 
@@ -54,7 +54,7 @@ export default async function DashboardPage() {
   const today = kstToday()
 
   // 사용자별 실시간 데이터와 캐시 가능한 목록 쿼리를 병렬로 실행
-  const [member, recentTxs, nearbyListings, walkRecord] = await Promise.all([
+  const [member, recentTxs, nearbyListings, walkRecord, activeCouponCount] = await Promise.all([
     prisma.member.findUnique({
       where: { id: memberId },
       select: { name: true, tpBalance: true, lifetimeEarned: true, lifetimeSpent: true, tpExpiresAt: true, dong: true },
@@ -73,6 +73,7 @@ export default async function DashboardPage() {
     prisma.walkRecord.findUnique({
       where: { memberId_date: { memberId, date: today } },
     }),
+    prisma.goodCoupon.count({ where: { receiverId: memberId, status: 'ACTIVE' } }),
   ])
 
   if (!member) return null
@@ -83,6 +84,21 @@ export default async function DashboardPage() {
         <h1 className="text-2xl font-bold">안녕하세요, {member.name}님 👋</h1>
         <p className="text-muted-foreground text-sm mt-1">{member.dong} TimePay</p>
       </div>
+
+      {/* 착한쿠폰 바로가기 (받은 회원에게만 표시) */}
+      {activeCouponCount > 0 && (
+        <Link href="/coupons"
+          className="flex items-center gap-3 rounded-2xl bg-orange-50 border border-orange-200 px-4 py-3 hover:bg-orange-100 transition-colors">
+          <div className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center shrink-0">
+            <Gift className="h-5 w-5 text-white" aria-hidden="true" />
+          </div>
+          <div className="flex-1">
+            <p className="font-semibold text-orange-800 text-sm">🎁 착한쿠폰</p>
+            <p className="text-xs text-orange-600">착한가게에서 사용 가능한 쿠폰이 있습니다</p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-orange-600" aria-hidden="true" />
+        </Link>
+      )}
 
       {/* 처방자 전용 바로가기 */}
       {session!.user.roles?.includes('PRESCRIBER') && (

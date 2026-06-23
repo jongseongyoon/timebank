@@ -92,6 +92,16 @@ model Member {
   adminIssuancesReceived AdminTpIssuance[]     @relation("IssuanceReceiver")
   sheetSyncs             GoogleSheetSync[]     @relation("SyncedBy")
 
+  // 착한가게
+  goodStores             GoodStore[]           @relation("GoodStoreMember")
+  registeredStores       GoodStore[]           @relation("GoodStoreRegistrar")
+  importBatches          StoreImportBatch[]    @relation("StoreImporter")
+  receivedGoodCoupons    GoodCoupon[]          @relation("GoodCouponReceiver")
+  issuedGoodCoupons      GoodCoupon[]          @relation("GoodCouponIssuer")
+  goodCouponTxs          GoodCouponTransaction[] @relation("GoodCouponTxReceiver")
+  processedSettlements   GoodCouponSettlement[] @relation("GoodCouponSettlementProcessor")
+  coordinatedHelpRequests StoreHelpRequest[]   @relation("StoreHelpCoordinator")
+
   @@index([dong])
   @@index([status])
 }
@@ -923,14 +933,177 @@ model GoogleSheetSync {
   dong        String
   sheetUrl    String
   totalRows   Int     @default(0)
-  newCount    Int     @default(0)    // 신규 등록 건수
-  updateCount Int     @default(0)    // 수정 건수
-  deleteCount Int     @default(0)    // 비활성화 건수
-  errorCount  Int     @default(0)    // 오류 건수
-  errorDetails Json?                 // 오류 상세 목록
-  status      String  @default("SUCCESS")  // 'SUCCESS' | 'PARTIAL' | 'FAILED'
+  newCount    Int     @default(0)
+  updateCount Int     @default(0)
+  deleteCount Int     @default(0)
+  errorCount  Int     @default(0)
+  errorDetails Json?
+  status      String  @default("SUCCESS")
 
   @@index([syncedBy])
   @@index([dong])
   @@index([createdAt])
+}
+
+// ─────────────────────────────────────────
+// 착한가게
+// ─────────────────────────────────────────
+
+model GoodStore {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  storeName  String
+  businessNo String?
+  ownerName  String
+  phone      String  @unique
+  address    String
+  dong       String
+  category   String
+
+  memberId String?
+  member   Member? @relation("GoodStoreMember", fields: [memberId], references: [id])
+
+  bankName        String?
+  accountNo       String?
+  accountHolder   String?
+  accountVerified Boolean @default(false)
+
+  cashBalance   Decimal @default(0) @db.Decimal(12, 2)
+  totalReceived Decimal @default(0) @db.Decimal(12, 2)
+  totalSettled  Decimal @default(0) @db.Decimal(12, 2)
+
+  // PENDING | ACTIVE | SUSPENDED
+  status String @default("PENDING")
+  // NOT_STARTED | VIDEO_SENT | FIRST_USE | ACTIVE | NEEDS_HELP
+  onboardingStatus String @default("NOT_STARTED")
+
+  registeredBy  String?
+  registrar     Member?          @relation("GoodStoreRegistrar", fields: [registeredBy], references: [id])
+  approvedAt    DateTime?
+  importBatchId String?
+  importBatch   StoreImportBatch? @relation(fields: [importBatchId], references: [id])
+
+  couponTransactions GoodCouponTransaction[]
+  helpRequests       StoreHelpRequest[]
+  settlements        GoodCouponSettlement[]
+
+  @@index([dong])
+  @@index([onboardingStatus])
+  @@index([status])
+}
+
+model StoreImportBatch {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  importedBy     String
+  importer       Member @relation("StoreImporter", fields: [importedBy], references: [id])
+  totalRows      Int    @default(0)
+  successCount   Int    @default(0)
+  errorCount     Int    @default(0)
+  duplicateCount Int    @default(0)
+  errorDetails   Json?
+  sourceFile     String?
+
+  stores GoodStore[]
+}
+
+// ─────────────────────────────────────────
+// 착한쿠폰 (원화 단위)
+// ─────────────────────────────────────────
+
+model GoodCoupon {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  couponNo   String @unique
+  receiverId String
+  receiver   Member @relation("GoodCouponReceiver", fields: [receiverId], references: [id])
+  issuedBy   String
+  issuer     Member @relation("GoodCouponIssuer", fields: [issuedBy], references: [id])
+
+  cashAmount      Decimal @default(100000) @db.Decimal(10, 2)
+  cashRemaining   Decimal @default(100000) @db.Decimal(10, 2)
+  internalTpValue Decimal @default(9.69)   @db.Decimal(6, 2)
+
+  validFrom          DateTime
+  validUntil         DateTime
+  prescriptionReason String?
+
+  // ACTIVE | EXPIRED | CANCELLED
+  status     String @default("ACTIVE")
+  fundSource String @default("ADMIN")
+
+  transactions GoodCouponTransaction[]
+
+  @@index([receiverId])
+  @@index([status])
+}
+
+model GoodCouponTransaction {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  couponId   String
+  coupon     GoodCoupon @relation(fields: [couponId], references: [id])
+  receiverId String
+  receiver   Member     @relation("GoodCouponTxReceiver", fields: [receiverId], references: [id])
+  storeId    String
+  store      GoodStore  @relation(fields: [storeId], references: [id])
+
+  cashAmount      Decimal @db.Decimal(10, 2)
+  itemDescription String?
+
+  storeApproved   Boolean   @default(false)
+  storeApprovedAt DateTime?
+  // PENDING | APPROVED | CANCELLED
+  status       String  @default("PENDING")
+  settlementId String?
+
+  @@index([couponId])
+  @@index([storeId])
+  @@index([receiverId])
+}
+
+model GoodCouponSettlement {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  settlementMonth  String
+  storeId          String
+  store            GoodStore @relation(fields: [storeId], references: [id])
+  totalCashAmount  Decimal   @db.Decimal(12, 2)
+  transactionCount Int
+  processedBy      String
+  processor        Member    @relation("GoodCouponSettlementProcessor", fields: [processedBy], references: [id])
+
+  // PENDING | TRANSFERRED | FAILED
+  bankTransferStatus String    @default("PENDING")
+  bankTransferDate   DateTime?
+  bankTransferNote   String?
+
+  @@unique([settlementMonth, storeId])
+  @@index([settlementMonth])
+}
+
+model StoreHelpRequest {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  storeId  String
+  store    GoodStore @relation(fields: [storeId], references: [id])
+
+  // VIDEO_UNCLEAR | CANNOT_SCAN | PAYMENT_ISSUE | OTHER
+  requestType String
+  // PENDING | CALLED | RESOLVED
+  status        String  @default("PENDING")
+  coordinatorId String?
+  coordinator   Member? @relation("StoreHelpCoordinator", fields: [coordinatorId], references: [id])
+  resolvedAt    DateTime?
+  note          String?
+
+  @@index([storeId])
+  @@index([status])
 }

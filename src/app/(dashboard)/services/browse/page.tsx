@@ -68,6 +68,14 @@ function formatDistance(km: number): string {
   return `${km.toFixed(1)}km`
 }
 
+interface MyPrescription {
+  prescriptionNo: string
+  recommendedServices: string[]
+  tpRemaining: number
+  validUntil: string
+  coordinatorName: string | null
+}
+
 export default function ServiceBrowsePage() {
   const [listings, setListings] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -81,12 +89,22 @@ export default function ServiceBrowsePage() {
   const [geoLoading, setGeoLoading] = useState(false)
   const [geoError, setGeoError] = useState('')
 
+  // 사회적처방 (서비스 카드 내 안내 표시용)
+  const [myRx, setMyRx] = useState<MyPrescription | null>(null)
+
   // 신청 모달
   const [selected, setSelected] = useState<any>(null)
   const [applyForm, setApplyForm] = useState({ requestedDate: '', durationMinutes: 60, description: '' })
   const [applying, setApplying] = useState(false)
   const [applyDone, setApplyDone] = useState(false)
   const [applyError, setApplyError] = useState('')
+
+  useEffect(() => {
+    fetch('/api/social-prescription/my')
+      .then(r => r.json())
+      .then(d => setMyRx(d.prescription ?? null))
+      .catch(() => {})
+  }, [])
 
   useEffect(() => {
     const params = new URLSearchParams()
@@ -294,6 +312,17 @@ export default function ServiceBrowsePage() {
                       {Number(listing.tpPerHour).toFixed(1)} TP/h
                     </span>
                   </div>
+
+                  {/* 사회적처방 배정 안내 (해당 서비스에 처방이 있을 때만 표시) */}
+                  {myRx?.recommendedServices.includes(listing.category) && (
+                    <div className="bg-teal-50 border border-teal-200 rounded-md px-2.5 py-1.5 text-xs text-teal-800">
+                      <span className="font-semibold">처방 배정 {myRx.tpRemaining.toFixed(1)} TP 사용 가능</span>
+                      <span className="text-teal-600 ml-1">
+                        (사회적처방으로 배정됨
+                        {myRx.coordinatorName && `, 코디네이터: ${myRx.coordinatorName}`})
+                      </span>
+                    </div>
+                  )}
 
                   {/* 제목 */}
                   <h3 className="font-semibold text-sm leading-snug line-clamp-2">{listing.title}</h3>
