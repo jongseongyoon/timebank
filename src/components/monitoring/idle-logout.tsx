@@ -6,7 +6,8 @@
 import { useEffect, useRef } from 'react'
 import { signOut } from 'next-auth/react'
 
-const IDLE_MS = 20 * 60 * 1000
+// 폰 홈화면 바로가기로 수시 조회하는 용도라 60분으로 완화 (민감정보 보안 유지 + 편의)
+const IDLE_MS = 60 * 60 * 1000
 
 export function IdleLogout() {
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -15,7 +16,9 @@ export function IdleLogout() {
     const reset = () => {
       if (timer.current) clearTimeout(timer.current)
       timer.current = setTimeout(() => {
-        signOut({ callbackUrl: '/login' })
+        // 재로그인 후 보던 화면으로 복귀하도록 현재 경로를 callbackUrl로 보존
+        const back = encodeURIComponent(window.location.pathname)
+        signOut({ callbackUrl: `/login?callbackUrl=${back}` })
       }, IDLE_MS)
     }
     const events = ['mousedown', 'keydown', 'touchstart', 'scroll', 'visibilitychange']
