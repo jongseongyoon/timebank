@@ -7,6 +7,7 @@ import {
   parseActions,
   isResolvedStatus,
   buildRecord,
+  consultedAtDisplay,
 } from '../parse'
 import { maskName, maskBirthCode, maskPersonLabel } from '../mask'
 import { matchPerson, toChosung } from '../search'
@@ -123,6 +124,57 @@ describe('search', () => {
   it('코드 일치', () => expect(matchPerson('4801', '이순금', '480115', '이순금480115')).toBe(true))
   it('초성 일치', () => expect(matchPerson('ㅇㅅㄱ', '이순금', '480115', '이순금480115')).toBe(true))
   it('불일치', () => expect(matchPerson('박', '이순금', '480115', '이순금480115')).toBe(false))
+})
+
+describe('consultedAtDisplay', () => {
+  it('성명생년월일+상담일시 합친 칸에서 날짜만', () => {
+    expect(consultedAtDisplay('이순금480115\n2026-06-25 15:22')).toBe('2026-06-25 15:22')
+  })
+  it('날짜만 있으면 그대로', () => {
+    expect(consultedAtDisplay('2026-06-25 14:30')).toBe('2026-06-25 14:30')
+  })
+  it('빈값', () => expect(consultedAtDisplay('')).toBe(''))
+})
+
+// gid 1496494699 구조: 1행 라벨, 3행 헤더(상담일시/트리아지/등록서식), A열=키+일시
+describe('계산 탭(gid 1496494699) 레이아웃', () => {
+  const rows: string[][] = [
+    ['성명생년월일', '이순금480115'], // 1행 라벨
+    [], // 2행 빈줄
+    ['상담일시', '트리아지', '', '', '', '', '', '방문결과 등록서식'], // 3행 헤더
+    [
+      '이순금480115\n2026-06-25 15:22',
+      '0',
+      '', '', '', '', '',
+      '# 시니어간호사 방문상담\n□ 당사자 및 상담일시: 이순금480115\n2026-06-25 15:22\n□ 방문자: 윤종성\n==============================\n# 사례회의 결과\n□ [2026-06-01] 131방문운동(재활) (기한: 2026-06-10 / 해결여부: )',
+    ], // 4행 데이터
+  ]
+
+  it('헤더는 3행(구조 점수)으로, 데이터는 4행부터', () => {
+    // detectHeader는 sheets.ts에 있으나 로직 동치 검증: 3행이 상담일시/트리아지/등록서식 보유
+    const { index } = resolveColumns(rows[2])
+    expect(index.consultedAt).toBe(0)
+    expect(index.triage).toBe(1)
+    expect(index.record).toBe(7)
+    expect(index.personKey).toBeUndefined() // 3행엔 성명생년월일 헤더 없음
+  })
+
+  it('성명생년월일을 A열(상담일시 컬럼)에서 폴백 추출', () => {
+    const { index } = resolveColumns(rows[2])
+    if (index.personKey == null && index.consultedAt != null) index.personKey = index.consultedAt
+    const rec = buildRecord(rows[3], index, 4)
+    expect(rec.name).toBe('이순금')
+    expect(rec.birthCode).toBe('480115')
+    expect(rec.consultedAt).toBe('2026-06-25 15:22') // 날짜만 표시
+    expect(rec.triage).toBe(0)
+    expect(rec.record).toContain('방문자: 윤종성')
+    expect(rec.actions).toHaveLength(1)
+    expect(rec.actions[0].code).toBe('131')
+    expect(rec.actions[0].actionText).toBe('방문운동')
+    expect(rec.actions[0].org).toBe('재활')
+    expect(rec.actions[0].dueDate).toBe('2026-06-10')
+    expect(rec.actions[0].resolved).toBe(false) // 해결여부 공백
+  })
 })
 
 describe('resolveColumns + buildRecord (§1, §2)', () => {

@@ -20,8 +20,12 @@ export const SHEET_CONFIG = {
   /** 스프레드시트 ID (명령서 §0) */
   spreadsheetId:
     process.env.SHEET_ID ?? '1huD5_LKhGsTr7uj7WydosTGJJBCpFKpv-V80pKzrJ6s',
-  /** 전체 기록(원본/응답) 탭의 gid — 운영자 지정 필수(TODO). 미지정 시 탭명/첫 탭 폴백 */
-  sheetGid: process.env.SHEET_GID ? Number(process.env.SHEET_GID) : null,
+  /**
+   * 전체 기록 탭의 gid. 기본값 1496494699 = "치매모니터 상담(응답)"의 계산 탭
+   * (A열=성명생년월일+상담일시, B열=트리아지, H열==LET 수식 등록서식).
+   * SHEET_GID 환경변수로 덮어쓸 수 있음.
+   */
+  sheetGid: process.env.SHEET_GID ? Number(process.env.SHEET_GID) : 1496494699,
   /** gid 대신 탭명으로 지정할 때 사용 */
   sheetTabName: process.env.SHEET_TAB_NAME ?? null,
   /** 실제 헤더 행 (1-base) */

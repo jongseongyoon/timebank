@@ -56,6 +56,19 @@ export function parseConsultedAt(raw: string): number {
   return Number.isNaN(dt.getTime()) ? 0 : dt.getTime()
 }
 
+/**
+ * 상담일시 표시용 문자열. A열처럼 "성명생년월일\n상담일시"가 한 칸에 들어온 경우
+ * 날짜 부분만 깔끔히 뽑는다. 못 찾으면 마지막 줄.
+ */
+export function consultedAtDisplay(raw: string): string {
+  const s = (raw ?? '').trim()
+  if (!s) return ''
+  const m = s.match(/(\d{4})[.\-/년]\s*(\d{1,2})[.\-/월]\s*(\d{1,2})[^\n\r]*/)
+  if (m) return m[0].trim()
+  const lines = s.split(/[\n\r]+/).map((x) => x.trim()).filter(Boolean)
+  return lines[lines.length - 1] || s
+}
+
 // ── 트리아지 ─────────────────────────────────────────────────────────────────
 // 숫자가 높을수록 위험(고위험). 0/공백 = 미분류(0).
 export function parseTriage(raw: string): number {
@@ -165,8 +178,9 @@ export function buildRecord(
   const personRaw = cell(row, cols.personKey)
   const { personKey, name, birthCode, warning } = parsePersonKey(personRaw)
 
-  const consultedAt = cell(row, cols.consultedAt).trim()
-  const consultedAtMs = parseConsultedAt(consultedAt)
+  const consultedRaw = cell(row, cols.consultedAt).trim()
+  const consultedAt = consultedAtDisplay(consultedRaw)
+  const consultedAtMs = parseConsultedAt(consultedRaw)
 
   const triageRaw = cell(row, cols.triage).trim()
   const triage = parseTriage(triageRaw)

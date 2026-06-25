@@ -95,8 +95,13 @@ function detectHeader(rows: string[][]): { headerIdx: number; dataStartIdx: numb
   for (let i = 0; i < scan; i++) {
     const { index } = resolveColumns(rows[i] ?? [])
     const matched = Object.values(index).filter((v) => v != null).length
-    // personKey(성명생년월일)가 잡힌 행에 큰 가중치
-    const score = matched + (index.personKey != null ? 100 : 0)
+    // '데이터 헤더'다움: 상담일시·트리아지·등록서식이 함께 있는 줄에 큰 가중치.
+    // (1행 라벨 줄은 성명생년월일만 있어 구조 점수가 낮음)
+    const structural =
+      (index.consultedAt != null ? 1 : 0) +
+      (index.triage != null ? 1 : 0) +
+      (index.record != null ? 1 : 0)
+    const score = structural * 10 + matched + (index.personKey != null ? 2 : 0)
     if (score > best.score) best = { idx: i, score }
   }
   return { headerIdx: best.idx, dataStartIdx: best.idx + 1 }
@@ -125,6 +130,12 @@ export async function fetchRecords(force = false): Promise<FetchResult> {
   const { headerIdx, dataStartIdx } = detectHeader(rows)
   const header = rows[headerIdx] ?? []
   const { index: cols, recognizedHeaders } = resolveColumns(header)
+
+  // A열처럼 '성명생년월일+상담일시'가 한 칸에 합쳐진 탭(gid 1496494699)은
+  // 성명생년월일 전용 헤더가 없다. 이때 상담일시 컬럼(A)을 성명생년월일 소스로 공유.
+  if (cols.personKey == null && cols.consultedAt != null) {
+    cols.personKey = cols.consultedAt
+  }
 
   // 첫 실행 시 인식한 헤더/샘플 2행 로그 (명령서 §1.4)
   if (!loggedHeaders) {
