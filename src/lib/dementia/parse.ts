@@ -149,52 +149,130 @@ export function parseActions(record: string): ActionItem[] {
   return items
 }
 
+// ── 날짜 정규화 ("26-03-18" → "2026-03-18") ─────────────────────────────────
+export function normalizeDate(s: string): string | null {
+  const t = (s ?? '').trim()
+  if (!t) return null
+  const m = t.match(/(\d{2,4})[.\-/년]\s*(\d{1,2})[.\-/월]\s*(\d{1,2})/)
+  if (!m) return null
+  let year = Number(m[1])
+  if (year < 100) year += 2000
+  const mo = String(Number(m[2])).padStart(2, '0')
+  const d = String(Number(m[3])).padStart(2, '0')
+  return `${year}-${mo}-${d}`
+}
+
+// ── 사례회의 TODO 행 → ActionItem ────────────────────────────────────────────
+export interface TodoCols {
+  decidedDate?: number
+  service?: number
+  dueDate?: number
+  owner?: number
+  status?: number
+}
+export function buildTodoAction(row: string[], cols: TodoCols): ActionItem | null {
+  const get = (i?: number) => (i == null ? '' : (row[i] ?? '').toString().trim())
+  const service = get(cols.service)
+  const owner = get(cols.owner)
+  const status = get(cols.status)
+  const decided = normalizeDate(get(cols.decidedDate))
+  const due = normalizeDate(get(cols.dueDate))
+  if (!service && !owner && !due) return null // 빈 행
+
+  // "251천원택시(서구)" → code 251, text 천원택시, org 서구
+  let middle = service
+  const codeMatch = middle.match(/^(\d+)\s*/)
+  const code = codeMatch ? codeMatch[1] : null
+  if (codeMatch) middle = middle.slice(codeMatch[0].length).trim()
+  let org: string | null = owner || null
+  let actionText = middle
+  const orgMatch = middle.match(/\(([^()]*)\)\s*$/)
+  if (orgMatch) {
+    org = orgMatch[1].trim() || owner || null
+    actionText = middle.slice(0, orgMatch.index).trim()
+  }
+
+  return {
+    actionDate: decided ?? '',
+    code,
+    actionText: actionText || service,
+    org,
+    dueDate: due,
+    status,
+    resolved: isResolvedStatus(status),
+    raw: `[${decided ?? ''}] ${service} (기한: ${due ?? ''} / 해결여부: ${status})`,
+  }
+}
+
 // ── 시트 한 행 → VisitRecord ─────────────────────────────────────────────────
 function cell(row: string[], idx: number | undefined): string {
   if (idx == null) return ''
   return (row[idx] ?? '').toString()
 }
 
+const NORMAL_RE = /(안정|유지|정상|없음|해당\s*없음|양호)/
+
 /**
- * H(등록서식)가 비었을 때 개별 컬럼으로 record 텍스트를 합성 (§2 옵션).
+ * 마스터 탭 컬럼들로 등록서식 텍스트를 재구성(당사자 뷰 H 수식과 동일 형식).
  */
-function synthesizeRecord(row: string[], cols: ColumnMap['index']): string {
-  const parts: string[] = []
-  const push = (label: string, idx?: number) => {
-    const v = cell(row, idx).trim()
-    if (v) parts.push(`# ${label}\n${v}`)
+function reconstructRecord(
+  row: string[],
+  colMap: ColumnMap,
+  personKey: string,
+  consultedDisplay: string,
+  triageRaw: string,
+): string {
+  const idx = colMap.index
+  const lines: string[] = ['# 시니어간호사 방문상담']
+  lines.push(`□ 당사자 및 상담일시: ${personKey} ${consultedDisplay}`.trim())
+  if (triageRaw) lines.push(`□ 트리아지: ${triageRaw}점`)
+
+  // 일상 모니터링: 주의/관찰(비정상) 항목 강조
+  if (colMap.monitoring.length) {
+    const flagged = colMap.monitoring
+      .map((m) => ({ label: m.label, val: cell(row, m.col).trim() }))
+      .filter((x) => x.val && !NORMAL_RE.test(x.val))
+    if (flagged.length) {
+      lines.push(`□ 주의/관찰: ${flagged.map((f) => `${f.label}(${f.val})`).join(', ')}`)
+    } else {
+      lines.push('□ 일상상태: 전부 안정/유지')
+    }
   }
-  push('과거와 다른 상황', cols.currentChange)
-  push('기존병력 또는 배경', cols.history)
-  push('평가 및 요청', cols.assessment)
-  return parts.join('\n\n')
+
+  const push = (label: string, i?: number) => {
+    const v = cell(row, i).trim()
+    if (v) lines.push(`□ ${label}: ${v}`)
+  }
+  push('과거와 다른 현재 상황', idx.currentChange)
+  push('기존병력 또는 배경', idx.history)
+  push('평가 및 요청', idx.assessment)
+  push('방문자', idx.visitor)
+
+  return lines.join('\n')
 }
 
 export function buildRecord(
   row: string[],
-  cols: ColumnMap['index'],
+  colMap: ColumnMap,
   rowIndex: number,
 ): VisitRecord {
-  const personRaw = cell(row, cols.personKey)
+  const idx = colMap.index
+  const personRaw = cell(row, idx.personKey)
   const { personKey, name, birthCode, warning } = parsePersonKey(personRaw)
 
-  const consultedRaw = cell(row, cols.consultedAt).trim()
+  const consultedRaw = cell(row, idx.consultedAt).trim()
   const consultedAt = consultedAtDisplay(consultedRaw)
   const consultedAtMs = parseConsultedAt(consultedRaw)
 
-  const triageRaw = cell(row, cols.triage).trim()
+  const triageRaw = cell(row, idx.triage).trim()
   const triage = parseTriage(triageRaw)
 
-  let record = cell(row, cols.record).trim()
-  if (!record) record = synthesizeRecord(row, cols)
+  // H(등록서식)가 있으면 그대로, 없으면(마스터 탭) 컬럼들로 재구성
+  let record = cell(row, idx.record).trim()
+  if (!record) record = reconstructRecord(row, colMap, personKey, consultedAt, triageRaw)
 
+  // 회차 자체 텍스트에 박힌 조치(당사자 탭 등)는 파싱. 마스터 탭은 보통 없음(조치는 TODO 조인).
   const actions = parseActions(record)
-
-  // 방문자 정보가 별도 컬럼에 있고 record에 없으면 덧붙이기(상세 보강)
-  const visitor = cell(row, cols.visitor).trim()
-  if (visitor && !record.includes(visitor)) {
-    record = record ? `${record}\n\n방문자: ${visitor}` : `방문자: ${visitor}`
-  }
 
   return {
     rowIndex,

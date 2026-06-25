@@ -1,21 +1,24 @@
 /**
  * 치매 모니터링 — 구글 시트 접근 (명령서 §5 옵션 A)
  *
- *  - 서비스 계정(읽기 전용)으로 원본 탭을 읽는다.
- *  - H열(등록서식)은 =LET(...) 수식이므로 FORMATTED_VALUE 로 "계산된 값"을 읽는다(FORMULA 금지).
- *  - 1행 라벨 / 2행 / 헤더행(기본 3) 위쪽을 스킵, 데이터는 DATA_START_ROW(기본 4)부터.
+ *  - 서비스 계정(읽기 전용)으로 마스터 폼 응답 탭(gid 940998687)을 읽는다.
+ *  - 헤더가 두 줄(1행 분류 + 2행 질문)이라 합쳐서 컬럼을 매핑한다.
+ *  - 등록서식(H)은 마스터엔 없으므로 컬럼들로 재구성하고, 사례회의 조치는
+ *    별도 TODO 시트(사례회의)를 성명생년월일로 조인한다.
+ *  - 값은 FORMATTED_VALUE 로 계산된 결과를 읽는다(FORMULA 금지).
  *  - 비밀키는 서버 환경변수에만. (NEXT_PUBLIC_ 금지)
  *
  * 결과는 짧게 메모리 캐시(부하/쿼터 완화). "마지막 갱신 시각"을 화면에 표시.
  */
 
 import { google } from 'googleapis'
-import { SHEET_CONFIG, resolveColumns } from '@/config/dementia-fieldmap'
-import { buildRecord } from './parse'
-import type { VisitRecord } from './types'
+import { SHEET_CONFIG, TODO_CONFIG, resolveColumns } from '@/config/dementia-fieldmap'
+import { buildRecord, buildTodoAction } from './parse'
+import type { VisitRecord, ActionItem } from './types'
+
+type Sheets = ReturnType<typeof google.sheets>
 
 // ── 서비스 계정 인증 (읽기 전용 스코프) ──────────────────────────────────────
-// 기존 google-sheets-creator.ts 의 키 정규화 로직과 동일한 방식.
 function getGoogleAuth() {
   const email = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
   const rawKey = process.env.GOOGLE_PRIVATE_KEY
@@ -38,8 +41,9 @@ function getGoogleAuth() {
 
 export interface FetchResult {
   records: VisitRecord[]
-  fetchedAt: number          // epoch(ms)
-  source: string             // "시트명 › 탭명"
+  actionsByPerson: Map<string, ActionItem[]>
+  fetchedAt: number
+  source: string
   warnings: string[]
   recognizedHeaders: string[]
 }
@@ -47,64 +51,112 @@ export interface FetchResult {
 // ── 메모리 캐시 ───────────────────────────────────────────────────────────────
 const TTL_MS = 60_000
 let cache: FetchResult | null = null
-let loggedHeaders = false
+let logged = false
 
-/** 데이터 소스 탭 제목을 gid → 탭명 → 첫 탭 순서로 결정 */
+/** 스프레드시트의 탭 제목을 gid → 탭명 → 첫 탭 순서로 결정 */
 async function resolveTabTitle(
-  sheets: ReturnType<typeof google.sheets>,
-): Promise<{ title: string; spreadsheetTitle: string }> {
+  sheets: Sheets,
+  spreadsheetId: string,
+  gid: number | null,
+  tabName: string | null,
+): Promise<{ title: string; spreadsheetTitle: string; tabsDebug: string }> {
   const meta = await sheets.spreadsheets.get({
-    spreadsheetId: SHEET_CONFIG.spreadsheetId,
+    spreadsheetId,
     fields: 'properties.title,sheets.properties(sheetId,title,index)',
   })
   const spreadsheetTitle = meta.data.properties?.title ?? '시트'
   const tabs = (meta.data.sheets ?? []).map((s) => s.properties!)
+  const tabsDebug = tabs.map((t) => `${t.title}(${t.sheetId})`).join(', ')
 
-  if (SHEET_CONFIG.sheetGid != null) {
-    const hit = tabs.find((t) => t.sheetId === SHEET_CONFIG.sheetGid)
-    if (hit?.title) return { title: hit.title, spreadsheetTitle }
-    throw new Error(
-      `SHEET_GID=${SHEET_CONFIG.sheetGid} 에 해당하는 탭을 찾을 수 없습니다. ` +
-        `탭 목록: ${tabs.map((t) => `${t.title}(${t.sheetId})`).join(', ')}`,
-    )
+  if (gid != null) {
+    const hit = tabs.find((t) => t.sheetId === gid)
+    if (hit?.title) return { title: hit.title, spreadsheetTitle, tabsDebug }
   }
-  if (SHEET_CONFIG.sheetTabName) {
-    const hit = tabs.find((t) => t.title === SHEET_CONFIG.sheetTabName)
-    if (hit?.title) return { title: hit.title, spreadsheetTitle }
+  if (tabName) {
+    const hit = tabs.find((t) => t.title === tabName)
+    if (hit?.title) return { title: hit.title, spreadsheetTitle, tabsDebug }
   }
-  // 폴백: index 0 탭
   const first = tabs.sort((a, b) => (a.index ?? 0) - (b.index ?? 0))[0]
   if (!first?.title) throw new Error('스프레드시트에 탭이 없습니다.')
-  return { title: first.title, spreadsheetTitle }
+  return { title: first.title, spreadsheetTitle, tabsDebug }
 }
 
-/**
- * 헤더 행 자동 탐지 (명령서 §1.3 — 폼 응답 탭=1행 / 특수 탭=3행 둘 다 대응)
- *  - HEADER_ROW 환경변수가 있으면 그 값을 우선.
- *  - 없으면 앞쪽 행을 훑어 '성명생년월일(personKey)'이 잡히고 인식 필드가
- *    가장 많은 행을 헤더로 채택. 데이터는 그 다음 행부터.
- */
-function detectHeader(rows: string[][]): { headerIdx: number; dataStartIdx: number } {
-  if (process.env.HEADER_ROW) {
-    const h = Number(process.env.HEADER_ROW) - 1
-    const d = process.env.DATA_START_ROW ? Number(process.env.DATA_START_ROW) - 1 : h + 1
-    return { headerIdx: Math.max(0, h), dataStartIdx: Math.max(h + 1, d) }
+async function readValues(sheets: Sheets, spreadsheetId: string, title: string) {
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId,
+    range: `'${title}'`,
+    valueRenderOption: 'FORMATTED_VALUE',
+    dateTimeRenderOption: 'FORMATTED_STRING',
+  })
+  return (res.data.values ?? []) as string[][]
+}
+
+/** 여러 헤더 행을 컬럼별로 합쳐 하나의 헤더 배열로 */
+function combineHeaderRows(rows: string[][], headerRows: readonly number[]): string[] {
+  const idxs = headerRows.map((r) => r - 1)
+  const maxCols = Math.max(0, ...idxs.map((ri) => rows[ri]?.length ?? 0))
+  const header: string[] = []
+  for (let c = 0; c < maxCols; c++) {
+    header[c] = idxs
+      .map((ri) => (rows[ri]?.[c] ?? '').toString().trim())
+      .filter(Boolean)
+      .join(' ')
   }
-  const scan = Math.min(10, rows.length)
-  let best = { idx: 0, score: -1 }
-  for (let i = 0; i < scan; i++) {
-    const { index } = resolveColumns(rows[i] ?? [])
-    const matched = Object.values(index).filter((v) => v != null).length
-    // '데이터 헤더'다움: 상담일시·트리아지·등록서식이 함께 있는 줄에 큰 가중치.
-    // (1행 라벨 줄은 성명생년월일만 있어 구조 점수가 낮음)
-    const structural =
-      (index.consultedAt != null ? 1 : 0) +
-      (index.triage != null ? 1 : 0) +
-      (index.record != null ? 1 : 0)
-    const score = structural * 10 + matched + (index.personKey != null ? 2 : 0)
-    if (score > best.score) best = { idx: i, score }
+  return header
+}
+
+/** 사례회의 TODO 시트 → personKey별 조치 맵 (접근 실패 시 빈 맵 + 경고) */
+async function fetchTodos(
+  sheets: Sheets,
+  warnings: string[],
+): Promise<Map<string, ActionItem[]>> {
+  const map = new Map<string, ActionItem[]>()
+  try {
+    const { title } = await resolveTabTitle(
+      sheets,
+      TODO_CONFIG.spreadsheetId,
+      TODO_CONFIG.sheetGid,
+      TODO_CONFIG.sheetTabName,
+    )
+    const rows = await readValues(sheets, TODO_CONFIG.spreadsheetId, title)
+    const header = rows[TODO_CONFIG.headerRow - 1] ?? []
+    const norm = (s: string) => (s ?? '').replace(/\s+/g, '')
+    const find = (aliases: string[]) =>
+      header.findIndex((h) => h && aliases.some((a) => norm(h).includes(norm(a))))
+    const cols = {
+      decidedDate: find(['결정일']),
+      service: find(['돌봄서비스', 'to-do', 'todo']),
+      dueDate: find(['처리기한', 'dudate', '기한']),
+      owner: find(['담당']),
+      status: find(['해결여부']),
+    }
+    const colOrUndef = (n: number) => (n >= 0 ? n : undefined)
+
+    for (let r = TODO_CONFIG.dataStartRow - 1; r < rows.length; r++) {
+      const row = rows[r] ?? []
+      const key = (row[TODO_CONFIG.keyColumn] ?? '').toString().trim()
+      if (!key) continue
+      const action = buildTodoAction(row, {
+        decidedDate: colOrUndef(cols.decidedDate),
+        service: colOrUndef(cols.service),
+        dueDate: colOrUndef(cols.dueDate),
+        owner: colOrUndef(cols.owner),
+        status: colOrUndef(cols.status),
+      })
+      if (!action) continue
+      // 키 정규화(공백 제거)로 마스터 personKey와 매칭
+      const normKey = key.replace(/\s+/g, '')
+      const list = map.get(normKey) ?? []
+      list.push(action)
+      map.set(normKey, list)
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    warnings.push(
+      `사례회의(조치) 시트를 읽지 못했습니다. 서비스계정에 해당 시트 공유가 필요합니다. (${msg})`,
+    )
   }
-  return { headerIdx: best.idx, dataStartIdx: best.idx + 1 }
+  return map
 }
 
 export async function fetchRecords(force = false): Promise<FetchResult> {
@@ -114,70 +166,59 @@ export async function fetchRecords(force = false): Promise<FetchResult> {
   await auth.authorize()
   const sheets = google.sheets({ version: 'v4', auth })
 
-  const { title, spreadsheetTitle } = await resolveTabTitle(sheets)
-
-  // 반드시 계산된 값(FORMATTED_VALUE) + 날짜는 표시문자열로
-  const res = await sheets.spreadsheets.values.get({
-    spreadsheetId: SHEET_CONFIG.spreadsheetId,
-    range: `'${title}'`,
-    valueRenderOption: 'FORMATTED_VALUE',
-    dateTimeRenderOption: 'FORMATTED_STRING',
-  })
-
-  const rows = (res.data.values ?? []) as string[][]
   const warnings: string[] = []
+  const { title, spreadsheetTitle, tabsDebug } = await resolveTabTitle(
+    sheets,
+    SHEET_CONFIG.spreadsheetId,
+    SHEET_CONFIG.sheetGid,
+    SHEET_CONFIG.sheetTabName,
+  )
 
-  const { headerIdx, dataStartIdx } = detectHeader(rows)
-  const header = rows[headerIdx] ?? []
-  const { index: cols, recognizedHeaders } = resolveColumns(header)
+  const rows = await readValues(sheets, SHEET_CONFIG.spreadsheetId, title)
 
-  // A열처럼 '성명생년월일+상담일시'가 한 칸에 합쳐진 탭(gid 1496494699)은
-  // 성명생년월일 전용 헤더가 없다. 이때 상담일시 컬럼(A)을 성명생년월일 소스로 공유.
-  if (cols.personKey == null && cols.consultedAt != null) {
-    cols.personKey = cols.consultedAt
-  }
+  const header = combineHeaderRows(rows, SHEET_CONFIG.headerRows)
+  const colMap = resolveColumns(header)
+  const cols = colMap.index
+  const dataStartIdx = SHEET_CONFIG.dataStartRow - 1
 
-  // 첫 실행 시 인식한 헤더/샘플 2행 로그 (명령서 §1.4)
-  if (!loggedHeaders) {
-    loggedHeaders = true
+  if (!logged) {
+    logged = true
     console.log('[dementia-sheets] 탭:', `${spreadsheetTitle} › ${title}`)
-    console.log(`[dementia-sheets] 헤더행 자동탐지: ${headerIdx + 1}행, 데이터시작: ${dataStartIdx + 1}행`)
-    console.log('[dementia-sheets] 인식 헤더:', recognizedHeaders)
+    console.log('[dementia-sheets] 탭 목록:', tabsDebug)
+    console.log('[dementia-sheets] 합친 헤더:', colMap.recognizedHeaders)
     console.log('[dementia-sheets] 컬럼 매핑:', cols)
+    console.log('[dementia-sheets] 모니터링 항목:', colMap.monitoring.map((m) => m.label))
     console.log('[dementia-sheets] 샘플 2행:', rows.slice(dataStartIdx, dataStartIdx + 2))
   }
 
   if (cols.personKey == null) {
     warnings.push(
-      '성명생년월일 컬럼을 헤더에서 찾지 못했습니다. config/dementia-fieldmap.ts 의 별칭을 확인하세요. ' +
-        `인식 헤더: ${recognizedHeaders.filter(Boolean).join(', ')}`,
+      '성명생년월일(어르신 이름) 컬럼을 찾지 못했습니다. config/dementia-fieldmap.ts 별칭 확인. ' +
+        `인식 헤더: ${colMap.recognizedHeaders.filter(Boolean).join(' | ')}`,
     )
-  }
-  if (cols.record == null) {
-    warnings.push('방문결과 등록서식(H) 컬럼을 찾지 못했습니다. 개별 컬럼으로 보완합니다.')
   }
 
   const records: VisitRecord[] = []
   for (let r = dataStartIdx; r < rows.length; r++) {
     const row = rows[r] ?? []
-    // 완전히 빈 행 스킵
     if (row.every((c) => !c || !c.toString().trim())) continue
-    // personKey 컬럼이 비어있으면 데이터 행 아님(스킵)
-    if (cols.personKey != null && !(row[cols.personKey] ?? '').toString().trim()) {
-      continue
-    }
-    records.push(buildRecord(row, cols, r + 1))
+    if (cols.personKey != null && !(row[cols.personKey] ?? '').toString().trim()) continue
+    records.push(buildRecord(row, colMap, r + 1))
   }
+
+  // 사례회의 조치 조인 (인물 단위)
+  const actionsByPerson = await fetchTodos(sheets, warnings)
 
   const warnCount = records.filter((r) => r.parseWarning).length
   if (warnCount > 0) warnings.push(`성명생년월일 파싱 경고 ${warnCount}건`)
 
   cache = {
     records,
+    actionsByPerson,
     fetchedAt: Date.now(),
     source: `${spreadsheetTitle} › ${title}`,
     warnings,
-    recognizedHeaders,
+    recognizedHeaders: colMap.recognizedHeaders,
   }
   return cache
 }
@@ -189,6 +230,5 @@ export function getSheetEnvStatus() {
     hasPrivateKey: !!process.env.GOOGLE_PRIVATE_KEY,
     spreadsheetId: SHEET_CONFIG.spreadsheetId,
     sheetGid: SHEET_CONFIG.sheetGid,
-    sheetTabName: SHEET_CONFIG.sheetTabName,
   }
 }

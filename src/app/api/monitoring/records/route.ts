@@ -34,7 +34,7 @@ export async function GET(req: NextRequest) {
 
   // personKey 단위로 검색 (인물 단위)
   const grouped = groupByPerson(result.records)
-  let people = buildPeople(result.records)
+  let people = buildPeople(result.records, result.actionsByPerson)
 
   if (search) {
     people = people.filter((p) => {

@@ -8,6 +8,8 @@ import {
   isResolvedStatus,
   buildRecord,
   consultedAtDisplay,
+  normalizeDate,
+  buildTodoAction,
 } from '../parse'
 import { maskName, maskBirthCode, maskPersonLabel } from '../mask'
 import { matchPerson, toChosung } from '../search'
@@ -136,84 +138,78 @@ describe('consultedAtDisplay', () => {
   it('빈값', () => expect(consultedAtDisplay('')).toBe(''))
 })
 
-// gid 1496494699 구조: 1행 라벨, 3행 헤더(상담일시/트리아지/등록서식), A열=키+일시
-describe('계산 탭(gid 1496494699) 레이아웃', () => {
-  const rows: string[][] = [
-    ['성명생년월일', '이순금480115'], // 1행 라벨
-    [], // 2행 빈줄
-    ['상담일시', '트리아지', '', '', '', '', '', '방문결과 등록서식'], // 3행 헤더
-    [
-      '이순금480115\n2026-06-25 15:22',
-      '0',
-      '', '', '', '', '',
-      '# 시니어간호사 방문상담\n□ 당사자 및 상담일시: 이순금480115\n2026-06-25 15:22\n□ 방문자: 윤종성\n==============================\n# 사례회의 결과\n□ [2026-06-01] 131방문운동(재활) (기한: 2026-06-10 / 해결여부: )',
-    ], // 4행 데이터
-  ]
+describe('normalizeDate', () => {
+  it('yy → 20yy', () => expect(normalizeDate('26-03-18')).toBe('2026-03-18'))
+  it('yyyy 유지', () => expect(normalizeDate('2026-3-1')).toBe('2026-03-01'))
+  it('점 구분', () => expect(normalizeDate('26.4.6')).toBe('2026-04-06'))
+  it('빈값 null', () => expect(normalizeDate('')).toBeNull())
+})
 
-  it('헤더는 3행(구조 점수)으로, 데이터는 4행부터', () => {
-    // detectHeader는 sheets.ts에 있으나 로직 동치 검증: 3행이 상담일시/트리아지/등록서식 보유
-    const { index } = resolveColumns(rows[2])
-    expect(index.consultedAt).toBe(0)
-    expect(index.triage).toBe(1)
-    expect(index.record).toBe(7)
-    expect(index.personKey).toBeUndefined() // 3행엔 성명생년월일 헤더 없음
+describe('buildTodoAction (사례회의 TODO 행 → 조치)', () => {
+  // A 성명생년월일 · B 결정일 · C 돌봄서비스 · D TO-BE · E 처리기한 · F 담당 · G 비고 · H 해결여부
+  const cols = { decidedDate: 1, service: 2, dueDate: 4, owner: 5, status: 7 }
+
+  it('코드·내용·기관·기한·해결여부 분해(yy 날짜 정규화)', () => {
+    const row = ['나종여400904', '26-03-18', '251천원택시(서구)', '', '26-03-27', '발화자5', '', '']
+    const a = buildTodoAction(row, cols)!
+    expect(a.code).toBe('251')
+    expect(a.actionText).toBe('천원택시')
+    expect(a.org).toBe('서구')
+    expect(a.actionDate).toBe('2026-03-18')
+    expect(a.dueDate).toBe('2026-03-27')
+    expect(a.resolved).toBe(false) // 해결여부 공백
   })
 
-  it('성명생년월일을 A열(상담일시 컬럼)에서 폴백 추출', () => {
-    const { index } = resolveColumns(rows[2])
-    if (index.personKey == null && index.consultedAt != null) index.personKey = index.consultedAt
-    const rec = buildRecord(rows[3], index, 4)
-    expect(rec.name).toBe('이순금')
-    expect(rec.birthCode).toBe('480115')
-    expect(rec.consultedAt).toBe('2026-06-25 15:22') // 날짜만 표시
-    expect(rec.triage).toBe(0)
-    expect(rec.record).toContain('방문자: 윤종성')
-    expect(rec.actions).toHaveLength(1)
-    expect(rec.actions[0].code).toBe('131')
-    expect(rec.actions[0].actionText).toBe('방문운동')
-    expect(rec.actions[0].org).toBe('재활')
-    expect(rec.actions[0].dueDate).toBe('2026-06-10')
-    expect(rec.actions[0].resolved).toBe(false) // 해결여부 공백
+  it('기관 괄호 없으면 담당을 기관으로', () => {
+    const row = ['유춘자390115', '26-03-16', '153치매조기사례관리', '', '26-04-06', '사례관리', '', '완료']
+    const a = buildTodoAction(row, cols)!
+    expect(a.code).toBe('153')
+    expect(a.actionText).toBe('치매조기사례관리')
+    expect(a.org).toBe('사례관리')
+    expect(a.resolved).toBe(true)
+  })
+
+  it('빈 행은 null', () => {
+    expect(buildTodoAction(['김갑동', '', '', '', '', '', '', ''], cols)).toBeNull()
   })
 })
 
-describe('resolveColumns + buildRecord (§1, §2)', () => {
-  // 3행 헤더 가정
-  const header = [
-    '상담일시', '트리아지', '당사자코드', '과거와 다른 상황',
-    '기존병력 또는 배경', '평가 및 요청', '성명생년월일', '방문결과 등록서식', '방문자',
-  ]
-  const { index } = resolveColumns(header)
+// 마스터 폼 응답 탭(gid 940998687): 1행 분류 + 2행 질문 헤더, 3행~ 데이터
+describe('마스터 탭 레이아웃 + 등록서식 재구성', () => {
+  // A 타임스탬프 · C 어르신이름 · D 섭식 · E 정신 · Q 상황 · R 기존 · S 평가 · T 작성 · U 트리아지
+  const row1 = ['', '', '코드번호', '섭식', '정신', '상황', '기존', '평가요청', '작성', '트리아지']
+  const row2 = ['타임스탬프', '', '어르신의 이름', '섭식', '정신', '(과거와 다른 상황)', '(기존 병력이나 배경)', '(평가 및 요청)', '(작성자)', '1열']
+  // 합친 헤더
+  const header = row1.map((c, i) => [c, row2[i]].filter(Boolean).join(' '))
+  const colMap = resolveColumns(header)
 
-  it('헤더 이름으로 컬럼 매핑', () => {
-    expect(index.consultedAt).toBe(0)
-    expect(index.triage).toBe(1)
-    expect(index.personKey).toBe(6)
-    expect(index.record).toBe(7)
+  it('합친 헤더로 컬럼 매핑', () => {
+    expect(colMap.index.consultedAt).toBe(0) // 타임스탬프
+    expect(colMap.index.personKey).toBe(2) // 어르신 이름
+    expect(colMap.index.currentChange).toBe(5)
+    expect(colMap.index.history).toBe(6)
+    expect(colMap.index.assessment).toBe(7)
+    expect(colMap.index.visitor).toBe(8)
+    expect(colMap.index.triage).toBe(9)
+    expect(colMap.monitoring.map((m) => m.label)).toEqual(['섭식', '정신'])
   })
 
-  it('행 → VisitRecord (조치 포함)', () => {
+  it('등록서식 재구성(H 없음) + 주의/관찰 강조', () => {
     const row = [
-      '2026-06-25 14:30', '2', '', '', '', '',
-      '이순금480115',
-      '# 상담 요약\n특이사항 없음\n# 사례회의 결과\n[2026-06-25] 251천원택시(서구) (기한: 2026-07-25 / 해결여부: 신규_요청)',
-      '홍길동',
+      '2026. 5. 12 오후 4:05:25', '', '송연순490813',
+      '안정/유지', '주의/관찰',
+      '작년에 배우자 돌아가심', '치매 고혈압', '해당없음', '김혜정', '1',
     ]
-    const rec = buildRecord(row, index, 4)
-    expect(rec.name).toBe('이순금')
-    expect(rec.triage).toBe(2)
-    expect(rec.actions).toHaveLength(1)
-    expect(rec.actions[0].actionText).toBe('천원택시')
-    expect(rec.record).toContain('방문자: 홍길동')
-  })
-
-  it('H 비었을 때 개별 컬럼으로 record 합성', () => {
-    const row = [
-      '2026-06-25 14:30', '1', '', '낙상 증가', '고혈압', '재활 요청',
-      '김갑동500303', '', '',
-    ]
-    const rec = buildRecord(row, index, 5)
-    expect(rec.record).toContain('과거와 다른 상황')
-    expect(rec.record).toContain('낙상 증가')
+    const rec = buildRecord(row, colMap, 3)
+    expect(rec.name).toBe('송연순')
+    expect(rec.birthCode).toBe('490813')
+    expect(rec.consultedAt).toContain('2026. 5. 12')
+    expect(rec.triage).toBe(1)
+    expect(rec.record).toContain('# 시니어간호사 방문상담')
+    expect(rec.record).toContain('당사자 및 상담일시: 송연순490813')
+    expect(rec.record).toContain('트리아지: 1점')
+    expect(rec.record).toContain('주의/관찰: 정신(주의/관찰)') // 비정상 항목만 강조
+    expect(rec.record).toContain('과거와 다른 현재 상황: 작년에 배우자 돌아가심')
+    expect(rec.record).toContain('방문자: 김혜정')
   })
 })

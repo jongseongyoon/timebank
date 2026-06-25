@@ -9,8 +9,8 @@ import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, CalendarDays } from 'lucide-react'
 import { TriageBadge } from '@/components/monitoring/triage-badge'
-import { RecordBody } from '@/components/monitoring/record-view'
-import type { VisitRecord } from '@/lib/dementia/types'
+import { RecordBody, ActionItemRow } from '@/components/monitoring/record-view'
+import type { VisitRecord, ActionItem } from '@/lib/dementia/types'
 
 interface PersonDetail {
   personKey: string
@@ -19,6 +19,7 @@ interface PersonDetail {
   visitCount: number
   maxTriage: number
   visits: VisitRecord[]
+  actions: ActionItem[]
   fetchedAt: string
   source: string
 }
@@ -79,6 +80,23 @@ export default function PersonDetailPage() {
               <TriageBadge triage={data.maxTriage} className="text-sm" />
             </div>
           </div>
+
+          {/* 사례회의 조치 (인물 단위) */}
+          {data.actions.length > 0 && (
+            <div className="rounded-lg border bg-white p-4 shadow-sm">
+              <h2 className="mb-2 flex items-center gap-1.5 text-sm font-bold text-teal-800">
+                사례회의 조치
+                <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-semibold text-orange-700">
+                  미해결 {data.actions.filter((a) => !a.resolved).length} / 전체 {data.actions.length}
+                </span>
+              </h2>
+              <div className="space-y-1.5">
+                {data.actions.map((a, i) => (
+                  <ActionItemRow key={i} action={a} />
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* 방문 이력 리스트 (최신순) */}
           <ol className="space-y-3">

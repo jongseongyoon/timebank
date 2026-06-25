@@ -21,7 +21,7 @@ export async function GET() {
     return NextResponse.json({ error: `시트 연결 실패: ${msg}` }, { status: 502 })
   }
 
-  const items = buildFollowups(result.records)
+  const items = buildFollowups(result.records, result.actionsByPerson)
   logAccess(guard, 'followups', { count: items.length })
 
   return NextResponse.json({

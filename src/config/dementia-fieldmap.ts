@@ -1,14 +1,17 @@
 /**
  * 치매 모니터링 시트 — 컬럼/헤더행/데이터시작행 설정 (명령서 §1.3, §5)
  *
- * 이 시트는 일반 구글 폼 응답 시트가 아니다.
- *  - 1행: 라벨/선택 영역 (예: A1 "성명생년월일", B1 "이순금480115") → 무시
- *  - 2행: 비어있음/숨김 → 무시
- *  - 3행: 실제 헤더 행 (기본값 HEADER_ROW=3)
- *  - 4행~: 실제 데이터 (기본값 DATA_START_ROW=4)
+ * ── 마스터 소스 탭 (gid 940998687, "치매모니터 상담(응답)") ──
+ * 모든 사람·모든 회차가 쌓이는 구글 폼 응답 탭. 헤더가 두 줄(1행 분류 + 2행 질문).
+ *  - 1행: 분류 라벨 (코드번호 / 일반상태 / 섭식 … / 상황 / 기존 / 평가요청 / 작성 / 트리아지)
+ *  - 2행: 폼 질문 원문 (타임스탬프 / 어르신 이름 … )
+ *  - 3행~: 실제 응답 데이터
+ * 컬럼 위치:
+ *  A 타임스탬프(상담일시) · C 어르신이름(성명생년월일) · D~P 일상상태 ·
+ *  Q 상황(과거와 다른) · R 기존(병력/배경) · S 평가요청 · T 작성(방문자) · U 트리아지
  *
- * 컬럼은 고정 위치(A/B/H)가 아니라 헤더 "이름"으로 매핑한다.
- * 시트 컬럼 순서가 바뀌어도 동작하도록 하기 위함이며, 운영자는 별칭만 추가하면 된다.
+ * 등록서식(H 수식)은 1인용 "당사자" 뷰 탭에만 있고 마스터엔 없으므로,
+ * 앱이 위 컬럼들로 등록서식 텍스트를 재구성하고, 사례회의 조치는 TODO 시트에서 조인한다.
  */
 
 const num = (v: string | undefined, fallback: number) => {
@@ -16,69 +19,127 @@ const num = (v: string | undefined, fallback: number) => {
   return Number.isFinite(n) && n > 0 ? n : fallback
 }
 
+/** "1,2" → [1,2] (헤더가 여러 줄에 걸친 경우) */
+const rowsList = (v: string | undefined, fallback: number[]) => {
+  if (!v) return fallback
+  const arr = v
+    .split(',')
+    .map((x) => Number(x.trim()))
+    .filter((n) => Number.isFinite(n) && n > 0)
+  return arr.length ? arr : fallback
+}
+
 export const SHEET_CONFIG = {
-  /** 스프레드시트 ID (명령서 §0) */
+  /** 마스터 스프레드시트 ID */
   spreadsheetId:
     process.env.SHEET_ID ?? '1huD5_LKhGsTr7uj7WydosTGJJBCpFKpv-V80pKzrJ6s',
-  /**
-   * 전체 기록 탭의 gid. 기본값 1496494699 = "치매모니터 상담(응답)"의 계산 탭
-   * (A열=성명생년월일+상담일시, B열=트리아지, H열==LET 수식 등록서식).
-   * SHEET_GID 환경변수로 덮어쓸 수 있음.
-   */
-  sheetGid: process.env.SHEET_GID ? Number(process.env.SHEET_GID) : 1496494699,
-  /** gid 대신 탭명으로 지정할 때 사용 */
+  /** 마스터 폼 응답 탭 gid (전원·전회차). SHEET_GID 로 덮어쓰기 가능 */
+  sheetGid: process.env.SHEET_GID ? Number(process.env.SHEET_GID) : 940998687,
+  /** gid 대신 탭명으로 지정할 때 */
   sheetTabName: process.env.SHEET_TAB_NAME ?? null,
-  /** 실제 헤더 행 (1-base) */
-  headerRow: num(process.env.HEADER_ROW, 3),
-  /** 실제 데이터 시작 행 (1-base) */
-  dataStartRow: num(process.env.DATA_START_ROW, 4),
+  /** 헤더 행들(1-base). 여러 줄이면 합쳐서 매핑. 기본 [1,2] */
+  headerRows: rowsList(process.env.HEADER_ROWS, [1, 2]),
+  /** 데이터 시작 행(1-base). 기본 3 */
+  dataStartRow: num(process.env.DATA_START_ROW, 3),
 } as const
 
 /**
- * 필드 → 헤더 별칭 목록.
- * 헤더 행에서 (공백 제거 후) 별칭 중 하나를 "포함"하는 첫 컬럼을 해당 필드로 매핑.
- * personKey/consultedAt/triage/record 는 필수에 가깝고, 나머지는 보완용(H가 비었을 때).
+ * 사례회의 조치(TODO) 시트 — 당사자 수식의 IMPORTRANGE 대상.
+ * IMPORTRANGE(todo_id, "사례회의!A:Z") 와 동일 소스.
+ *  A 성명생년월일(키) · B 결정일 · C 돌봄서비스(코드포함) · E 처리기한 ·
+ *  F 담당 · H 해결여부
+ */
+export const TODO_CONFIG = {
+  spreadsheetId:
+    process.env.TODO_SHEET_ID ?? '1ErjKZMshEz-xkBntiE2A6NPnJq5j_RD9gbnuu-cl3Hg',
+  sheetGid: process.env.TODO_SHEET_GID ? Number(process.env.TODO_SHEET_GID) : 1584708493,
+  sheetTabName: process.env.TODO_TAB_NAME ?? '사례회의',
+  headerRow: num(process.env.TODO_HEADER_ROW, 1),
+  dataStartRow: num(process.env.TODO_DATA_START_ROW, 2),
+  /** 성명생년월일 키가 들어있는 컬럼 인덱스(0-base). A열 = 0 */
+  keyColumn: num(process.env.TODO_KEY_COLUMN, 1) - 1,
+} as const
+
+/**
+ * 마스터 탭 필드 → 헤더 별칭. 헤더(공백제거)에 별칭을 "포함"하는 첫 컬럼으로 매핑.
  */
 export const FIELD_ALIASES: Record<string, string[]> = {
-  personKey: ['성명생년월일', '성명/생년월일', '성명·생년월일', '대상자', '성명'],
-  consultedAt: ['상담일시', '상담일자', '상담시각', '일시'],
+  personKey: ['성명생년월일', '어르신이름', '어르신', '이름', '대상자', '성명'],
+  consultedAt: ['타임스탬프', 'timestamp', '상담일시', '상담일자', '일시'],
   triage: ['트리아지', 'triage'],
-  record: ['방문결과등록서식', '방문결과 등록서식', '등록서식', '방문결과'],
-  // 보완용 (record(H)가 비었을 때 합성)
-  partyCode: ['당사자코드'],
-  currentChange: ['과거와다른상황', '과거와 다른 상황'],
-  history: ['기존병력또는배경', '기존병력', '배경'],
-  assessment: ['평가및요청', '평가 및 요청'],
-  visitor: ['방문자'],
+  record: ['방문결과등록서식', '방문결과 등록서식', '등록서식'],
+  // 등록서식 재구성용
+  currentChange: ['과거와다른상황', '과거와 다른 상황', '상황'],
+  history: ['기존병력또는배경', '기존병력', '기존', '배경'],
+  assessment: ['평가및요청', '평가 및 요청', '평가요청'],
+  visitor: ['방문자', '작성자', '작성'],
 }
 
 export type FieldKey = keyof typeof FIELD_ALIASES
 
-/** 헤더 정규화: 공백/개행/특수공백 제거 후 비교 */
+/**
+ * 일상 상태 모니터링 항목(D~P). 등록서식에 "주의/관찰" 항목을 강조해 보여주기 위함.
+ */
+export const MONITORING_ALIASES: { key: string; label: string; aliases: string[] }[] = [
+  { key: 'general', label: '일반상태', aliases: ['일반상태'] },
+  { key: 'eating', label: '섭식', aliases: ['섭식'] },
+  { key: 'excretion', label: '배설', aliases: ['배설'] },
+  { key: 'pain', label: '통증', aliases: ['통증'] },
+  { key: 'mobility', label: '이동', aliases: ['이동'] },
+  { key: 'sleep', label: '수면', aliases: ['수면'] },
+  { key: 'breathing', label: '호흡', aliases: ['호흡'] },
+  { key: 'mental', label: '정신', aliases: ['정신'] },
+  { key: 'mood', label: '기분', aliases: ['기분'] },
+  { key: 'social', label: '사회', aliases: ['사회'] },
+  { key: 'env', label: '환경', aliases: ['환경'] },
+  { key: 'med', label: '약물', aliases: ['약물'] },
+  { key: 'guardian', label: '보호자', aliases: ['보호자'] },
+]
+
+/** 헤더 정규화: 공백/개행/특수공백 제거 */
 function normHeader(s: string): string {
   return (s ?? '').replace(/[\s​]+/g, '').trim()
 }
 
 export interface ColumnMap {
-  /** 필드명 → 컬럼 인덱스(0-base). 미발견 시 undefined */
   index: Partial<Record<FieldKey, number>>
-  /** 인식한 헤더 원문 (로그/디버그용) */
+  /** 모니터링 항목 key → 컬럼 인덱스 */
+  monitoring: { key: string; label: string; col: number }[]
   recognizedHeaders: string[]
 }
 
 /**
- * 헤더 행에서 컬럼 매핑을 만든다.
- * @param header 헤더 행 셀 배열
+ * 헤더(한 줄 또는 합쳐진 여러 줄)에서 컬럼 매핑 생성.
+ * 별칭이 짧은 것(예: '상황','기존')이 긴 헤더에 잘못 걸리지 않도록,
+ * 더 구체적인 별칭이 이미 다른 필드를 점유했으면 건너뛴다.
  */
 export function resolveColumns(header: string[]): ColumnMap {
   const normed = header.map(normHeader)
   const index: Partial<Record<FieldKey, number>> = {}
+  const used = new Set<number>()
 
   for (const field of Object.keys(FIELD_ALIASES) as FieldKey[]) {
     const aliases = FIELD_ALIASES[field].map(normHeader)
-    const col = normed.findIndex((h) => h && aliases.some((a) => h.includes(a)))
-    if (col >= 0) index[field] = col
+    const col = normed.findIndex(
+      (h, i) => h && !used.has(i) && aliases.some((a) => h.includes(a)),
+    )
+    if (col >= 0) {
+      index[field] = col
+      used.add(col)
+    }
   }
 
-  return { index, recognizedHeaders: header.map((h) => h?.trim() ?? '') }
+  const monitoring: { key: string; label: string; col: number }[] = []
+  for (const m of MONITORING_ALIASES) {
+    const aliases = m.aliases.map(normHeader)
+    const col = normed.findIndex(
+      (h, i) => h && !used.has(i) && aliases.some((a) => h.includes(a)),
+    )
+    if (col >= 0) {
+      monitoring.push({ key: m.key, label: m.label, col })
+      used.add(col)
+    }
+  }
+
+  return { index, monitoring, recognizedHeaders: header.map((h) => h?.trim() ?? '') }
 }

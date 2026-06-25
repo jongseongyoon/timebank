@@ -4,9 +4,9 @@
  * 전체 인물의 조치(actions)를 모아 미해결/기한임박 순으로.
  */
 
-import type { VisitRecord, FollowupItem } from './types'
+import type { VisitRecord, FollowupItem, ActionItem } from './types'
 import { maskName } from './mask'
-import { isOpenAction } from './identity'
+import { isOpenAction, groupByPerson } from './identity'
 
 const DAY = 86_400_000
 
@@ -29,21 +29,28 @@ const STATE_ORDER: Record<FollowupItem['dueState'], number> = {
 }
 
 /**
- * 미해결 조치만 모아 팔로업 목록 생성.
+ * 미해결 조치만 모아 팔로업 목록 생성. 조치는 인물 단위(TODO 조인).
  * 정렬: 지남 → 임박 → 나중 → 기한없음, 그 안에서 기한 빠른 순.
  */
-export function buildFollowups(records: VisitRecord[], now = Date.now()): FollowupItem[] {
+export function buildFollowups(
+  records: VisitRecord[],
+  actionsByPerson: Map<string, ActionItem[]>,
+  now = Date.now(),
+): FollowupItem[] {
   const items: FollowupItem[] = []
+  const grouped = groupByPerson(records)
 
-  for (const rec of records) {
-    for (const a of rec.actions) {
+  for (const [personKey, actions] of actionsByPerson) {
+    const visits = grouped.get(personKey)
+    const latest = visits?.[0]
+    for (const a of actions) {
       if (!isOpenAction(a.status)) continue
       items.push({
         ...a,
-        personKey: rec.personKey,
-        maskedName: maskName(rec.name),
-        consultedAt: rec.consultedAt,
-        triage: rec.triage,
+        personKey,
+        maskedName: maskName(latest?.name ?? personKey),
+        consultedAt: latest?.consultedAt ?? '',
+        triage: latest?.triage ?? 0,
         dueState: dueState(a.dueDate, now),
       })
     }

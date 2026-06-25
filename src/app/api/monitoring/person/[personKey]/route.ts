@@ -37,6 +37,7 @@ export async function GET(
   logAccess(guard, 'detail', { personKey, visits: visits.length })
 
   const head = visits[0]
+  const actions = result.actionsByPerson.get(personKey) ?? []
   return NextResponse.json({
     personKey,
     name: head.name,
@@ -44,6 +45,7 @@ export async function GET(
     visitCount: visits.length,
     maxTriage: visits.reduce((m, v) => Math.max(m, v.triage), 0),
     visits, // 최신순 (record 본문 포함 — 상세 전용)
+    actions, // 사례회의 조치(인물 단위)
     fetchedAt: new Date(result.fetchedAt).toISOString(),
     source: result.source,
   })
