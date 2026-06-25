@@ -39,6 +39,6 @@ export default auth((req) => {
 export const config = {
   // 공개 경로(/login, /register, /api/auth, /fund-status, /api/fund-status)와 정적 파일은 미들웨어를 타지 않음
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|icons|manifest.json|coupon-manifest.json|sw.js|login|register|api/auth|fund-status|api/fund-status|offline|api/social-prescription/fund-status).*)',
+    '/((?!_next/static|_next/image|favicon.ico|icons|manifest.json|coupon-manifest.json|monitoring-manifest.json|sw.js|login|register|api/auth|fund-status|api/fund-status|offline|api/social-prescription/fund-status).*)',
   ],
 }
