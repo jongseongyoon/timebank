@@ -78,6 +78,30 @@ async function resolveTabTitle(
   return { title: first.title, spreadsheetTitle }
 }
 
+/**
+ * 헤더 행 자동 탐지 (명령서 §1.3 — 폼 응답 탭=1행 / 특수 탭=3행 둘 다 대응)
+ *  - HEADER_ROW 환경변수가 있으면 그 값을 우선.
+ *  - 없으면 앞쪽 행을 훑어 '성명생년월일(personKey)'이 잡히고 인식 필드가
+ *    가장 많은 행을 헤더로 채택. 데이터는 그 다음 행부터.
+ */
+function detectHeader(rows: string[][]): { headerIdx: number; dataStartIdx: number } {
+  if (process.env.HEADER_ROW) {
+    const h = Number(process.env.HEADER_ROW) - 1
+    const d = process.env.DATA_START_ROW ? Number(process.env.DATA_START_ROW) - 1 : h + 1
+    return { headerIdx: Math.max(0, h), dataStartIdx: Math.max(h + 1, d) }
+  }
+  const scan = Math.min(10, rows.length)
+  let best = { idx: 0, score: -1 }
+  for (let i = 0; i < scan; i++) {
+    const { index } = resolveColumns(rows[i] ?? [])
+    const matched = Object.values(index).filter((v) => v != null).length
+    // personKey(성명생년월일)가 잡힌 행에 큰 가중치
+    const score = matched + (index.personKey != null ? 100 : 0)
+    if (score > best.score) best = { idx: i, score }
+  }
+  return { headerIdx: best.idx, dataStartIdx: best.idx + 1 }
+}
+
 export async function fetchRecords(force = false): Promise<FetchResult> {
   if (!force && cache && Date.now() - cache.fetchedAt < TTL_MS) return cache
 
@@ -98,7 +122,7 @@ export async function fetchRecords(force = false): Promise<FetchResult> {
   const rows = (res.data.values ?? []) as string[][]
   const warnings: string[] = []
 
-  const headerIdx = SHEET_CONFIG.headerRow - 1
+  const { headerIdx, dataStartIdx } = detectHeader(rows)
   const header = rows[headerIdx] ?? []
   const { index: cols, recognizedHeaders } = resolveColumns(header)
 
@@ -106,12 +130,10 @@ export async function fetchRecords(force = false): Promise<FetchResult> {
   if (!loggedHeaders) {
     loggedHeaders = true
     console.log('[dementia-sheets] 탭:', `${spreadsheetTitle} › ${title}`)
-    console.log('[dementia-sheets] 인식 헤더(3행):', recognizedHeaders)
+    console.log(`[dementia-sheets] 헤더행 자동탐지: ${headerIdx + 1}행, 데이터시작: ${dataStartIdx + 1}행`)
+    console.log('[dementia-sheets] 인식 헤더:', recognizedHeaders)
     console.log('[dementia-sheets] 컬럼 매핑:', cols)
-    console.log(
-      '[dementia-sheets] 샘플 2행:',
-      rows.slice(SHEET_CONFIG.dataStartRow - 1, SHEET_CONFIG.dataStartRow + 1),
-    )
+    console.log('[dementia-sheets] 샘플 2행:', rows.slice(dataStartIdx, dataStartIdx + 2))
   }
 
   if (cols.personKey == null) {
@@ -125,7 +147,7 @@ export async function fetchRecords(force = false): Promise<FetchResult> {
   }
 
   const records: VisitRecord[] = []
-  for (let r = SHEET_CONFIG.dataStartRow - 1; r < rows.length; r++) {
+  for (let r = dataStartIdx; r < rows.length; r++) {
     const row = rows[r] ?? []
     // 완전히 빈 행 스킵
     if (row.every((c) => !c || !c.toString().trim())) continue
