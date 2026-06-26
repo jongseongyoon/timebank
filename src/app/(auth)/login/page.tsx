@@ -33,6 +33,10 @@ function formatPhone(value: string): string {
 
 function LoginForm() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  // 로그인 후 복귀 경로 (착한쿠폰 PWA 등). 내부 경로만 허용해 오픈 리다이렉트 방지
+  const rawCallback = searchParams?.get('callbackUrl') ?? ''
+  const callbackUrl = rawCallback.startsWith('/') && !rawCallback.startsWith('//') ? rawCallback : '/'
   const [phone, setPhone] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
@@ -47,7 +51,7 @@ function LoginForm() {
       setError('전화번호 또는 비밀번호가 올바르지 않습니다.')
       setLoading(false)
     } else {
-      router.push('/')
+      router.push(callbackUrl)
       router.refresh()
     }
   }
@@ -104,7 +108,9 @@ export default function LoginPage() {
           <Suspense fallback={null}>
             <RegisteredBanner />
           </Suspense>
-          <LoginForm />
+          <Suspense fallback={<div className="h-40" />}>
+            <LoginForm />
+          </Suspense>
           <div className="mt-4 text-center text-sm text-muted-foreground">
             계정이 없으신가요?{' '}
             <Link href="/register" className="text-primary hover:underline font-medium">
