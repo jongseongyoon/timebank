@@ -12,6 +12,7 @@ import {
   Wallet, TrendingUp, TrendingDown, ClipboardList, PlusCircle,
   ArrowRight, ChevronRight, QrCode, ScanLine, Footprints,
   MessageSquare, Search, ArrowLeftRight, Stethoscope, Gift,
+  Store, Receipt,
 } from 'lucide-react'
 import { WalkCard } from '@/components/layout/walk-card'
 
@@ -54,7 +55,7 @@ export default async function DashboardPage() {
   const today = kstToday()
 
   // 사용자별 실시간 데이터와 캐시 가능한 목록 쿼리를 병렬로 실행
-  const [member, recentTxs, nearbyListings, walkRecord, activeCouponCount] = await Promise.all([
+  const [member, recentTxs, nearbyListings, walkRecord, activeCouponCount, couponAgg, myStore] = await Promise.all([
     prisma.member.findUnique({
       where: { id: memberId },
       select: { name: true, tpBalance: true, lifetimeEarned: true, lifetimeSpent: true, tpExpiresAt: true, dong: true },
@@ -74,9 +75,16 @@ export default async function DashboardPage() {
       where: { memberId_date: { memberId, date: today } },
     }),
     prisma.goodCoupon.count({ where: { receiverId: memberId, status: 'ACTIVE' } }),
+    prisma.goodCoupon.aggregate({
+      where: { receiverId: memberId, status: 'ACTIVE' },
+      _sum: { cashRemaining: true },
+    }),
+    prisma.goodStore.findFirst({ where: { memberId }, select: { id: true, storeName: true } }),
   ])
 
   if (!member) return null
+
+  const couponBalance = Number(couponAgg._sum.cashRemaining ?? 0)
 
   return (
     <div className="space-y-6">
@@ -85,16 +93,16 @@ export default async function DashboardPage() {
         <p className="text-muted-foreground text-sm mt-1">{member.dong} TimePay</p>
       </div>
 
-      {/* 착한쿠폰 바로가기 (받은 회원에게만 표시) */}
-      {activeCouponCount > 0 && (
-        <Link href="/coupons"
+      {/* 가게주 전용: 우리 가게 결제 QR */}
+      {myStore && (
+        <Link href="/store/qr"
           className="flex items-center gap-3 rounded-2xl bg-orange-50 border border-orange-200 px-4 py-3 hover:bg-orange-100 transition-colors">
-          <div className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center shrink-0">
-            <Gift className="h-5 w-5 text-white" aria-hidden="true" />
+          <div className="w-10 h-10 rounded-xl bg-orange-600 flex items-center justify-center shrink-0">
+            <Store className="h-5 w-5 text-white" aria-hidden="true" />
           </div>
           <div className="flex-1">
-            <p className="font-semibold text-orange-800 text-sm">🎁 착한쿠폰</p>
-            <p className="text-xs text-orange-600">착한가게에서 사용 가능한 쿠폰이 있습니다</p>
+            <p className="font-semibold text-orange-800 text-sm">🏪 {myStore.storeName} · 결제 QR</p>
+            <p className="text-xs text-orange-600">손님 착한쿠폰 결제용 QR 보기</p>
           </div>
           <ArrowRight className="h-4 w-4 text-orange-600" aria-hidden="true" />
         </Link>
@@ -114,6 +122,12 @@ export default async function DashboardPage() {
           <ArrowRight className="h-4 w-4 text-teal-600" aria-hidden="true" />
         </Link>
       )}
+
+      {/* ══ 타임페이(TP) 영역 ══ */}
+      <div className="flex items-center gap-2 pt-1">
+        <Wallet className="h-4 w-4 text-blue-600" aria-hidden="true" />
+        <h2 className="text-sm font-bold text-blue-700">타임페이 (시간화폐 TP)</h2>
+      </div>
 
       {/* TP 지갑 카드 */}
       <Card className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white border-0">
@@ -182,6 +196,53 @@ export default async function DashboardPage() {
           ))}
         </div>
       </div>
+
+      {/* ══ 착한쿠폰 영역 (쿠폰 보유 회원에게만 표시) ══ */}
+      {activeCouponCount > 0 && (
+        <div className="space-y-3 pt-2">
+          <div className="flex items-center gap-2">
+            <Gift className="h-4 w-4 text-orange-600" aria-hidden="true" />
+            <h2 className="text-sm font-bold text-orange-700">착한쿠폰 (착한가게 전용 · 원화)</h2>
+          </div>
+
+          {/* 쿠폰 잔액 카드 */}
+          <Card className="bg-gradient-to-r from-orange-500 to-amber-500 text-white border-0">
+            <CardContent className="pt-5 pb-5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <Gift className="h-8 w-8 text-orange-100 opacity-80 shrink-0" aria-hidden="true" />
+                  <div>
+                    <p className="text-orange-50 text-xs">사용 가능 쿠폰 잔액</p>
+                    <p className="text-3xl font-bold leading-tight">{couponBalance.toLocaleString('ko-KR')}원</p>
+                    <p className="text-orange-100 text-xs">{activeCouponCount}장 보유</p>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 착한쿠폰 기능 */}
+          <div className="grid grid-cols-2 gap-2">
+            <Link href="/coupon/scan"
+              className="flex flex-col items-center gap-1.5 py-3 rounded-2xl bg-white border border-orange-100 hover:shadow-sm active:scale-95 transition-all">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-orange-100">
+                <ScanLine className="h-5 w-5 text-orange-700" aria-hidden="true" />
+              </div>
+              <span className="text-[11px] font-medium text-gray-700">착한가게 결제</span>
+            </Link>
+            <Link href="/coupon"
+              className="flex flex-col items-center gap-1.5 py-3 rounded-2xl bg-white border border-orange-100 hover:shadow-sm active:scale-95 transition-all">
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-amber-100">
+                <Receipt className="h-5 w-5 text-amber-700" aria-hidden="true" />
+              </div>
+              <span className="text-[11px] font-medium text-gray-700">쿠폰·사용내역</span>
+            </Link>
+          </div>
+          <Link href="/coupon" className="block text-[11px] text-center text-orange-500 hover:text-orange-700 underline">
+            착한쿠폰 전용 앱으로 보기 (홈 화면에 설치 가능)
+          </Link>
+        </div>
+      )}
 
       {/* 최근 거래 */}
       <Card>

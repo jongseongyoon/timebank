@@ -26,7 +26,7 @@ export default function AllocatePage() {
 
   async function handleSearch() {
     if (!search.trim()) return
-    const res = await fetch(`/api/coordinator/members?search=${encodeURIComponent(search)}`)
+    const res = await fetch(`/api/coordinator/members?all=true&search=${encodeURIComponent(search)}`)
     const d = await res.json()
     setMembers(d.members ?? [])
   }

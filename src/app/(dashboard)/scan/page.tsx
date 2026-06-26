@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { Star, Send, Play, ArrowLeft, Camera, AlertTriangle, Phone, Lock } from 'lucide-react'
+import { Star, Send, Play, ArrowLeft, Camera, AlertTriangle, Phone, Lock, Gift, Store } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { SERVICE_CATEGORY_MAP } from '@/lib/constants'
 
@@ -16,7 +16,15 @@ type ScannedMember = {
   roles: string[]
 }
 
-type Step = 'scan' | 'confirm' | 'transfer' | 'service_start' | 'service_running' | 'done'
+type ScannedStore = {
+  id: string
+  storeName: string
+  dong: string
+  category: string
+  status: string
+}
+
+type Step = 'scan' | 'confirm' | 'transfer' | 'service_start' | 'service_running' | 'done' | 'store_pay'
 
 // ServiceCategory enum 키 → 한국어 레이블 (서비스 찾기와 동일 기준)
 const CATEGORIES = Object.entries(SERVICE_CATEGORY_MAP).map(([key, label]) => ({ key, label }))
@@ -38,6 +46,12 @@ export default function ScanPage() {
   const [scanning, setScanning] = useState(false)
   const [error, setError] = useState('')
   const [scannedMember, setScannedMember] = useState<ScannedMember | null>(null)
+  // 착한가게 결제 상태
+  const [scannedStore, setScannedStore] = useState<ScannedStore | null>(null)
+  const [couponBalance, setCouponBalance] = useState(0)
+  const [payAmount, setPayAmount] = useState(0)
+  const [payItem, setPayItem] = useState('')
+  const [couponResult, setCouponResult] = useState<{ storeName: string; paidAmount: number; remainingBalance: number } | null>(null)
   const [transferAmount, setTransferAmount] = useState(1)
   const [selectedCategory, setSelectedCategory] = useState(CATEGORIES[0].key)
   const [activeTransaction, setActiveTransaction] = useState<any>(null)
@@ -156,6 +170,10 @@ export default function ScanPage() {
   }, [stopStream])
 
   function handleQRResult(text: string) {
+    // 착한가게 QR → 쿠폰 결제 흐름
+    const storeMatch = text.match(/^goodstore:(.+)$/)
+    if (storeMatch) { fetchStore(storeMatch[1]); return }
+    // 회원 QR → TP 거래 흐름
     const match = text.match(/^timepay:member:(.+)$/)
     if (!match) { setError('TimePay QR 코드가 아닙니다. 다시 시도해 주세요.'); return }
     fetchMember(match[1])
@@ -198,7 +216,47 @@ export default function ScanPage() {
     const data = await res.json()
     if (!res.ok) { setError(data.error); return }
     setScannedMember(data.member)
+    // 상대방이 착한가게 주인이고 내가 쿠폰을 보유하면 → 원화 결제로 자동 전환
+    if (data.store && data.myCouponBalance > 0) {
+      setScannedStore(data.store)
+      setCouponBalance(data.myCouponBalance)
+      setPayAmount(0)
+      setPayItem('')
+      setStep('store_pay')
+      return
+    }
     setStep('confirm')
+  }
+
+  async function fetchStore(id: string) {
+    const res = await fetch(`/api/scan/store/${id}`)
+    const data = await res.json()
+    if (!res.ok) { setError(data.error); return }
+    if (data.couponBalance <= 0) {
+      setError('사용 가능한 착한쿠폰이 없습니다.')
+      return
+    }
+    setScannedStore(data.store)
+    setCouponBalance(data.couponBalance)
+    setPayAmount(0)
+    setPayItem('')
+    setStep('store_pay')
+  }
+
+  async function handleCouponPay() {
+    if (!scannedStore || payAmount <= 0) return
+    setLoading(true)
+    setError('')
+    const res = await fetch('/api/coupons/pay', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ storeId: scannedStore.id, cashAmount: payAmount, itemDescription: payItem || undefined }),
+    })
+    const data = await res.json()
+    setLoading(false)
+    if (!res.ok) { setError(data.error); return }
+    setCouponResult({ storeName: data.storeName, paidAmount: data.paidAmount, remainingBalance: data.remainingBalance })
+    setStep('done')
   }
 
   async function handleTransfer() {
@@ -302,6 +360,8 @@ export default function ScanPage() {
     stopScan()
     setStep('scan')
     setScannedMember(null)
+    setScannedStore(null)
+    setCouponResult(null)
     setError('')
     setActiveTransaction(null)
     setMaxPayable(0)
@@ -559,13 +619,94 @@ export default function ScanPage() {
         </>
       )}
 
+      {/* ── 착한가게 쿠폰 결제 ── */}
+      {step === 'store_pay' && scannedStore && (
+        <>
+          <button onClick={reset} className="flex items-center gap-1 text-sm text-gray-500 hover:text-gray-800">
+            <ArrowLeft className="h-4 w-4" /> 다시 스캔
+          </button>
+          <h2 className="text-xl font-bold flex items-center gap-2">
+            <Store className="h-5 w-5 text-orange-600" /> 착한쿠폰 결제
+          </h2>
+          <div className="bg-white border rounded-2xl p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                <Store className="h-6 w-6 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-lg font-bold">{scannedStore.storeName}</p>
+                <p className="text-sm text-gray-500">{scannedStore.dong} · {scannedStore.category}</p>
+              </div>
+            </div>
+
+            <div className="bg-orange-50 rounded-xl px-4 py-3 text-center">
+              <p className="text-xs text-orange-500 font-medium">내 착한쿠폰 잔액</p>
+              <p className="text-2xl font-bold text-orange-700">{couponBalance.toLocaleString('ko-KR')}원</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">결제 금액 (원)</label>
+              <input
+                type="number" min={0} max={couponBalance} step={100}
+                value={payAmount || ''}
+                onChange={e => setPayAmount(Math.min(Number(e.target.value), couponBalance))}
+                placeholder="0"
+                className="w-full h-14 text-center text-2xl font-bold border rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+              <div className="flex gap-2">
+                {[5000, 10000, 20000].map(n => (
+                  <button key={n} onClick={() => setPayAmount(Math.min(n, couponBalance))}
+                    disabled={n > couponBalance}
+                    className="flex-1 px-2 py-1.5 rounded-lg text-sm border border-gray-300 hover:bg-gray-50 disabled:opacity-30">
+                    {(n / 10000) % 1 === 0 ? `${n / 10000}만` : `${(n / 1000)}천`}원
+                  </button>
+                ))}
+                <button onClick={() => setPayAmount(couponBalance)}
+                  className="flex-1 px-2 py-1.5 rounded-lg text-sm border border-orange-300 text-orange-700 hover:bg-orange-50">
+                  전액
+                </button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">구매 품목 (선택)</label>
+              <input
+                value={payItem}
+                onChange={e => setPayItem(e.target.value)}
+                placeholder="예: 생필품, 식료품..."
+                className="w-full h-10 px-3 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+              />
+            </div>
+          </div>
+          {error && <p className="text-sm text-red-600 bg-red-50 rounded-lg py-2 px-3">{error}</p>}
+          <Button onClick={handleCouponPay} disabled={loading || payAmount <= 0}
+            className="w-full h-14 text-lg gap-2 bg-orange-600 hover:bg-orange-700">
+            <Gift className="h-5 w-5" />
+            {loading ? '결제 중...' : `${payAmount.toLocaleString('ko-KR')}원 결제하기`}
+          </Button>
+          <p className="text-xs text-center text-gray-400">결제 즉시 쿠폰 잔액에서 차감됩니다</p>
+          {scannedMember && (
+            <button onClick={() => { setError(''); setStep('confirm') }}
+              className="w-full text-center text-xs text-gray-400 hover:text-gray-600 underline">
+              대신 TP로 거래하기
+            </button>
+          )}
+        </>
+      )}
+
       {/* ── 완료 ── */}
       {step === 'done' && (
         <div className="flex flex-col items-center justify-center min-h-[60vh] gap-6 text-center">
           <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center text-5xl">✅</div>
           <div>
             <h2 className="text-2xl font-bold">완료!</h2>
-            {activeTransaction?.tpAmount !== undefined && (
+            {couponResult ? (
+              <div className="mt-2 space-y-1">
+                <p className="text-gray-700 font-medium">{couponResult.storeName}</p>
+                <p className="text-orange-700 font-bold text-lg">{couponResult.paidAmount.toLocaleString('ko-KR')}원 결제</p>
+                <p className="text-sm text-gray-500">남은 쿠폰 잔액 {couponResult.remainingBalance.toLocaleString('ko-KR')}원</p>
+              </div>
+            ) : activeTransaction?.tpAmount !== undefined && (
               <p className="text-gray-500 mt-2">{activeTransaction.durationMinutes}분 · {Number(activeTransaction.tpAmount).toFixed(2)} TP 정산</p>
             )}
           </div>

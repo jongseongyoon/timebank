@@ -21,18 +21,29 @@ export async function GET(req: NextRequest) {
   const dong   = searchParams.get('dong') ?? session.user.dong
   const search = searchParams.get('search') ?? ''
   const role   = searchParams.get('role')
+  // 관리자 전용: 전체 동(洞) 대상 + 전화번호 검색 (쿠폰 발급/TP 배분 등 동 경계를 넘는 작업용)
+  const allDong = isAdmin && searchParams.get('all') === 'true'
+
+  // 관리자는 이름·전화번호 모두로 검색 (전화번호 미마스킹 권한 보유), 코디네이터는 이름만
+  const searchWhere = search
+    ? (isAdmin
+        ? { OR: [{ name: { contains: search } }, { phone: { contains: search } }] }
+        : { name: { contains: search } })
+    : {}
 
   const members = await prisma.member.findMany({
     where: {
-      dong,
+      ...(allDong ? {} : { dong }),
       status: 'ACTIVE',
-      ...(search ? { name: { contains: search } } : {}),
+      ...searchWhere,
       ...(role ? { roles: { has: role as any } } : {}),
     },
+    take: allDong ? 50 : undefined,
     select: {
       id: true,
       name: true,
       phone: true,
+      dong: true,
       roles: true,
       isVulnerable: true,
       isDisabled: true,
