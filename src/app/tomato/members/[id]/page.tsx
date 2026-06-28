@@ -32,10 +32,10 @@ export default async function MemberDetailPage({ params }: { params: { id: strin
   })
   if (!member) notFound()
 
-  const qrDataUrl = await QRCode.toDataURL(`tomato:member:${member.qrToken}`, {
-    width: 240,
-    margin: 1,
-  })
+  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://timebank-mocha.vercel.app'
+  const memberUrl = `${base}/tm/${member.qrToken}`
+  // 회원 개인 페이지 URL을 QR로 — 폰 카메라로 열면 본인 조회, 직원 스캔도 동일 인식
+  const qrDataUrl = await QRCode.toDataURL(memberUrl, { width: 240, margin: 1 })
 
   return (
     <div className="max-w-4xl space-y-5">
@@ -67,8 +67,8 @@ export default async function MemberDetailPage({ params }: { params: { id: strin
       {/* QR 발급 */}
       <Card>
         <CardContent className="pt-5">
-          <p className="font-semibold text-sm mb-3">회원 QR</p>
-          <MemberQr qrDataUrl={qrDataUrl} name={member.name} memberNo={member.memberNo} />
+          <p className="font-semibold text-sm mb-3">회원 QR · 개인 링크</p>
+          <MemberQr qrDataUrl={qrDataUrl} name={member.name} memberNo={member.memberNo} memberUrl={memberUrl} />
         </CardContent>
       </Card>
 

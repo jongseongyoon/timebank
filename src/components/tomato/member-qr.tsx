@@ -1,18 +1,30 @@
 'use client'
 
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Printer } from 'lucide-react'
+import { Printer, Copy, Check } from 'lucide-react'
 
-// 회원 QR 카드(출력용). qrDataUrl은 서버에서 qrcode로 생성한 data URL.
+// 회원 QR + 개인 링크. QR/링크는 회원 본인 조회 페이지(/tm/<token>)로 연결되며 직원 스캔도 동일 인식.
 export function MemberQr({
   qrDataUrl,
   name,
   memberNo,
+  memberUrl,
 }: {
   qrDataUrl: string
   name: string
   memberNo: string | null
+  memberUrl: string
 }) {
+  const [copied, setCopied] = useState(false)
+
+  function copy() {
+    navigator.clipboard?.writeText(memberUrl).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1500)
+    })
+  }
+
   function print() {
     const w = window.open('', '_blank', 'width=420,height=560')
     if (!w) return
@@ -36,15 +48,26 @@ export function MemberQr({
   }
 
   return (
-    <div className="flex items-center gap-4">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={qrDataUrl} alt={`${name} QR`} className="w-32 h-32 border rounded-md" />
-      <div>
-        <p className="text-sm text-muted-foreground mb-2">
-          매장에서 이 QR을 스캔하면 회원이 인식됩니다. 카드·화면용으로 출력하세요.
-        </p>
-        <Button variant="outline" size="sm" onClick={print}>
-          <Printer className="h-4 w-4" /> QR 출력
+    <div className="space-y-3">
+      <div className="flex items-center gap-4">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={qrDataUrl} alt={`${name} QR`} className="w-32 h-32 border rounded-md" />
+        <div className="min-w-0">
+          <p className="text-sm text-muted-foreground mb-2">
+            회원에게 이 QR(또는 아래 링크)을 전달하면, 회원이 휴대폰으로 본인 포인트·관리기한을 보고
+            매장에서 그대로 스캔용으로 쓸 수 있습니다.
+          </p>
+          <Button variant="outline" size="sm" onClick={print}>
+            <Printer className="h-4 w-4" /> QR 출력
+          </Button>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 rounded-md border bg-gray-50 px-3 py-2">
+        <span className="text-xs text-muted-foreground truncate flex-1" title={memberUrl}>{memberUrl}</span>
+        <Button variant="ghost" size="sm" onClick={copy}>
+          {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+          {copied ? '복사됨' : '링크 복사'}
         </Button>
       </div>
     </div>

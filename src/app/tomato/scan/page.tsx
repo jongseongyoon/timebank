@@ -37,8 +37,10 @@ export default function TomatoScanPage() {
   useEffect(() => () => stopStream(), [stopStream])
 
   async function handleResult(text: string) {
-    const m = text.match(/^tomato:member:(.+)$/)
-    const token = m ? m[1] : text // 접두사 없이 토큰만 들어와도 허용
+    // 지원: tomato:member:<토큰> / .../tm/<토큰> URL / 순수 토큰
+    const prefix = text.match(/^tomato:member:(.+)$/)
+    const url = text.match(/\/tm\/([A-Za-z0-9]+)/)
+    const token = prefix ? prefix[1] : url ? url[1] : text.trim()
     const res = await lookupByToken(token)
     if ('error' in res) {
       setError(res.error)
