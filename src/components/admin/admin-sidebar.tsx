@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import {
   LayoutDashboard, Landmark, BarChart3, Settings, Coins, Building2,
   Gift, FileSpreadsheet, Bell, Vault, Sheet, TableProperties, Users,
-  Store, ClipboardCheck, Receipt, ShieldCheck,
+  Store, ClipboardCheck, Receipt, ShieldCheck, Stethoscope,
 } from 'lucide-react'
 
 // 화폐 종류(TP / 원화) 기준으로 묶은 그룹형 메뉴
@@ -52,6 +52,12 @@ const navGroups: { label?: string; items: { href: string; label: string; icon: a
       { href: '/admin/reports', label: '보고서', icon: BarChart3 },
       { href: '/admin/notifications', label: '푸시 알림', icon: Bell },
       { href: '/admin/settings', label: '시스템 설정', icon: Settings },
+    ],
+  },
+  {
+    label: '토마토의료기',
+    items: [
+      { href: '/tomato', label: '토마토의료기 관리', icon: Stethoscope },
     ],
   },
 ]
