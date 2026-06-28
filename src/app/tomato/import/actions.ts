@@ -2,12 +2,7 @@
 
 import crypto from 'crypto'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
-
-async function requireAdmin() {
-  const session = await auth()
-  if (!session?.user?.roles?.includes('ADMIN')) throw new Error('권한이 없습니다.')
-}
+import { requireTomatoOperator } from '@/lib/tomato/access'
 
 export type ImportRow = {
   rowIndex: number // 엑셀 행 번호(헤더=1, 데이터 2부터)
@@ -34,7 +29,7 @@ function clean(s?: string) {
 
 // 회원번호 기준 upsert. 신규는 createMany 한 번으로 일괄 처리(대량 등록 대비).
 export async function importMembers(rows: ImportRow[]): Promise<ImportResult> {
-  await requireAdmin()
+  await requireTomatoOperator()
 
   const errors: ImportError[] = []
   const seenNo = new Set<string>()

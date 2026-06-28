@@ -3,14 +3,8 @@
 import { z } from 'zod'
 import { addYears } from 'date-fns'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
 import { earnPoints } from '@/lib/tomato/points'
-
-async function requireOperator() {
-  const session = await auth()
-  if (!session?.user?.roles?.includes('ADMIN')) throw new Error('권한이 없습니다.')
-  return session.user.name ?? '직원'
-}
+import { requireTomatoOperator as requireOperator } from '@/lib/tomato/access'
 
 export type MemberHit = {
   id: string

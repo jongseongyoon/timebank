@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { TomatoSidebar } from '@/components/tomato/tomato-sidebar'
 import { Header } from '@/components/layout/header'
+import { hasTomatoAccess } from '@/lib/tomato/access'
 
 // 토마토의료기 전용 PWA — 홈 화면에 "토마토의료기"로 독립 설치
 const TOMATO_BASE = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://timebank-mocha.vercel.app'
@@ -45,8 +46,7 @@ export default async function TomatoLayout({ children }: { children: React.React
   const session = await auth()
   if (!session) redirect('/login?callbackUrl=/tomato')
 
-  const isAdmin = session.user.roles.includes('ADMIN')
-  if (!isAdmin) redirect('/')
+  if (!hasTomatoAccess(session.user.roles)) redirect('/')
 
   return (
     <SessionProvider session={session}>

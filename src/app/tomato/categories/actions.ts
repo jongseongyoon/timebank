@@ -3,15 +3,7 @@
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { prisma } from '@/lib/prisma'
-import { auth } from '@/lib/auth'
-
-// 토마토 영역은 ADMIN(직원·관리자)만 변경 가능
-async function requireAdmin() {
-  const session = await auth()
-  if (!session?.user?.roles?.includes('ADMIN')) {
-    throw new Error('권한이 없습니다.')
-  }
-}
+import { requireTomatoOperator } from '@/lib/tomato/access'
 
 export type ActionResult = { ok: true } | { error: string }
 
@@ -23,7 +15,7 @@ const categorySchema = z.object({
 })
 
 export async function createCategory(input: unknown): Promise<ActionResult> {
-  await requireAdmin()
+  await requireTomatoOperator()
   const parsed = categorySchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.errors[0].message }
 
@@ -43,7 +35,7 @@ export async function createCategory(input: unknown): Promise<ActionResult> {
 const updateSchema = categorySchema.extend({ id: z.string().min(1) })
 
 export async function updateCategory(input: unknown): Promise<ActionResult> {
-  await requireAdmin()
+  await requireTomatoOperator()
   const parsed = updateSchema.safeParse(input)
   if (!parsed.success) return { error: parsed.error.errors[0].message }
 
@@ -62,7 +54,7 @@ export async function updateCategory(input: unknown): Promise<ActionResult> {
 }
 
 export async function toggleCategory(id: string, active: boolean): Promise<ActionResult> {
-  await requireAdmin()
+  await requireTomatoOperator()
   try {
     await prisma.tomatoProductCategory.update({ where: { id }, data: { active } })
   } catch {

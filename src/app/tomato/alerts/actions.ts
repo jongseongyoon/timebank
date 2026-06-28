@@ -3,6 +3,7 @@
 import { addDays } from 'date-fns'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
+import { hasTomatoAccess } from '@/lib/tomato/access'
 import { sendAligoMassSms } from '@/lib/tomato/sms'
 
 const ALERT_WINDOW_DAYS = 60
@@ -19,7 +20,7 @@ export async function sendDueDateSms(input: {
   testMode: boolean
 }): Promise<SmsResult> {
   const session = await auth()
-  if (!session?.user?.roles?.includes('ADMIN')) return { error: '권한이 없습니다.' }
+  if (!hasTomatoAccess(session?.user?.roles)) return { error: '권한이 없습니다.' }
 
   const message = (input.message ?? '').trim()
   if (!message) return { error: '메시지를 입력하세요.' }

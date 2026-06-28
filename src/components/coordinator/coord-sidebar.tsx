@@ -19,6 +19,7 @@ const navItems = [
   { href: '/coordinator/social-prescription', label: '사회적처방', icon: Stethoscope },
   { href: '/coordinator/store-help', label: '착한가게 도움', icon: Store },
   { href: '/monitoring', label: '치매 모니터링 조회', icon: ShieldCheck },
+  { href: '/tomato', label: '토마토의료기', icon: Stethoscope },
 ]
 
 export function CoordSidebar() {
