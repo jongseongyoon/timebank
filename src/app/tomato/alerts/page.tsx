@@ -3,6 +3,7 @@ import { addDays } from 'date-fns'
 import { prisma } from '@/lib/prisma'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { AlertSms } from '@/components/tomato/alert-sms'
 import { AlertTriangle, Clock } from 'lucide-react'
 
 const ALERT_WINDOW_DAYS = 60 // 만료 60일 전부터 '임박'
@@ -128,6 +129,12 @@ export default async function TomatoAlertsPage() {
             <Clock className="h-4 w-4" aria-hidden="true" /> 임박 (D-{ALERT_WINDOW_DAYS})
           </p>
           <Table rows={upcoming} today={today} overdue={false} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="pt-5">
+          <AlertSms overdue={overdue.length} upcoming={upcoming.length} />
         </CardContent>
       </Card>
     </div>
