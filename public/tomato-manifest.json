@@ -1,0 +1,45 @@
+{
+  "id": "com.tomato.medical.manager",
+  "name": "토마토의료기 회원·포인트 관리",
+  "short_name": "토마토의료기",
+  "description": "토마토의료기 회원·포인트·관리기한 관리 시스템",
+  "lang": "ko",
+  "start_url": "/tomato",
+  "scope": "/tomato",
+  "display": "standalone",
+  "background_color": "#fef2f2",
+  "theme_color": "#dc2626",
+  "orientation": "portrait-primary",
+  "categories": ["business", "medical", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/tomato-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/tomato-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/tomato-icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/tomato-apple-touch.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/tomato-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
