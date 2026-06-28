@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
-  Users, Tags, Upload, ShoppingCart, BellRing, ScanLine, CheckCircle2, Clock,
+  Users, Tags, Upload, ShoppingCart, BellRing, ScanLine, CheckCircle2, Clock, BarChart3,
 } from 'lucide-react'
 
 // 개발 로드맵 — Phase 단위로 진행. 완료 화면만 링크 활성화.
@@ -47,6 +47,13 @@ const roadmap = [
     icon: ScanLine,
     done: true,
   },
+  {
+    phase: 6,
+    title: '리포트·통계 (선택)',
+    desc: '월별 적립/사용·구매·관리기한 통계. 구글시트 동기화·알림톡/SMS는 외부 연동 필요',
+    icon: BarChart3,
+    done: true,
+  },
 ]
 
 export default function TomatoDashboard() {
@@ -63,12 +70,12 @@ export default function TomatoDashboard() {
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-red-600" aria-hidden="true" />
-            Phase 5 완료 — QR 발급·스캔 (핵심 기능 완성)
+            Phase 6 완료 — 리포트·통계
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
-          회원 상세에서 <b>QR을 발급·출력</b>하고, <b>QR 스캔</b> 메뉴에서 매장 카메라로 회원을 인식해
-          구매 적립·포인트 사용을 처리할 수 있습니다. 명세서의 5개 핵심 Phase가 모두 완료됐습니다. 🎉
+          좌측 <b>리포트·통계</b>에서 월별 적립/사용·구매·관리기한 현황을 확인하세요. 핵심 5단계 + 통계
+          리포트까지 완료됐습니다. 🎉 (구글시트 동기화·알림톡/SMS는 외부 인증정보 연동이 필요해 별도로 진행합니다.)
         </CardContent>
       </Card>
 

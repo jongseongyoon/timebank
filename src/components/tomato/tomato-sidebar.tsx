@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
-  LayoutDashboard, Users, Upload, ShoppingCart, BellRing, ScanLine, Tags, Stethoscope,
+  LayoutDashboard, Users, Upload, ShoppingCart, BellRing, ScanLine, Tags, Stethoscope, BarChart3,
 } from 'lucide-react'
 
 // 토마토의료기 회원·포인트 관리 메뉴.
@@ -19,6 +19,7 @@ const navItems: NavItem[] = [
   { href: '/tomato/purchases/new', label: '구매 등록', icon: ShoppingCart, ready: true },
   { href: '/tomato/alerts', label: '관리기한 알림', icon: BellRing, ready: true },
   { href: '/tomato/scan', label: 'QR 스캔', icon: ScanLine, ready: true },
+  { href: '/tomato/reports', label: '리포트·통계', icon: BarChart3, ready: true },
 ]
 
 export function TomatoSidebar() {
