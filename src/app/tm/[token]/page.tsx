@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: { params: { token: string } }
       type: 'website',
       locale: 'ko_KR',
       url: `${base}/tm/${params.token}`,
-      images: [{ url: `${base}/icons/tomato-icon-512.png`, width: 512, height: 512, alt: '토마토의료기' }],
+      images: [{ url: `${base}/icons/tomato-og.png`, width: 1200, height: 630, alt: '토마토의료기' }],
     },
   }
 }

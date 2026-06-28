@@ -28,7 +28,7 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'ko_KR',
     url: `${TOMATO_BASE}/tomato`,
-    images: [{ url: `${TOMATO_BASE}/icons/tomato-icon-512.png`, width: 512, height: 512, alt: '토마토의료기' }],
+    images: [{ url: `${TOMATO_BASE}/icons/tomato-og.png`, width: 1200, height: 630, alt: '토마토의료기' }],
   },
 }
 
