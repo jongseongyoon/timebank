@@ -3,7 +3,7 @@
 import { addDays } from 'date-fns'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
-import { sendAligoSms } from '@/lib/tomato/sms'
+import { sendAligoMassSms } from '@/lib/tomato/sms'
 
 const ALERT_WINDOW_DAYS = 60
 
@@ -37,23 +37,34 @@ export async function sendDueDateSms(input: {
 
   const items = await prisma.tomatoPurchase.findMany({
     where,
-    select: { member: { select: { phone: true } } },
+    select: { member: { select: { id: true, name: true, phone: true, qrToken: true } } },
   })
-  const phones = Array.from(
-    new Set(
-      items
-        .map((i) => i.member.phone)
-        .filter((p): p is string => !!p && p.replace(/[^0-9]/g, '').length >= 10)
-    )
-  )
-  if (!phones.length) return { error: '발송 대상(유효 전화번호)이 없습니다.' }
 
-  const res = await sendAligoSms({
-    receivers: phones,
-    message,
+  // 회원 단위 중복 제거(한 회원이 여러 제품이어도 1통)
+  const byMember = new Map<string, { name: string; phone: string; qrToken: string }>()
+  for (const it of items) {
+    const m = it.member
+    if (m.phone && m.phone.replace(/[^0-9]/g, '').length >= 10 && !byMember.has(m.id)) {
+      byMember.set(m.id, { name: m.name, phone: m.phone, qrToken: m.qrToken })
+    }
+  }
+  if (byMember.size === 0) return { error: '발송 대상(유효 전화번호)이 없습니다.' }
+
+  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://timebank-mocha.vercel.app'
+
+  // {이름}·{링크} 치환으로 회원별 맞춤 메시지 생성
+  const msgItems = Array.from(byMember.values()).map((m) => ({
+    phone: m.phone,
+    message: message
+      .replaceAll('{이름}', m.name)
+      .replaceAll('{링크}', `${base}/tm/${m.qrToken}`),
+  }))
+
+  const res = await sendAligoMassSms({
+    items: msgItems,
     testMode: input.testMode,
     title: '토마토의료기 관리기한 안내',
   })
   if (!res.ok) return { error: res.error }
-  return { ok: true, targets: phones.length, success: res.success, fail: res.fail, testMode: input.testMode }
+  return { ok: true, targets: msgItems.length, success: res.success, fail: res.fail, testMode: input.testMode }
 }

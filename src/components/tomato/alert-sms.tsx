@@ -7,7 +7,7 @@ import { MessageSquare, Loader2, CheckCircle2, AlertTriangle } from 'lucide-reac
 import { sendDueDateSms, type SmsScope } from '@/app/tomato/alerts/actions'
 
 const DEFAULT_MSG =
-  '[토마토의료기] 안녕하세요. 구매하신 제품의 관리기한이 다가오거나 지났습니다. 점검·재구매 안내를 도와드리니 매장으로 연락 주세요. 감사합니다.'
+  '[토마토의료기] {이름}님 안녕하세요. 구매하신 제품의 관리기한이 다가오거나 지났습니다. 내 포인트·관리기한 확인: {링크} · 점검·재구매는 매장으로 연락 주세요.'
 
 export function AlertSms({ overdue, upcoming }: { overdue: number; upcoming: number }) {
   const [pending, startTransition] = useTransition()
@@ -78,7 +78,10 @@ export function AlertSms({ overdue, upcoming }: { overdue: number; upcoming: num
         className="w-full rounded-md border px-3 py-2 text-sm"
         maxLength={1000}
       />
-      <p className="text-xs text-muted-foreground">{message.length}자 · 90바이트 초과 시 LMS로 발송됩니다.</p>
+      <p className="text-xs text-muted-foreground">
+        {message.length}자 · 90바이트 초과 시 LMS로 발송됩니다. ·{' '}
+        <b>{'{이름}'}</b>=회원 이름, <b>{'{링크}'}</b>=회원 개인 조회 링크로 자동 치환(회원별 맞춤 발송).
+      </p>
 
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" checked={testMode} onChange={(e) => setTestMode(e.target.checked)} />
