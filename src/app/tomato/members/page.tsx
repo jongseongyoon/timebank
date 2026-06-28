@@ -79,7 +79,11 @@ export default async function TomatoMembersPage({
                 <tbody>
                   {members.map((m) => (
                     <tr key={m.id} className="border-b hover:bg-accent/50">
-                      <td className="py-2 pr-3 font-medium">{m.name}</td>
+                      <td className="py-2 pr-3 font-medium">
+                        <Link href={`/tomato/members/${m.id}`} className="text-red-700 hover:underline">
+                          {m.name}
+                        </Link>
+                      </td>
                       <td className="py-2 pr-3 text-muted-foreground">{m.memberNo || '-'}</td>
                       <td className="py-2 pr-3">{m.phone || '-'}</td>
                       <td className="py-2 pr-3 text-right font-semibold">

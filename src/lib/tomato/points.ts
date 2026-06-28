@@ -66,3 +66,37 @@ export async function redeemPoints(tx: Prisma.TransactionClient, p: RedeemParams
   })
   return newBal
 }
+
+export type AdjustParams = {
+  memberId: string
+  amount: number // 가감할 값(±). 음수면 차감, 양수면 가산
+  reason: string
+  operator?: string
+}
+
+// 수동 조정(±): 결과 잔액이 음수가 되면 거부. 행 잠금으로 동시성 보호.
+export async function adjustPoints(tx: Prisma.TransactionClient, p: AdjustParams): Promise<number> {
+  if (!Number.isInteger(p.amount) || p.amount === 0) {
+    throw new Error('조정 값은 0이 아닌 정수여야 합니다.')
+  }
+  const locked = await tx.$queryRaw<{ points_balance: number }[]>`
+    SELECT "pointsBalance" AS points_balance FROM "TomatoMember" WHERE id = ${p.memberId} FOR UPDATE
+  `
+  if (!locked.length) throw new Error('회원을 찾을 수 없습니다.')
+  const cur = Number(locked[0].points_balance)
+  const newBal = cur + p.amount
+  if (newBal < 0) throw new Error(`조정 후 잔액이 음수가 됩니다 (보유 ${cur}, 조정 ${p.amount})`)
+
+  await tx.tomatoMember.update({ where: { id: p.memberId }, data: { pointsBalance: newBal } })
+  await tx.tomatoPointTransaction.create({
+    data: {
+      memberId: p.memberId,
+      type: 'adjust',
+      amount: p.amount,
+      balanceAfter: newBal,
+      reason: p.reason,
+      operator: p.operator ?? null,
+    },
+  })
+  return newBal
+}

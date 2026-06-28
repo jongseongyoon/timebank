@@ -36,9 +36,9 @@ const roadmap = [
   {
     phase: 4,
     title: '포인트 원장',
-    desc: '적립·사용·조정 원자적 처리, 회원별 거래 내역, 수동 조정',
+    desc: '회원 상세: 구매내역·포인트 원장 조회, 포인트 사용(AS/물품), 수동 조정',
     icon: Users,
-    done: false,
+    done: true,
   },
   {
     phase: 5,
@@ -63,12 +63,12 @@ export default function TomatoDashboard() {
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-red-600" aria-hidden="true" />
-            Phase 3 완료 — 구매 등록 및 관리기한 알림
+            Phase 4 완료 — 포인트 원장 (회원 상세)
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
-          좌측 <b>구매 등록</b>에서 구매를 입력하면 2%(반올림) 포인트가 자동 적립되고 관리기한이 계산됩니다.
-          <b> 관리기한 알림</b>에서 초과·임박(60일) 회원을 확인하세요. 다음 단계(Phase 4: 포인트 원장)는 확인 후 진행합니다.
+          <b>회원 관리</b>에서 이름을 클릭하면 회원 상세로 들어가 구매내역·포인트 원장을 보고, 포인트
+          <b> 사용</b>(AS비용/물품구입)과 <b>수동 조정</b>을 할 수 있습니다. 다음 단계(Phase 5: QR 발급·스캔)는 확인 후 진행합니다.
         </CardContent>
       </Card>
 
