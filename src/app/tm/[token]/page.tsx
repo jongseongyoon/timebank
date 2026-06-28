@@ -8,13 +8,27 @@ import { Stethoscope, QrCode, Smartphone } from 'lucide-react'
 
 const ALERT_WINDOW_DAYS = 60
 
-// 회원별 매니페스트 연결 + 아이콘 → 홈 화면에 추가 시 본인 페이지로 열림
+// 회원별 매니페스트 연결 + 아이콘 + 카카오톡/공유 미리보기(오픈그래프)
 export async function generateMetadata({ params }: { params: { token: string } }): Promise<Metadata> {
+  const base = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://timebank-mocha.vercel.app'
+  const title = '토마토의료기 — 내 포인트'
+  const description = '내 포인트와 제품 관리기한을 확인하세요.'
   return {
+    title,
+    description,
     manifest: `/tm/${params.token}/manifest.webmanifest`,
     icons: {
       icon: [{ url: '/icons/tomato-icon-192.png', sizes: '192x192', type: 'image/png' }],
       apple: [{ url: '/icons/tomato-apple-touch.png', sizes: '180x180', type: 'image/png' }],
+    },
+    openGraph: {
+      title,
+      description,
+      siteName: '토마토의료기',
+      type: 'website',
+      locale: 'ko_KR',
+      url: `${base}/tm/${params.token}`,
+      images: [{ url: `${base}/icons/tomato-icon-512.png`, width: 512, height: 512, alt: '토마토의료기' }],
     },
   }
 }

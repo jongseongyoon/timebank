@@ -7,6 +7,8 @@ import { TomatoSidebar } from '@/components/tomato/tomato-sidebar'
 import { Header } from '@/components/layout/header'
 
 // 토마토의료기 전용 PWA — 홈 화면에 "토마토의료기"로 독립 설치
+const TOMATO_BASE = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') || 'https://timebank-mocha.vercel.app'
+
 export const metadata: Metadata = {
   title: '토마토의료기 회원·포인트 관리',
   description: '토마토의료기 회원·포인트·관리기한 관리 시스템',
@@ -18,6 +20,15 @@ export const metadata: Metadata = {
       { url: '/icons/tomato-icon-512.png', sizes: '512x512', type: 'image/png' },
     ],
     apple: [{ url: '/icons/tomato-apple-touch.png', sizes: '180x180', type: 'image/png' }],
+  },
+  openGraph: {
+    title: '토마토의료기 회원·포인트 관리',
+    description: '토마토의료기 회원·포인트·관리기한 관리 시스템',
+    siteName: '토마토의료기',
+    type: 'website',
+    locale: 'ko_KR',
+    url: `${TOMATO_BASE}/tomato`,
+    images: [{ url: `${TOMATO_BASE}/icons/tomato-icon-512.png`, width: 512, height: 512, alt: '토마토의료기' }],
   },
 }
 
