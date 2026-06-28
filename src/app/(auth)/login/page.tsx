@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
@@ -55,6 +55,11 @@ function LoginInner() {
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+
+  // 토마토에서 진입한 경우에만 탭 제목을 토마토의료기로 변경(그 외 경로는 기존 제목 유지)
+  useEffect(() => {
+    if (isTomato) document.title = '토마토의료기 — 로그인'
+  }, [isTomato])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
