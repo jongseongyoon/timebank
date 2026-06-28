@@ -1107,3 +1107,86 @@ model StoreHelpRequest {
   @@index([storeId])
   @@index([status])
 }
+
+// ─────────────────────────────────────────
+// 토마토의료기 — 회원·포인트 관리 (별도 영역, TimePay와 무관)
+// ─────────────────────────────────────────
+
+// 제품 카테고리 (관리기간·적립률 설정)
+model TomatoProductCategory {
+  id              String   @id @default(uuid())
+  createdAt       DateTime @default(now())
+
+  name            String   @unique          // 전동스쿠터, 전동휠체어, 수동휠체어 ...
+  managementYears Int                        // 관리기간(년): 스쿠터6, 전동휠체어6, 수동휠체어5
+  pointRate       Decimal  @default(0.02) @db.Decimal(5, 4)  // 적립률 기본 2%
+  active          Boolean  @default(true)
+
+  purchases       TomatoPurchase[]
+}
+
+// 회원
+model TomatoMember {
+  id            String   @id @default(uuid())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  memberNo      String?  @unique            // 기존 시스템 회원번호(엑셀 매칭 키)
+  name          String
+  phone         String?
+  address       String?
+  birthDate     String?                     // YYYY-MM-DD 또는 YYYYMMDD
+  qrToken       String   @unique            // 추측 불가 QR 식별자(앱에서 랜덤 생성)
+  pointsBalance Int      @default(0)         // 잔액 캐시(거래로만 갱신)
+  memo          String?
+
+  purchases     TomatoPurchase[]
+  pointTxs      TomatoPointTransaction[]
+
+  @@index([memberNo])
+  @@index([phone])
+}
+
+// 구매내역
+model TomatoPurchase {
+  id                String   @id @default(uuid())
+  createdAt         DateTime @default(now())
+
+  memberId          String
+  member            TomatoMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  categoryId        String
+  category          TomatoProductCategory @relation(fields: [categoryId], references: [id])
+
+  productName       String?                  // 모델명 등
+  serialNo          String?
+  purchaseDate      DateTime  @db.Date
+  purchaseAmount    Int                      // 원
+  pointsEarned      Int       @default(0)    // amount * pointRate
+  managementDueDate DateTime? @db.Date        // purchaseDate + managementYears
+  memo              String?
+
+  pointTxs          TomatoPointTransaction[]
+
+  @@index([memberId])
+  @@index([managementDueDate])
+}
+
+// 포인트 거래원장 (모든 적립/사용/조정 기록)
+model TomatoPointTransaction {
+  id                String   @id @default(uuid())
+  createdAt         DateTime @default(now())
+
+  memberId          String
+  member            TomatoMember @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  type              String                   // 'earn' | 'redeem' | 'adjust'
+  amount            Int                      // earn:+, redeem:-, adjust:±
+  balanceAfter      Int
+  reason            String?                  // 구매적립 / AS사용 / 물품구입 / 수동조정
+  relatedPurchaseId String?
+  relatedPurchase   TomatoPurchase? @relation(fields: [relatedPurchaseId], references: [id])
+  operator          String?                  // 처리 직원
+
+  @@index([memberId, createdAt])
+}

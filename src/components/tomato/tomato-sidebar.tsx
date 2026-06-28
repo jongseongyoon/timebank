@@ -13,8 +13,8 @@ type NavItem = { href: string; label: string; icon: any; ready?: boolean; phase?
 
 const navItems: NavItem[] = [
   { href: '/tomato', label: '대시보드', icon: LayoutDashboard, ready: true },
-  { href: '/tomato/members', label: '회원 관리', icon: Users, phase: 1 },
-  { href: '/tomato/categories', label: '제품 카테고리', icon: Tags, phase: 1 },
+  { href: '/tomato/members', label: '회원 관리', icon: Users, phase: 2 },
+  { href: '/tomato/categories', label: '제품 카테고리', icon: Tags, ready: true },
   { href: '/tomato/import', label: '엑셀 일괄등록', icon: Upload, phase: 2 },
   { href: '/tomato/purchases/new', label: '구매 등록', icon: ShoppingCart, phase: 3 },
   { href: '/tomato/alerts', label: '관리기한 알림', icon: BellRing, phase: 3 },

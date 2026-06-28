@@ -14,14 +14,14 @@ const roadmap = [
   },
   {
     phase: 1,
-    title: '회원 · 제품 카테고리',
-    desc: '회원/구매/포인트 데이터 모델, 카테고리 CRUD(전동스쿠터6·전동휠체어6·수동휠체어5)',
+    title: '데이터 모델 · 제품 카테고리',
+    desc: 'DB 테이블(회원·구매·포인트·카테고리) 생성, 카테고리 CRUD + 초기값(전동스쿠터6·전동휠체어6·수동휠체어5)',
     icon: Tags,
-    done: false,
+    done: true,
   },
   {
     phase: 2,
-    title: '엑셀 일괄등록',
+    title: '엑셀 일괄등록 · 회원 목록',
     desc: '.xlsx 업로드 → 컬럼 매핑 → 미리보기 → 회원번호 기준 upsert',
     icon: Upload,
     done: false,
@@ -63,12 +63,12 @@ export default function TomatoDashboard() {
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-red-600" aria-hidden="true" />
-            Phase 0 완료 — 셋업 및 기본 레이아웃
+            Phase 1 완료 — 데이터 모델 및 제품 카테고리
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
-          관리 영역 진입·직원 로그인·사이드바 메뉴가 준비됐습니다. 다음 단계(Phase 1: 데이터 모델 +
-          제품 카테고리)는 확인 후 진행합니다.
+          DB 테이블(회원·구매·포인트·카테고리)을 만들고 좌측 <b>제품 카테고리</b> 메뉴에서 종류·관리연수·
+          적립률을 관리할 수 있습니다. 다음 단계(Phase 2: 엑셀 일괄등록)는 확인 후 진행합니다.
         </CardContent>
       </Card>
 
