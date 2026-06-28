@@ -2,8 +2,13 @@ export const dynamic = 'force-dynamic'
 import Link from 'next/link'
 import { prisma } from '@/lib/prisma'
 import { PurchaseForm, type CategoryOpt } from '@/components/tomato/purchase-form'
+import type { MemberHit } from '@/app/tomato/purchases/actions'
 
-export default async function NewPurchasePage() {
+export default async function NewPurchasePage({
+  searchParams,
+}: {
+  searchParams: { memberId?: string }
+}) {
   const cats = await prisma.tomatoProductCategory.findMany({
     where: { active: true },
     orderBy: { name: 'asc' },
@@ -14,6 +19,16 @@ export default async function NewPurchasePage() {
     managementYears: c.managementYears,
     pointPercent: Number(c.pointRate) * 100,
   }))
+
+  // QR 스캔 등에서 회원을 미리 지정한 경우
+  let initialMember: MemberHit | null = null
+  if (searchParams.memberId) {
+    const m = await prisma.tomatoMember.findUnique({
+      where: { id: searchParams.memberId },
+      select: { id: true, name: true, memberNo: true, phone: true, pointsBalance: true },
+    })
+    if (m) initialMember = m
+  }
 
   return (
     <div className="max-w-3xl space-y-5">
@@ -29,7 +44,7 @@ export default async function NewPurchasePage() {
           등록하세요.
         </p>
       ) : (
-        <PurchaseForm categories={categories} />
+        <PurchaseForm categories={categories} initialMember={initialMember} />
       )}
     </div>
   )

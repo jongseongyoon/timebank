@@ -22,7 +22,13 @@ function calcDue(dateStr: string, years: number) {
   return d.toISOString().slice(0, 10)
 }
 
-export function PurchaseForm({ categories }: { categories: CategoryOpt[] }) {
+export function PurchaseForm({
+  categories,
+  initialMember,
+}: {
+  categories: CategoryOpt[]
+  initialMember?: MemberHit | null
+}) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [searching, startSearch] = useTransition()
@@ -32,7 +38,7 @@ export function PurchaseForm({ categories }: { categories: CategoryOpt[] }) {
   // 회원 검색·선택
   const [q, setQ] = useState('')
   const [hits, setHits] = useState<MemberHit[]>([])
-  const [member, setMember] = useState<MemberHit | null>(null)
+  const [member, setMember] = useState<MemberHit | null>(initialMember ?? null)
 
   // 입력값
   const [categoryId, setCategoryId] = useState(categories[0]?.id ?? '')

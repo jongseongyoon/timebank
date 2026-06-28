@@ -18,7 +18,7 @@ const navItems: NavItem[] = [
   { href: '/tomato/import', label: '엑셀 일괄등록', icon: Upload, ready: true },
   { href: '/tomato/purchases/new', label: '구매 등록', icon: ShoppingCart, ready: true },
   { href: '/tomato/alerts', label: '관리기한 알림', icon: BellRing, ready: true },
-  { href: '/tomato/scan', label: 'QR 스캔', icon: ScanLine, phase: 5 },
+  { href: '/tomato/scan', label: 'QR 스캔', icon: ScanLine, ready: true },
 ]
 
 export function TomatoSidebar() {

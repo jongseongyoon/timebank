@@ -43,9 +43,9 @@ const roadmap = [
   {
     phase: 5,
     title: 'QR 회원 인식',
-    desc: '회원 QR 발급 + 매장 브라우저 카메라 스캔 → 적립/사용 연결',
+    desc: '회원 상세 QR 발급·출력 + 매장 브라우저 카메라 스캔 → 구매적립/사용 연결',
     icon: ScanLine,
-    done: false,
+    done: true,
   },
 ]
 
@@ -63,12 +63,12 @@ export default function TomatoDashboard() {
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-red-600" aria-hidden="true" />
-            Phase 4 완료 — 포인트 원장 (회원 상세)
+            Phase 5 완료 — QR 발급·스캔 (핵심 기능 완성)
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
-          <b>회원 관리</b>에서 이름을 클릭하면 회원 상세로 들어가 구매내역·포인트 원장을 보고, 포인트
-          <b> 사용</b>(AS비용/물품구입)과 <b>수동 조정</b>을 할 수 있습니다. 다음 단계(Phase 5: QR 발급·스캔)는 확인 후 진행합니다.
+          회원 상세에서 <b>QR을 발급·출력</b>하고, <b>QR 스캔</b> 메뉴에서 매장 카메라로 회원을 인식해
+          구매 적립·포인트 사용을 처리할 수 있습니다. 명세서의 5개 핵심 Phase가 모두 완료됐습니다. 🎉
         </CardContent>
       </Card>
 

@@ -1,10 +1,12 @@
 export const dynamic = 'force-dynamic'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
+import QRCode from 'qrcode'
 import { prisma } from '@/lib/prisma'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { MemberActions } from '@/components/tomato/member-actions'
+import { MemberQr } from '@/components/tomato/member-qr'
 import { ArrowLeft } from 'lucide-react'
 
 const TX_LABEL: Record<string, { text: string; cls: string }> = {
@@ -30,6 +32,11 @@ export default async function MemberDetailPage({ params }: { params: { id: strin
   })
   if (!member) notFound()
 
+  const qrDataUrl = await QRCode.toDataURL(`tomato:member:${member.qrToken}`, {
+    width: 240,
+    margin: 1,
+  })
+
   return (
     <div className="max-w-4xl space-y-5">
       <Link href="/tomato/members" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
@@ -54,6 +61,14 @@ export default async function MemberDetailPage({ params }: { params: { id: strin
               <p className="text-3xl font-bold text-red-700">{member.pointsBalance.toLocaleString()}P</p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* QR 발급 */}
+      <Card>
+        <CardContent className="pt-5">
+          <p className="font-semibold text-sm mb-3">회원 QR</p>
+          <MemberQr qrDataUrl={qrDataUrl} name={member.name} memberNo={member.memberNo} />
         </CardContent>
       </Card>
 
