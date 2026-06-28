@@ -22,9 +22,9 @@ const roadmap = [
   {
     phase: 2,
     title: '엑셀 일괄등록 · 회원 목록',
-    desc: '.xlsx 업로드 → 컬럼 매핑 → 미리보기 → 회원번호 기준 upsert',
+    desc: '.xlsx 업로드 → 컬럼 매핑 → 미리보기 → 회원번호 기준 upsert, 회원 검색',
     icon: Upload,
-    done: false,
+    done: true,
   },
   {
     phase: 3,
@@ -63,12 +63,12 @@ export default function TomatoDashboard() {
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-red-600" aria-hidden="true" />
-            Phase 1 완료 — 데이터 모델 및 제품 카테고리
+            Phase 2 완료 — 엑셀 일괄등록 및 회원 목록
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
-          DB 테이블(회원·구매·포인트·카테고리)을 만들고 좌측 <b>제품 카테고리</b> 메뉴에서 종류·관리연수·
-          적립률을 관리할 수 있습니다. 다음 단계(Phase 2: 엑셀 일괄등록)는 확인 후 진행합니다.
+          좌측 <b>엑셀 일괄등록</b>으로 회원 엑셀(.xlsx)을 올려 한 번에 등록하고, <b>회원 관리</b>에서
+          이름·회원번호·전화로 검색할 수 있습니다. 다음 단계(Phase 3: 구매 등록·관리기한)는 확인 후 진행합니다.
         </CardContent>
       </Card>
 
