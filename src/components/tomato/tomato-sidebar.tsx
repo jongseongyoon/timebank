@@ -16,8 +16,8 @@ const navItems: NavItem[] = [
   { href: '/tomato/members', label: '회원 관리', icon: Users, ready: true },
   { href: '/tomato/categories', label: '제품 카테고리', icon: Tags, ready: true },
   { href: '/tomato/import', label: '엑셀 일괄등록', icon: Upload, ready: true },
-  { href: '/tomato/purchases/new', label: '구매 등록', icon: ShoppingCart, phase: 3 },
-  { href: '/tomato/alerts', label: '관리기한 알림', icon: BellRing, phase: 3 },
+  { href: '/tomato/purchases/new', label: '구매 등록', icon: ShoppingCart, ready: true },
+  { href: '/tomato/alerts', label: '관리기한 알림', icon: BellRing, ready: true },
   { href: '/tomato/scan', label: 'QR 스캔', icon: ScanLine, phase: 5 },
 ]
 

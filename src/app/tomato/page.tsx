@@ -29,9 +29,9 @@ const roadmap = [
   {
     phase: 3,
     title: '구매 등록 · 관리기한',
-    desc: '구매액 2% 자동 적립, 관리기한 자동계산, 임박/초과 알림 대시보드',
+    desc: '구매액 2% 자동 적립(반올림), 관리기한 자동계산, 임박(60일)/초과 알림 대시보드',
     icon: ShoppingCart,
-    done: false,
+    done: true,
   },
   {
     phase: 4,
@@ -63,12 +63,12 @@ export default function TomatoDashboard() {
         <CardHeader className="pb-2">
           <CardTitle className="text-base flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5 text-red-600" aria-hidden="true" />
-            Phase 2 완료 — 엑셀 일괄등록 및 회원 목록
+            Phase 3 완료 — 구매 등록 및 관리기한 알림
           </CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground">
-          좌측 <b>엑셀 일괄등록</b>으로 회원 엑셀(.xlsx)을 올려 한 번에 등록하고, <b>회원 관리</b>에서
-          이름·회원번호·전화로 검색할 수 있습니다. 다음 단계(Phase 3: 구매 등록·관리기한)는 확인 후 진행합니다.
+          좌측 <b>구매 등록</b>에서 구매를 입력하면 2%(반올림) 포인트가 자동 적립되고 관리기한이 계산됩니다.
+          <b> 관리기한 알림</b>에서 초과·임박(60일) 회원을 확인하세요. 다음 단계(Phase 4: 포인트 원장)는 확인 후 진행합니다.
         </CardContent>
       </Card>
 
