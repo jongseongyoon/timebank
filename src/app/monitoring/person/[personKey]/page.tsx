@@ -10,7 +10,7 @@ import Link from 'next/link'
 import { ArrowLeft, CalendarDays } from 'lucide-react'
 import { TriageBadge } from '@/components/monitoring/triage-badge'
 import { RecordBody, ActionItemRow } from '@/components/monitoring/record-view'
-import type { VisitRecord, ActionItem } from '@/lib/dementia/types'
+import type { VisitRecord, ActionItem, RosterField } from '@/lib/dementia/types'
 
 interface PersonDetail {
   personKey: string
@@ -18,6 +18,7 @@ interface PersonDetail {
   birthCode: string
   visitCount: number
   maxTriage: number
+  roster: RosterField[]
   visits: VisitRecord[]
   actions: ActionItem[]
   fetchedAt: string
@@ -80,6 +81,23 @@ export default function PersonDetailPage() {
               <TriageBadge triage={data.maxTriage} className="text-sm" />
             </div>
           </div>
+
+          {/* 명단 기본정보 (상단 표시 — H·J·L·N·P) */}
+          {data.roster.length > 0 && (
+            <div className="rounded-lg border bg-teal-50/60 p-4 shadow-sm">
+              <h2 className="mb-2 text-sm font-bold text-teal-800">기본정보</h2>
+              <dl className="grid grid-cols-2 gap-x-4 gap-y-2">
+                {data.roster.map((f, i) => (
+                  <div key={i} className="min-w-0">
+                    <dt className="text-[11px] text-muted-foreground">{f.label}</dt>
+                    <dd className="truncate text-sm font-semibold" title={f.value}>
+                      {f.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
 
           {/* 사례회의 조치 (인물 단위) */}
           {data.actions.length > 0 && (

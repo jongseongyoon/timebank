@@ -32,6 +32,12 @@ export interface VisitRecord {
   parseWarning: string | null
 }
 
+/** 명단(대상자) 시트에서 보강한 기본정보 항목 (인물 상세 상단) */
+export interface RosterField {
+  label: string
+  value: string
+}
+
 /** 인물 목록 카드용 요약 (목록은 마스킹된 형태로만 노출) */
 export interface PersonSummary {
   personKey: string         // 상세 진입용 키 (서버에서만 원문 사용)

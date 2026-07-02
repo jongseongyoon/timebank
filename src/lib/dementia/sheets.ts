@@ -12,9 +12,18 @@
  */
 
 import { google } from 'googleapis'
-import { SHEET_CONFIG, TODO_CONFIG, resolveColumns } from '@/config/dementia-fieldmap'
+import {
+  SHEET_CONFIG,
+  TODO_CONFIG,
+  ROSTER_CONFIG,
+  ROSTER_DISPLAY,
+  resolveColumns,
+} from '@/config/dementia-fieldmap'
 import { buildRecord, buildTodoAction } from './parse'
-import type { VisitRecord, ActionItem } from './types'
+import type { VisitRecord, ActionItem, RosterField } from './types'
+
+/** 조인 키 정규화(공백 제거) */
+const normKey = (s: string) => (s ?? '').toString().replace(/\s+/g, '')
 
 type Sheets = ReturnType<typeof google.sheets>
 
@@ -42,6 +51,7 @@ function getGoogleAuth() {
 export interface FetchResult {
   records: VisitRecord[]
   actionsByPerson: Map<string, ActionItem[]>
+  rosterByPerson: Map<string, RosterField[]>
   fetchedAt: number
   source: string
   warnings: string[]
@@ -159,6 +169,44 @@ async function fetchTodos(
   return map
 }
 
+/** 명단(대상자) 시트 → personKey별 기본정보(상단 표시) 맵. 접근 실패 시 빈 맵 + 경고 */
+async function fetchRoster(
+  sheets: Sheets,
+  warnings: string[],
+): Promise<Map<string, RosterField[]>> {
+  const map = new Map<string, RosterField[]>()
+  try {
+    const { title } = await resolveTabTitle(
+      sheets,
+      ROSTER_CONFIG.spreadsheetId,
+      ROSTER_CONFIG.sheetGid,
+      ROSTER_CONFIG.sheetTabName,
+    )
+    const rows = await readValues(sheets, ROSTER_CONFIG.spreadsheetId, title)
+    const header = rows[ROSTER_CONFIG.headerRow - 1] ?? []
+
+    for (let r = ROSTER_CONFIG.dataStartRow - 1; r < rows.length; r++) {
+      const row = rows[r] ?? []
+      const key = normKey((row[ROSTER_CONFIG.keyColumn] ?? '').toString())
+      if (!key) continue
+      const fields: RosterField[] = []
+      for (const { col, label } of ROSTER_DISPLAY) {
+        const value = (row[col] ?? '').toString().trim()
+        if (value) {
+          fields.push({ label: (header[col] ?? '').toString().trim() || label, value })
+        }
+      }
+      if (fields.length) map.set(key, fields)
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    warnings.push(
+      `명단(대상자) 시트를 읽지 못했습니다. 서비스계정에 해당 시트 공유가 필요합니다. (${msg})`,
+    )
+  }
+  return map
+}
+
 export async function fetchRecords(force = false): Promise<FetchResult> {
   if (!force && cache && Date.now() - cache.fetchedAt < TTL_MS) return cache
 
@@ -206,8 +254,11 @@ export async function fetchRecords(force = false): Promise<FetchResult> {
     records.push(buildRecord(row, colMap, r + 1))
   }
 
-  // 사례회의 조치 조인 (인물 단위)
-  const actionsByPerson = await fetchTodos(sheets, warnings)
+  // 사례회의 조치 + 명단 기본정보 조인 (인물 단위)
+  const [actionsByPerson, rosterByPerson] = await Promise.all([
+    fetchTodos(sheets, warnings),
+    fetchRoster(sheets, warnings),
+  ])
 
   const warnCount = records.filter((r) => r.parseWarning).length
   if (warnCount > 0) warnings.push(`성명생년월일 파싱 경고 ${warnCount}건`)
@@ -215,6 +266,7 @@ export async function fetchRecords(force = false): Promise<FetchResult> {
   cache = {
     records,
     actionsByPerson,
+    rosterByPerson,
     fetchedAt: Date.now(),
     source: `${spreadsheetTitle} › ${title}`,
     warnings,

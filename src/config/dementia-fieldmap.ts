@@ -61,6 +61,31 @@ export const TODO_CONFIG = {
 } as const
 
 /**
+ * 명단(대상자) 시트 — "치매모니터링 대상자" 스프레드시트의 명단 탭.
+ * 인물 상세 상단에 기본정보를 보강한다(명령서 §8). 코드번호(A) = 성명+생년월일로 조인.
+ * 표시 컬럼: H 의료급여 · J 치매진단경로 · L 장기요양등급 · N 요양돌봄기관 · P 병원명
+ */
+export const ROSTER_CONFIG = {
+  spreadsheetId:
+    process.env.ROSTER_SHEET_ID ?? '156AbT6Z8CdGhsxF48mO6FE9DITzL1pJ_gmnqMENgjf8',
+  sheetGid: process.env.ROSTER_SHEET_GID ? Number(process.env.ROSTER_SHEET_GID) : 1827493174,
+  sheetTabName: process.env.ROSTER_TAB_NAME ?? '명단',
+  headerRow: num(process.env.ROSTER_HEADER_ROW, 1),
+  dataStartRow: num(process.env.ROSTER_DATA_START_ROW, 2),
+  /** 코드번호(성명+생년월일) 컬럼. A열 = 0 */
+  keyColumn: num(process.env.ROSTER_KEY_COLUMN, 1) - 1,
+} as const
+
+/** 상단 표시 컬럼(0-base): H=7, J=9, L=11, N=13, P=15. 라벨은 헤더값 없을 때 폴백 */
+export const ROSTER_DISPLAY: { col: number; label: string }[] = [
+  { col: 7, label: '의료급여' },
+  { col: 9, label: '치매진단경로' },
+  { col: 11, label: '장기요양등급' },
+  { col: 13, label: '요양돌봄기관' },
+  { col: 15, label: '병원명' },
+]
+
+/**
  * 마스터 탭 필드 → 헤더 별칭. 헤더(공백제거)에 별칭을 "포함"하는 첫 컬럼으로 매핑.
  */
 export const FIELD_ALIASES: Record<string, string[]> = {
