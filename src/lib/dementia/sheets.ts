@@ -25,6 +25,9 @@ import type { VisitRecord, ActionItem, RosterField } from './types'
 /** 조인 키 정규화(공백 제거) */
 const normKey = (s: string) => (s ?? '').toString().replace(/\s+/g, '')
 
+/** 시트 공유 안내에 넣을 서비스계정(로봇) 이메일 */
+const serviceEmail = () => process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL ?? '(서비스계정 이메일 미설정)'
+
 type Sheets = ReturnType<typeof google.sheets>
 
 // ── 서비스 계정 인증 (읽기 전용 스코프) ──────────────────────────────────────
@@ -163,7 +166,7 @@ async function fetchTodos(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     warnings.push(
-      `사례회의(조치) 시트를 읽지 못했습니다. 서비스계정에 해당 시트 공유가 필요합니다. (${msg})`,
+      `사례회의(조치) 시트를 읽지 못했습니다. 이 이메일을 시트에 뷰어로 공유하세요 → ${serviceEmail()} (${msg})`,
     )
   }
   return map
@@ -201,7 +204,7 @@ async function fetchRoster(
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err)
     warnings.push(
-      `명단(대상자) 시트를 읽지 못했습니다. 서비스계정에 해당 시트 공유가 필요합니다. (${msg})`,
+      `명단(대상자) 시트를 읽지 못했습니다. 이 이메일을 시트에 뷰어로 공유하세요 → ${serviceEmail()} (${msg})`,
     )
   }
   return map
