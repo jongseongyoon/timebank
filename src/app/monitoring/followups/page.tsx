@@ -3,9 +3,9 @@
  * 팔로업 대시보드 (명령서 §3.2.5)
  * 전체 인물의 미해결/기한임박 조치를 한 화면에. 트리아지 케이스관리·PDCA 후속관리.
  */
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
-import { CalendarClock, AlertTriangle, ChevronRight } from 'lucide-react'
+import { CalendarClock, AlertTriangle, ChevronRight, ListChecks, EyeOff } from 'lucide-react'
 import { TriageBadge } from '@/components/monitoring/triage-badge'
 import type { FollowupItem } from '@/lib/dementia/types'
 import { cn } from '@/lib/utils'
@@ -28,11 +28,14 @@ export default function FollowupsPage() {
   const [data, setData] = useState<FollowupResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showList, setShowList] = useState(false) // 개인정보 보호: 목록은 버튼으로만 노출
+  const [listLoading, setListLoading] = useState(false)
 
+  // 진입 시 숫자 요약만 조회(마스킹 조치 목록은 받지 않음)
   useEffect(() => {
     ;(async () => {
       try {
-        const res = await fetch('/api/monitoring/followups')
+        const res = await fetch('/api/monitoring/followups?summary=1')
         const json = await res.json()
         if (!res.ok) throw new Error(json.error ?? '조회 실패')
         setData(json)
@@ -42,6 +45,23 @@ export default function FollowupsPage() {
         setLoading(false)
       }
     })()
+  }, [])
+
+  // '목록 보기' 눌렀을 때 전체(마스킹) 목록 조회
+  const loadList = useCallback(async () => {
+    setListLoading(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/monitoring/followups')
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error ?? '조회 실패')
+      setData(json)
+      setShowList(true)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : '조회 실패')
+    } finally {
+      setListLoading(false)
+    }
   }, [])
 
   return (
@@ -65,12 +85,37 @@ export default function FollowupsPage() {
       {error && (
         <div className="rounded-md border border-red-200 bg-red-50 p-4 text-sm text-red-700">{error}</div>
       )}
-      {data && data.items.length === 0 && !loading && (
-        <p className="py-10 text-center text-sm text-muted-foreground">미해결 조치가 없습니다. 👍</p>
+
+      {/* 개인정보 보호: 목록은 버튼을 눌렀을 때만 노출 */}
+      {data && !loading && (
+        data.counts.total === 0 ? (
+          <p className="py-10 text-center text-sm text-muted-foreground">미해결 조치가 없습니다. 👍</p>
+        ) : !showList ? (
+          <div className="rounded-lg border bg-white p-5 text-center shadow-sm">
+            <p className="text-sm text-muted-foreground">
+              대상자 보호를 위해 조치 목록은 자동으로 표시하지 않습니다.
+            </p>
+            <button
+              onClick={loadList}
+              disabled={listLoading}
+              className="mx-auto mt-3 flex items-center gap-1.5 rounded-lg bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-teal-700 disabled:opacity-60"
+            >
+              <ListChecks className="h-4 w-4" />
+              {listLoading ? '불러오는 중…' : `미해결 조치 ${data.counts.total}건 목록 보기`}
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowList(false)}
+            className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+          >
+            <EyeOff className="h-3.5 w-3.5" /> 목록 숨기기
+          </button>
+        )
       )}
 
       <ul className="space-y-2">
-        {data?.items.map((item, i) => {
+        {showList && data?.items.map((item, i) => {
           const due = DUE_LABEL[item.dueState]
           return (
             <li key={`${item.personKey}-${i}`}>
