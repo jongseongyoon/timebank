@@ -43,11 +43,19 @@ export default function MonitoringPeoplePage() {
     [search, sort, minTriage],
   )
 
-  // 검색어 디바운스
+  // 개인정보 보호: 화면 진입 시 전체 명단을 자동 노출하지 않는다.
+  // 검색어가 있을 때만 조회(디바운스). 비우면 결과를 지운다.
+  const queried = search.trim().length > 0
   useEffect(() => {
+    if (!queried) {
+      setData(null)
+      setError(null)
+      setLoading(false)
+      return
+    }
     const t = setTimeout(() => load(), 300)
     return () => clearTimeout(t)
-  }, [load])
+  }, [load, queried])
 
   return (
     <div className="space-y-4">
@@ -118,9 +126,26 @@ export default function MonitoringPeoplePage() {
         </div>
       )}
 
-      {loading && !data && <p className="py-10 text-center text-sm text-muted-foreground">불러오는 중…</p>}
+      {/* 검색 전: 전체 명단을 노출하지 않고 안내만 표시 (개인정보 보호) */}
+      {!queried && (
+        <div className="py-16 text-center">
+          <Search className="mx-auto mb-3 h-8 w-8 text-gray-300" />
+          <p className="text-sm text-muted-foreground">
+            성명 · 생년월일코드 · 초성(ㅇㅅㄱ)으로
+            <br />
+            검색하면 대상자가 표시됩니다.
+          </p>
+          <p className="mt-2 text-xs text-gray-400">
+            개인정보 보호를 위해 전체 명단은 자동으로 표시하지 않습니다.
+          </p>
+        </div>
+      )}
 
-      {data && data.people.length === 0 && !loading && (
+      {queried && loading && !data && (
+        <p className="py-10 text-center text-sm text-muted-foreground">불러오는 중…</p>
+      )}
+
+      {queried && data && data.people.length === 0 && !loading && (
         <p className="py-10 text-center text-sm text-muted-foreground">조회 결과가 없습니다.</p>
       )}
 
