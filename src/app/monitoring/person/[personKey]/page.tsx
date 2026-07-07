@@ -7,7 +7,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, CalendarDays } from 'lucide-react'
+import { ArrowLeft, CalendarDays, HeartHandshake } from 'lucide-react'
 import { TriageBadge } from '@/components/monitoring/triage-badge'
 import { RecordBody, ActionItemRow } from '@/components/monitoring/record-view'
 import type { VisitRecord, ActionItem, RosterField, CareService } from '@/lib/dementia/types'
@@ -102,23 +102,21 @@ export default function PersonDetailPage() {
 
           {/* 통합돌봄서비스 (인물 단위 — B 서비스이름 · C 제공기관) */}
           {data.care.length > 0 && (
-            <div className="rounded-lg border bg-white p-4 shadow-sm">
-              <h2 className="mb-2 text-sm font-bold text-teal-800">
-                통합돌봄서비스
-                <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                  {data.care.length}건
-                </span>
-              </h2>
-              <ul className="space-y-1.5">
+            <div className="rounded-lg border bg-white px-4 py-3 shadow-sm">
+              <div className="mb-1.5 flex items-center gap-1.5">
+                <HeartHandshake className="h-3.5 w-3.5 text-teal-600" aria-hidden="true" />
+                <h2 className="text-xs font-bold text-teal-800">통합돌봄서비스</h2>
+                <span className="text-[11px] text-muted-foreground">{data.care.length}건</span>
+              </div>
+              <ul className="divide-y divide-gray-100">
                 {data.care.map((c, i) => (
-                  <li
-                    key={i}
-                    className="flex items-start gap-2 rounded-md border border-teal-100 bg-teal-50/50 p-2.5 text-sm"
-                  >
-                    <span className="mt-0.5 shrink-0 rounded bg-teal-600 px-1.5 py-0.5 text-xs font-semibold text-white">
+                  <li key={i} className="flex items-baseline gap-2 py-1">
+                    <span className="min-w-[64px] shrink-0 text-xs font-semibold text-teal-700">
                       {c.service || '서비스'}
                     </span>
-                    <span className="min-w-0 flex-1 text-gray-700">{c.org}</span>
+                    <span className="min-w-0 flex-1 break-words text-xs text-gray-500">
+                      {c.org}
+                    </span>
                   </li>
                 ))}
               </ul>
