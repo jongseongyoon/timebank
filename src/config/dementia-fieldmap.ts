@@ -76,6 +76,23 @@ export const ROSTER_CONFIG = {
   keyColumn: num(process.env.ROSTER_KEY_COLUMN, 1) - 1,
 } as const
 
+/**
+ * 통합돌봄서비스 시트 — 트리아지 폴더의 "통합돌봄서비스".
+ * 1인당 여러 줄(서비스별). 코드번호(A)로 조인해 인물 상세 상단에 목록 표시.
+ *  A 코드번호(성명+생년월일) · B 서비스이름 · C 제공기관 · D 관리행정동 · E 담당자
+ */
+export const CARE_CONFIG = {
+  spreadsheetId:
+    process.env.CARE_SHEET_ID ?? '1DubzMny3Cdm2jR5xT9jH2fX9UMjkZPWQhVc2_w78OMc',
+  sheetGid: process.env.CARE_SHEET_GID ? Number(process.env.CARE_SHEET_GID) : 632375010,
+  sheetTabName: process.env.CARE_TAB_NAME ?? 'Sheet1',
+  headerRow: num(process.env.CARE_HEADER_ROW, 1),
+  dataStartRow: num(process.env.CARE_DATA_START_ROW, 2),
+  keyColumn: num(process.env.CARE_KEY_COLUMN, 1) - 1, // A
+  serviceColumn: num(process.env.CARE_SERVICE_COLUMN, 2) - 1, // B 서비스이름
+  orgColumn: num(process.env.CARE_ORG_COLUMN, 3) - 1, // C 제공기관
+} as const
+
 /** 상단 표시 컬럼(0-base): H=7, J=9, L=11, N=13, P=15. 라벨은 헤더값 없을 때 폴백 */
 export const ROSTER_DISPLAY: { col: number; label: string }[] = [
   { col: 7, label: '의료급여' },

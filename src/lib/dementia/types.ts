@@ -38,6 +38,12 @@ export interface RosterField {
   value: string
 }
 
+/** 통합돌봄서비스 1건 (서비스이름 + 제공기관) */
+export interface CareService {
+  service: string
+  org: string
+}
+
 /** 인물 목록 카드용 요약 (목록은 마스킹된 형태로만 노출) */
 export interface PersonSummary {
   personKey: string         // 상세 진입용 키 (서버에서만 원문 사용)

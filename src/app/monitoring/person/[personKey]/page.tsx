@@ -10,7 +10,7 @@ import Link from 'next/link'
 import { ArrowLeft, CalendarDays } from 'lucide-react'
 import { TriageBadge } from '@/components/monitoring/triage-badge'
 import { RecordBody, ActionItemRow } from '@/components/monitoring/record-view'
-import type { VisitRecord, ActionItem, RosterField } from '@/lib/dementia/types'
+import type { VisitRecord, ActionItem, RosterField, CareService } from '@/lib/dementia/types'
 
 interface PersonDetail {
   personKey: string
@@ -19,6 +19,7 @@ interface PersonDetail {
   visitCount: number
   maxTriage: number
   roster: RosterField[]
+  care: CareService[]
   visits: VisitRecord[]
   actions: ActionItem[]
   fetchedAt: string
@@ -96,6 +97,31 @@ export default function PersonDetailPage() {
                   </div>
                 ))}
               </dl>
+            </div>
+          )}
+
+          {/* 통합돌봄서비스 (인물 단위 — B 서비스이름 · C 제공기관) */}
+          {data.care.length > 0 && (
+            <div className="rounded-lg border bg-white p-4 shadow-sm">
+              <h2 className="mb-2 text-sm font-bold text-teal-800">
+                통합돌봄서비스
+                <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                  {data.care.length}건
+                </span>
+              </h2>
+              <ul className="space-y-1.5">
+                {data.care.map((c, i) => (
+                  <li
+                    key={i}
+                    className="flex items-start gap-2 rounded-md border border-teal-100 bg-teal-50/50 p-2.5 text-sm"
+                  >
+                    <span className="mt-0.5 shrink-0 rounded bg-teal-600 px-1.5 py-0.5 text-xs font-semibold text-white">
+                      {c.service || '서비스'}
+                    </span>
+                    <span className="min-w-0 flex-1 text-gray-700">{c.org}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
 

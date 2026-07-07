@@ -17,10 +17,11 @@ import {
   TODO_CONFIG,
   ROSTER_CONFIG,
   ROSTER_DISPLAY,
+  CARE_CONFIG,
   resolveColumns,
 } from '@/config/dementia-fieldmap'
 import { buildRecord, buildTodoAction } from './parse'
-import type { VisitRecord, ActionItem, RosterField } from './types'
+import type { VisitRecord, ActionItem, RosterField, CareService } from './types'
 
 /** 조인 키 정규화(공백 제거) */
 const normKey = (s: string) => (s ?? '').toString().replace(/\s+/g, '')
@@ -55,6 +56,7 @@ export interface FetchResult {
   records: VisitRecord[]
   actionsByPerson: Map<string, ActionItem[]>
   rosterByPerson: Map<string, RosterField[]>
+  careByPerson: Map<string, CareService[]>
   fetchedAt: number
   source: string
   warnings: string[]
@@ -210,6 +212,43 @@ async function fetchRoster(
   return map
 }
 
+/** 통합돌봄서비스 시트 → personKey별 서비스 목록(1인 다건). 실패 시 빈 맵 + 경고 */
+async function fetchCare(
+  sheets: Sheets,
+  warnings: string[],
+): Promise<Map<string, CareService[]>> {
+  const map = new Map<string, CareService[]>()
+  try {
+    const { title } = await resolveTabTitle(
+      sheets,
+      CARE_CONFIG.spreadsheetId,
+      CARE_CONFIG.sheetGid,
+      CARE_CONFIG.sheetTabName,
+    )
+    const rows = await readValues(sheets, CARE_CONFIG.spreadsheetId, title)
+    for (let r = CARE_CONFIG.dataStartRow - 1; r < rows.length; r++) {
+      const row = rows[r] ?? []
+      const key = normKey((row[CARE_CONFIG.keyColumn] ?? '').toString())
+      if (!key) continue
+      const service = (row[CARE_CONFIG.serviceColumn] ?? '').toString().trim()
+      const org = (row[CARE_CONFIG.orgColumn] ?? '').toString().trim()
+      if (!service && !org) continue
+      const list = map.get(key) ?? []
+      // 같은 서비스+기관 중복 제거
+      if (!list.some((x) => x.service === service && x.org === org)) {
+        list.push({ service, org })
+      }
+      map.set(key, list)
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    warnings.push(
+      `통합돌봄서비스 시트를 읽지 못했습니다. 이 이메일을 시트에 뷰어로 공유하세요 → ${serviceEmail()} (${msg})`,
+    )
+  }
+  return map
+}
+
 export async function fetchRecords(force = false): Promise<FetchResult> {
   if (!force && cache && Date.now() - cache.fetchedAt < TTL_MS) return cache
 
@@ -257,10 +296,11 @@ export async function fetchRecords(force = false): Promise<FetchResult> {
     records.push(buildRecord(row, colMap, r + 1))
   }
 
-  // 사례회의 조치 + 명단 기본정보 조인 (인물 단위)
-  const [actionsByPerson, rosterByPerson] = await Promise.all([
+  // 사례회의 조치 + 명단 기본정보 + 통합돌봄서비스 조인 (인물 단위)
+  const [actionsByPerson, rosterByPerson, careByPerson] = await Promise.all([
     fetchTodos(sheets, warnings),
     fetchRoster(sheets, warnings),
+    fetchCare(sheets, warnings),
   ])
 
   const warnCount = records.filter((r) => r.parseWarning).length
@@ -270,6 +310,7 @@ export async function fetchRecords(force = false): Promise<FetchResult> {
     records,
     actionsByPerson,
     rosterByPerson,
+    careByPerson,
     fetchedAt: Date.now(),
     source: `${spreadsheetTitle} › ${title}`,
     warnings,

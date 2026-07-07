@@ -39,6 +39,7 @@ export async function GET(
   const head = visits[0]
   const actions = result.actionsByPerson.get(personKey) ?? []
   const roster = result.rosterByPerson.get(personKey) ?? []
+  const care = result.careByPerson.get(personKey) ?? []
   return NextResponse.json({
     personKey,
     name: head.name,
@@ -46,6 +47,7 @@ export async function GET(
     visitCount: visits.length,
     maxTriage: visits.reduce((m, v) => Math.max(m, v.triage), 0),
     roster, // 명단 기본정보(상단 표시)
+    care, // 통합돌봄서비스(인물 단위)
     visits, // 최신순 (record 본문 포함 — 상세 전용)
     actions, // 사례회의 조치(인물 단위)
     fetchedAt: new Date(result.fetchedAt).toISOString(),
