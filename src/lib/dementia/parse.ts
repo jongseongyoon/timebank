@@ -79,8 +79,9 @@ export function parseTriage(raw: string): number {
 }
 
 // ── 해결여부 상태 → 해결 완료 여부 ───────────────────────────────────────────
-// 공백/신규_요청/진행 등은 미해결. 완료/해결/종결 등은 해결.
-const RESOLVED_WORDS = ['완료', '해결', '종결', '종료', '완결']
+// 공백/신규_요청/진행 등은 미해결. 완료/해결/종결/목표달성 등은 해결.
+// (예: "종결_목표달성", "목표달성" 모두 해결로 분류)
+const RESOLVED_WORDS = ['완료', '해결', '종결', '종료', '완결', '목표달성']
 export function isResolvedStatus(status: string): boolean {
   const s = (status ?? '').replace(/\s+/g, '')
   if (!s) return false

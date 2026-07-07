@@ -106,6 +106,10 @@ describe('isResolvedStatus', () => {
     expect(isResolvedStatus('완료')).toBe(true)
     expect(isResolvedStatus('해결됨')).toBe(true)
   })
+  it('종결_목표달성 / 목표달성 = true', () => {
+    expect(isResolvedStatus('종결_목표달성')).toBe(true)
+    expect(isResolvedStatus('목표달성')).toBe(true)
+  })
   it('공백/신규_요청/진행 = false', () => {
     expect(isResolvedStatus('')).toBe(false)
     expect(isResolvedStatus('신규_요청')).toBe(false)
